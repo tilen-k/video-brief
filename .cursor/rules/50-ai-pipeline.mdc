@@ -1,0 +1,40 @@
+---
+description: AI provider, Claude Haiku, and Zod-validated structured LLM output
+globs: src/domain/**/*.{ts,tsx},src/lib/ai/**/*.{ts,tsx}
+alwaysApply: false
+---
+
+# VideoBrief — AI pipeline
+
+## Abstraction
+
+```text
+AIProvider
+  analyzeVideo / determineContextQuestions / generatePersonalizedSummary
+```
+
+Implement with Vercel AI SDK. Default model: **Claude Haiku**. Do not hard-code Claude SDK calls outside the provider.
+
+## Pipeline stages (domain)
+
+1. Metadata + English transcript
+2. Video understanding → structured (type, topics, chapters, candidate questions)
+3. Filter questions against existing user context
+4. Optional user answers → persist by scope
+5. Personalized summary → structured → persist
+
+## Validation (required)
+
+```text
+LLM → structured output → Zod.parse → app types → DB
+```
+
+Never persist raw/unvalidated model JSON. Schemas must cover timestamps, titles, summaries, topics, questions, takeaways.
+
+## Personalization
+
+Change emphasis, depth, and framing — not invent unrelated content. Skip questions already answered in stored context.
+
+## Cost
+
+Reuse intermediate analysis; avoid duplicate full-transcript calls; Haiku for all MVP stages.

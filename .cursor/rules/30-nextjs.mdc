@@ -1,0 +1,50 @@
+---
+description: Next.js App Router, RSC, and Server Action conventions for VideoBrief
+globs: src/app/**/*.{ts,tsx},src/**/actions/**/*.{ts,tsx}
+alwaysApply: false
+---
+
+# VideoBrief — Next.js
+
+Adapted from modern App Router practice (async request APIs, RSC-first).
+
+## Defaults
+
+- Server Components by default; `'use client'` only for interactivity
+- Prefer Server Actions for mutations; no tRPC; no REST unless required
+- Named exports for components; TypeScript strict
+- `next/image`, `next/link`
+- Await `params`, `searchParams`, `cookies()`, `headers()` (async APIs)
+
+## Thin Server Actions
+
+```typescript
+'use server'
+// 1. Zod-parse input
+// 2. Resolve user via Supabase server client (not client user_id)
+// 3. Authorize
+// 4. Call domain function
+// 5. revalidatePath / return result
+```
+
+Business logic stays in `src/domain/`.
+
+## Forms
+
+React Hook Form + Zod (+ shadcn form primitives). Prefer `useActionState` when wiring actions to progressive enhancement.
+
+## Data fetching
+
+- Primary reads: RSC + Drizzle
+- Client: TanStack Query for mutations and **polling analysis status**
+- Query keys by domain: `['videos', id]`, `['analysis', videoId]`
+
+## Route files
+
+Use `page.tsx`, `layout.tsx`, `loading.tsx`, `error.tsx` (client), `not-found.tsx` as needed.
+
+## Security
+
+- Validate every action input with Zod
+- `NEXT_PUBLIC_*` only for truly public values
+- Never expose service-role keys to the client

@@ -1,0 +1,37 @@
+---
+description: VideoBrief product philosophy, MVP scope, and non-negotiable product constraints
+alwaysApply: true
+---
+
+# VideoBrief — Product
+
+Brand: **VideoBrief** · Domain: **videobrief.app**
+
+Personalized YouTube summaries synchronized with the video. Not a generic AI summarizer. Not a chatbot.
+
+## Core loop
+
+Paste URL → understand video → optional context questions → personalized summary → watch with synced chapters.
+
+## Guiding question
+
+Does this help turn a YouTube video into a better personalized understanding for this user? If not, keep it out of MVP.
+
+## MVP includes
+
+Landing, auth (email/password + Google), soft email confirm, lightweight onboarding, library, YouTube ingest, English timestamped captions, AI analysis (Haiku), dynamic optional context questions, persistent context (global / topic / video), hybrid shared video+transcript cache, video workspace with synced chapters, dark-default UI, EN-only i18n scaffolding, unit tests.
+
+## MVP excludes
+
+Chat, uploads, Whisper/audio transcription, non-YouTube, recommendations, knowledge graph, cross-video search, quizzes, social/sharing, Stripe, Redis, background workers, tRPC, PostHog/analytics, E2E tests, non-English UI or captions.
+
+## UX
+
+Editorial, premium, content-first, typography-led. AI stays invisible in the workspace. Prefer Watch → understand → remember over chat.
+
+## Context rules
+
+- Onboarding stays lightweight; not every field required.
+- Ask only questions that materially improve the summary and are not already answered.
+- User may answer zero, some, or all questions; summary must still work.
+- Persist useful answers at the correct scope (global / topic / video-specific).

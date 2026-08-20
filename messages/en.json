@@ -1,0 +1,29 @@
+{
+  "Brand": {
+    "name": "VideoBrief",
+    "tagline": "Personalized YouTube summaries, synced to the video."
+  },
+  "Landing": {
+    "cta": "Get started",
+    "secondary": "Log in",
+    "subtitle": "Paste any YouTube link. Get a summary shaped for you — chapters that follow as you watch."
+  },
+  "Auth": {
+    "loginTitle": "Welcome back",
+    "signupTitle": "Create your account",
+    "email": "Email",
+    "password": "Password",
+    "login": "Log in",
+    "signup": "Sign up",
+    "or": "or",
+    "google": "Continue with Google",
+    "noAccount": "Need an account?",
+    "hasAccount": "Already have an account?",
+    "softConfirm": "You can start using VideoBrief right away. Check your email to confirm when you can."
+  },
+  "Library": {
+    "title": "Library",
+    "empty": "Your library is empty. Video ingest comes next.",
+    "logout": "Log out"
+  }
+}

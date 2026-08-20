@@ -1,0 +1,35 @@
+---
+description: UI, shadcn, theming, fonts, and i18n conventions for VideoBrief
+globs: src/components/**/*.{ts,tsx},src/app/**/*.{ts,tsx},src/messages/**
+alwaysApply: false
+---
+
+# VideoBrief — UI
+
+## Look
+
+Editorial, premium, restrained, content-first. Workspace is the product centerpiece — not a SaaS card grid or chatbot shell.
+
+## Stack
+
+- Tailwind + **shadcn/ui** + lucide-react
+- Forms: RHF + Zod + shadcn form controls
+- Theme: **next-themes**, default **dark**
+- i18n: **next-intl**, locale **`en` only** for MVP (keep message files structured)
+
+## Fonts
+
+- Display / brand: **Newsreader**
+- UI / body: **Source Sans 3**
+- Avoid Inter, Roboto, Arial, system-ui as the primary brand face
+
+## Composition
+
+- Landing: brand-first, one clear CTA, not dashboard clutter
+- Workspace: video | summary/chapters split; active chapter follows playback
+- Prefer document-like summary panels over chat bubbles
+- Cards only when they contain real interaction
+
+## Motion
+
+Intentional, minimal (2–3 purposeful motions max on marketing). Avoid glow spam and pill clusters.

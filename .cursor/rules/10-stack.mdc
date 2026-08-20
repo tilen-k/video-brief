@@ -1,0 +1,50 @@
+---
+description: Locked VideoBrief technology stack, tooling, and package conventions
+alwaysApply: true
+---
+
+# VideoBrief — Stack
+
+## Core
+
+- Next.js (App Router) + React + TypeScript — use `src/` layout
+- pnpm + Vercel
+- Tailwind CSS + shadcn/ui + lucide-react
+- React Hook Form + Zod
+- TanStack Query (client mutations / analysis-state polling; RSC for primary reads)
+- next-themes — **dark mode default** (respect system after first choice)
+- next-intl — **English only** for MVP (scaffold for later locales)
+
+## Data & auth
+
+- Supabase Auth: email/password + Google OAuth (personal GCP project)
+- Soft email confirmation (app usable before verify)
+- Drizzle ORM + Drizzle Kit migrations on Supabase Postgres
+- `@supabase/ssr` for session/cookies; never trust client-supplied `user_id`
+- RLS on all user-owned tables
+
+## AI & YouTube
+
+- Vercel AI SDK behind an `AIProvider` abstraction
+- Default model: **Claude Haiku** (latest via AI SDK)
+- Zod-validate all LLM structured output before persist
+- Transcript/metadata: `youtubei.js` behind a swappable `TranscriptProvider`
+- Player: `react-youtube` (IFrame API — seek/time sync required)
+- English captions only; if missing → clear error (no Whisper)
+
+## Explicitly not used
+
+Prisma, tRPC, Redis, PostHog, Jest (use Vitest), Playwright (post-MVP)
+
+## Commands
+
+```bash
+pnpm dev | build | start | lint | format | test | type-check
+pnpm drizzle-kit generate | migrate | studio
+```
+
+## Docs of truth
+
+- Full: `project-spec.md`
+- Short agent context: `project-context.md`
+- These `.cursor/rules` files are the agent ruleset (no CLAUDE.md)

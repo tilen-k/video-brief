@@ -1,0 +1,37 @@
+---
+description: YouTube URL ingest, English transcripts via youtubei.js, react-youtube sync
+globs: src/lib/youtube/**/*.{ts,tsx},src/domain/**/*youtube*,src/components/**/*player*
+alwaysApply: false
+---
+
+# VideoBrief — YouTube
+
+## Scope
+
+YouTube URLs only. No uploads. No audio transcription.
+
+## TranscriptProvider
+
+- Default impl: `youtubei.js` (Innertube)
+- Interface must allow swap to proxy or external fetch worker later (Vercel IPs may be blocked)
+- MVP strategy: ship without residential proxy; document failure mode; keep interface ready
+
+## English only
+
+Prefer/require **English** caption tracks. If no accessible English timestamped transcript → user-facing error; do not fall back to Whisper or other languages.
+
+Preserve segment timestamps for chapter sync.
+
+## Metadata
+
+Fetch title, channel, duration, thumbnail via the same provider boundary (or YouTube Data API later if needed). Cache on shared `videos` / `video_transcripts` by YouTube id.
+
+## Player
+
+Use **`react-youtube`** for the workspace (IFrame API):
+
+- Poll or listen for current time → highlight active chapter
+- Chapter click → `seekTo`
+- Sync is client-only; no AI during playback
+
+Do not use lite-embed for the workspace (insufficient control).

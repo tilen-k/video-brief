@@ -1,0 +1,28 @@
+---
+description: Vitest unit-testing conventions for VideoBrief MVP
+globs: **/*.{test,spec}.{ts,tsx},src/**/__tests__/**
+alwaysApply: false
+---
+
+# VideoBrief — Testing (MVP)
+
+## Scope
+
+**Unit tests only** for MVP. No Playwright/E2E until post-MVP.
+
+## Stack
+
+- Vitest + Testing Library where components need it
+- Prefer testing: Zod schemas, domain pipeline helpers, pure transforms
+- Mock LLM / YouTube providers at the interface boundary (`AIProvider`, `TranscriptProvider`)
+
+## Practices
+
+- Co-locate `*.test.ts` next to code or under `__tests__/`
+- Assert validation failures and happy-path structured outputs
+- Do not hit live Anthropic/YouTube in unit tests
+- `pnpm test` must be runnable in CI later
+
+## Out of scope for now
+
+Auth → add video → workspace E2E, visual regression, load tests.

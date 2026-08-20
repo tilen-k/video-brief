@@ -1,0 +1,48 @@
+---
+description: Drizzle schema, Supabase Auth, and RLS conventions for VideoBrief
+globs: src/db/**/*.{ts,tsx},drizzle/**/*,src/lib/supabase/**/*.{ts,tsx}
+alwaysApply: false
+---
+
+# VideoBrief — Supabase + Drizzle
+
+## Roles
+
+| Concern | Tool |
+|---------|------|
+| Auth / session cookies | `@supabase/ssr` |
+| App queries / mutations | Drizzle + Postgres |
+| Schema + migrations | Drizzle Kit |
+| Authorization boundary | Postgres RLS (+ app checks) |
+
+## Schema habits
+
+- UUID PKs with defaults where appropriate
+- `createdAt` / `updatedAt` on tables
+- Export inferred types (`$inferSelect` / `$inferInsert`)
+- Hybrid model: shared video/transcript by YouTube id; per-user analysis & context
+- Indexes on foreign keys and frequent filters (`userId`, `youtubeId`, analysis status)
+
+## Migrations
+
+1. Edit `src/db/schema.ts`
+2. `pnpm drizzle-kit generate`
+3. `pnpm drizzle-kit migrate`
+4. Ship **RLS policies in the same change** as new user-owned tables
+
+Never disable RLS to “make dev easier.” Never trust browser `user_id`.
+
+## Auth
+
+- Email/password + Google OAuth
+- Soft email confirmation — allow use before verify; nudge later
+- Middleware / server layouts protect private routes
+- Server: `createServerClient` with full cookie `getAll`/`setAll` where writes happen
+
+## Clients
+
+- Browser: anon key only
+- Server user-scoped: SSR client
+- Service role: rare, server-only, comment why when used (e.g. shared transcript upsert)
+
+Use Supabase MCP (read-only preferred) for live schema/RLS inspection when configured.

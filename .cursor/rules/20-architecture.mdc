@@ -1,0 +1,62 @@
+---
+description: Domain architecture, hybrid data model, and analysis pipeline boundaries
+alwaysApply: true
+---
+
+# VideoBrief — Architecture
+
+## Layout
+
+```text
+Browser
+  → Next.js (RSC + thin Server Actions + TanStack Query where needed)
+      → domain/application logic (analysis pipeline lives here)
+          → Drizzle / Supabase
+          → TranscriptProvider (youtubei.js)
+          → AIProvider (Vercel AI SDK + Claude Haiku)
+```
+
+Server Actions authenticate, authorize, validate input, then call domain functions. **Do not** embed the analysis pipeline in actions or React components.
+
+Structure domain code so it can later move behind a queue without rewrite. Do **not** add Redis/workers until a concrete timeout/requirement appears.
+
+## Hybrid video data
+
+Shared (by YouTube video id):
+
+- `videos` — metadata
+- `video_transcripts` — English timestamped segments
+
+Per-user:
+
+- library membership / saved videos
+- `user_context` / topic context / preferences
+- `video_context` (video-specific answers)
+- personalized analysis (overview, chapters, takeaways)
+
+Reuse shared transcript/metadata when another user pastes the same URL.
+
+## Analysis states
+
+Keep the state machine simple, e.g.:
+
+`pending` → `fetching_transcript` → `analyzing` → `awaiting_context` → `generating_summary` → `complete` | `failed`
+
+UI should communicate progress without leaking internals.
+
+## Suggested folder sketch
+
+```text
+src/
+  app/                 # routes, layouts, loading/error
+  components/          # UI (shadcn + feature)
+  domain/              # analysis pipeline, pure-ish business logic
+  db/                  # drizzle schema, client
+  lib/                 # supabase, ai, youtube, utils
+  hooks/
+  messages/            # next-intl (en.json)
+```
+
+## Cost awareness
+
+Reuse intermediate structured analysis; avoid re-sending full transcripts; skip known context questions; Haiku for all MVP LLM calls.
