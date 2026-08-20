@@ -40,3 +40,8 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 # keep next-env.d.ts tracked
+
+notes/
+
+# Cursor hook dirty-flag (set by afterFileEdit, cleared by stop verify)
+.cursor/hooks/state/

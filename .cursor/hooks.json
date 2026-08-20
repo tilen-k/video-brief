@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "hooks": {
+    "afterFileEdit": [
+      {
+        "command": ".cursor/hooks/mark-dirty.sh"
+      }
+    ],
+    "stop": [
+      {
+        "command": ".cursor/hooks/verify-done.sh",
+        "timeout": 120,
+        "loop_limit": 3
+      }
+    ]
+  }
+}
