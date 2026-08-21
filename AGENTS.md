@@ -10,7 +10,7 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 # VideoBrief
 
-Personalized YouTube summaries synced with the video. Not a chatbot. Not a generic AI summarizer.
+Education-first personalized YouTube summaries synced with the video. Not a chatbot. Not a generic AI summarizer. Non-educational videos still get a sectioned summary with a soft disclaimer.
 
 ## Context
 
@@ -18,6 +18,19 @@ Personalized YouTube summaries synced with the video. Not a chatbot. Not a gener
 - Full spec: `project-spec.md`
 - Agent rules: `.cursor/rules/`
 - Workflow skills: `.cursor/skills/`
+- Specialist subagents: `.cursor/agents/` (`architect`, `reviewer`, `verifier`, `security`)
+
+## Shipping substantial features
+
+For non-trivial work, prefer `/ship-feature` (or say “ship this feature”):
+
+1. `architect` (readonly) — plan boundaries **before** coding when domain/data/pipeline/authz change
+2. Main agent implements (use existing skills)
+3. `reviewer` + `verifier` (readonly) — critique and prove it works (Vitest + browser tools; no Playwright)
+4. `security` when auth/RLS/AI trust boundaries change
+5. Main agent fixes Critical/High; specialists do not rewrite production code
+
+Skip the full loop for copy/CSS/one-field tweaks. Explicit `/architect`, `/reviewer`, `/verifier`, or `/security` is fine mid-feature.
 
 ## Hard constraints (MVP)
 
@@ -29,6 +42,8 @@ Personalized YouTube summaries synced with the video. Not a chatbot. Not a gener
 ## UI verification
 
 For UI changes: with `pnpm dev` running, use the Cursor browser tools against `http://localhost:3000`. Snapshot, click the real flow, screenshot if layout matters. Do not add Playwright.
+
+This is mandatory before finishing UI work — not optional. Mechanical `stop` hooks only run type-check / lint / test; they do **not** replace browser verification. See `.cursor/rules/90-ui-verification.mdc`.
 
 ## Before finishing work that changed code
 

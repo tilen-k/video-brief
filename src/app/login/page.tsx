@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 
-import { LoginForm } from "@/components/auth-forms";
+import { LoginForm } from "@/components/auth/login-form";
 
 export default async function LoginPage() {
   const t = await getTranslations("Auth");

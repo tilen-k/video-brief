@@ -5,21 +5,21 @@ alwaysApply: true
 
 # VideoBrief — Product
 
-Brand: **VideoBrief** · Domain: **videobrief.app**
+Brand: **VideoBrief** · **Domain:** videobrief.app
 
-Personalized YouTube summaries synchronized with the video. Not a generic AI summarizer. Not a chatbot.
+**Education-first** personalized YouTube summaries synced with the video. Not a generic AI summarizer. Not a chatbot. Non-educational videos still get a sectioned summary (soft disclaimer, no knowledge questions).
 
 ## Core loop
 
-Paste URL → understand video → optional context questions → personalized summary → watch with synced chapters.
+Paste URL → metadata + EN transcript → classify (`isEducational`) → if educational: optional select questions (max 3) for missing knowledge + show applied context → personalized **sections** → watch with sync highlight/seek.
 
 ## Guiding question
 
-Does this help turn a YouTube video into a better personalized understanding for this user? If not, keep it out of MVP.
+Does this help turn a YouTube video into a better personalized understanding for this user — especially for learning? If not, keep it out of MVP.
 
 ## MVP includes
 
-Landing, auth (email/password + Google), soft email confirm, lightweight onboarding, library, YouTube ingest, English timestamped captions, AI analysis (Haiku), dynamic optional context questions, persistent context (global / topic / video), hybrid shared video+transcript cache, video workspace with synced chapters, dark-default UI, EN-only i18n scaffolding, unit tests.
+Landing, auth (email/password + Google), soft email confirm, lightweight **educational** onboarding (YOB, education level, subject chips — all optional), library, YouTube ingest, English timestamped captions, AI classification + analysis (Haiku), dynamic optional context questions (**educational only**, select, max 3), persistent context (global / topic / video), hybrid shared video+transcript+classification cache, video workspace with synced sections, soft non-edu disclaimer, dark-default UI, EN-only i18n scaffolding, unit tests.
 
 ## MVP excludes
 
@@ -31,7 +31,11 @@ Editorial, premium, content-first, typography-led. AI stays invisible in the wor
 
 ## Context rules
 
-- Onboarding stays lightweight; not every field required.
-- Ask only questions that materially improve the summary and are not already answered.
-- User may answer zero, some, or all questions; summary must still work.
+- Onboarding stays lightweight; every field optional.
+- Onboarding fields: year of birth (`yyyy`, framing only), education-level enum, subject chips (fixed list + `other`).
+- Ask paste-time questions only when `isEducational`; skip when not.
+- Ask only questions that materially improve the summary and are not already answered; select-only; max 3.
+- User may answer zero, some, or all; summary must still work.
+- Non-edu summaries still use global context when present; soft disclaimer.
 - Persist useful answers at the correct scope (global / topic / video-specific).
+- Ambiguous classification → prefer educational.

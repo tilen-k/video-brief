@@ -26,7 +26,10 @@ Editorial, premium, restrained, content-first. Workspace is the product centerpi
 ## Composition
 
 - Landing: brand-first, one clear CTA, not dashboard clutter
-- Workspace: video | summary/chapters split; active chapter follows playback
+- Onboarding: optional YOB number, education-level select, subject chips (+ Other)
+- Paste / analyze (educational): show context that will be used; up to 3 select questions; skip always allowed
+- Paste / analyze (non-educational): soft disclaimer; no knowledge questions
+- Workspace: video | summary/**sections** split; active section follows playback and highlights; click seeks
 - Prefer document-like summary panels over chat bubbles
 - Cards only when they contain real interaction
 

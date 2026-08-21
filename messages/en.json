@@ -21,6 +21,27 @@
     "hasAccount": "Already have an account?",
     "softConfirm": "You can start using VideoBrief right away. Check your email to confirm when you can."
   },
+  "Onboarding": {
+    "title": "Tell us a little about yourself",
+    "subtitle": "A few optional details help VideoBrief personalize summaries. You can skip and fill gaps later.",
+    "optionalHint": "Every field is optional.",
+    "role": "Role / occupation",
+    "rolePlaceholder": "e.g. Frontend developer",
+    "background": "Background",
+    "backgroundPlaceholder": "e.g. I build React apps and follow AI tooling…",
+    "interests": "Interests",
+    "interestsPlaceholder": "e.g. AI, distributed systems, startups",
+    "summaryStyle": "Summary style",
+    "detailLevel": "Level of detail",
+    "styleConcise": "Concise",
+    "styleStructured": "Structured",
+    "styleNarrative": "Narrative",
+    "detailBrief": "Brief",
+    "detailBalanced": "Balanced",
+    "detailDetailed": "Detailed",
+    "continue": "Continue",
+    "skip": "Skip for now"
+  },
   "Library": {
     "title": "Library",
     "empty": "Your library is empty. Video ingest comes next.",

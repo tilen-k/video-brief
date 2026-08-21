@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
+import { getOnboardingCompleted } from "@/domain/onboarding";
 import { createClient } from "@/lib/supabase/server";
 
 const credentialsSchema = z.object({
@@ -43,7 +44,7 @@ export async function signUp(
     return { error: error.message };
   }
 
-  redirect("/library");
+  redirect("/onboarding");
 }
 
 export async function signIn(
@@ -69,7 +70,15 @@ export async function signIn(
     return { error: error.message };
   }
 
-  redirect("/library");
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (user && (await getOnboardingCompleted(user.id))) {
+    redirect("/library");
+  }
+
+  redirect("/onboarding");
 }
 
 export async function signOut() {

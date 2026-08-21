@@ -6,44 +6,34 @@ Canonical agent rules live in `.cursor/rules/`. Short overview: `project-context
 
 ## 1. Project Overview
 
-We are building a web application that turns YouTube videos into **personalized, interactive summaries**.
+We are building an **education-first** web application that turns YouTube videos into **personalized, interactive section summaries** synchronized with playback.
 
 The core product idea is:
 
-> **Paste any YouTube video. The application understands what the video is about, understands what would be useful for this particular user, asks for additional context only when necessary, and generates a personalized summary synchronized with the video.**
+> **Paste a YouTube video. The application classifies whether it is educational, understands the content, asks for missing learning context only when useful, and generates personalized section explanations synchronized with the video.**
 
 The application is intentionally **not** a generic "AI YouTube summarizer."
 
-The differentiating feature is **personalization through persistent user context**.
+The differentiating feature is **personalization through persistent educational user context** (level, subjects, topic familiarity).
 
 A user should be able to use the application with almost no configuration:
 
 1. Sign up.
-2. Complete lightweight onboarding.
+2. Complete lightweight educational onboarding (all fields optional).
 3. Paste a YouTube URL.
-4. The application analyzes the video.
-5. The application determines whether additional user context would materially improve the result.
-6. The user may answer zero, some, or all of the suggested questions.
-7. The useful answers are persisted as user context.
-8. The application generates a personalized summary.
-9. The user watches the video alongside a synchronized summary/chapter panel.
+4. The application fetches metadata + English transcript and **classifies** the video (`isEducational`).
+5. If educational: show context that will be used; ask up to 3 select-only questions for missing knowledge.
+6. If not educational: soft disclaimer; **no** paste-time questions; still produce a sectioned summary using global context.
+7. The user may answer zero, some, or all suggested questions (educational path).
+8. Useful answers are persisted as user context.
+9. The application generates personalized **section** explanations.
+10. The user watches with synchronized section highlight and seek.
 
-The application should work across many types of YouTube content, including but not limited to:
+**Primary fit:** educational content (lectures, course chapters, explainers, technical tutorials intended for learning).
 
-* educational videos
-* technical tutorials
-* podcasts
-* interviews
-* gaming videos
-* reviews
-* commentary
-* political content
-* lectures
-* conference talks
-* documentaries
-* general-interest videos
+**Also allowed:** any other YouTube video with English captions — summarized into sections with a soft disclaimer that learning personalization may not apply the same way.
 
-Video type should be determined dynamically from the content. Do not design the product around a fixed category list.
+Classification is an LLM structured stage (Zod-validated). YouTube `categoryId` may be passed as a **hint**, not the sole decision. If classification confidence is ambiguous, **prefer educational**.
 
 ---
 
@@ -55,7 +45,7 @@ The primary interaction is:
 
 > **Watch → understand → remember**
 
-The AI should be largely invisible in the final interface. The user should primarily see useful information, chapters, summaries, and context-aware explanations rather than a chat interface.
+The AI should be largely invisible in the final interface. The user should primarily see useful information, **sections**, summaries, and context-aware explanations rather than a chat interface.
 
 The product should be simple enough that the main workflow is immediately understandable.
 
@@ -63,7 +53,7 @@ Avoid feature creep.
 
 The MVP should do one thing exceptionally well:
 
-> **Turn a YouTube video into a personalized, synchronized summary.**
+> **Turn an educational YouTube video into a level-aware, synchronized section summary — and still summarize everything else with a soft caveat.**
 
 ---
 
@@ -180,34 +170,23 @@ Prisma, tRPC, Redis, background workers, PostHog/analytics, Stripe, Jest, Playwr
 
 # 4. Onboarding
 
-Onboarding should collect **general, relatively stable user context**.
+Onboarding should collect a **lightweight educational baseline**. All fields are optional; skip is allowed.
 
 Do not make onboarding a long questionnaire.
 
-The goal is to establish enough baseline context for the application to personalize future video analyses.
+| Field | Storage / behavior |
+|-------|--------------------|
+| Year of birth | User enters a number; store as `yyyy`. Used for **framing** only (not gating or age gates). |
+| Education level | Enum (single select): `middle_school`, `high_school`, `undergrad`, `grad`, `bootcamp`, `self_taught`, `other` |
+| Subjects of interest | Multi-select chips from a fixed list; **`other` is the last chip** (no free-text for Other in MVP) |
 
-Potential information includes:
+Suggested subject chips (define as a shared const/enum in code):
 
-* occupation / role
-* general background
-* areas of expertise
-* interests
-* topics they commonly care about
-* preferred summary style
-* preferred level of detail
-* free-form description of themselves or what they want from the application
+`math`, `physics`, `chemistry`, `biology`, `computer_science`, `engineering`, `economics`, `history`, `languages`, `other`
 
-The exact questions should remain lightweight.
+Persist these as global `user_context` keys (e.g. `year_of_birth`, `education_level`, `subjects`).
 
-Example:
-
-> Tell us a little about yourself.
-
-> I'm a frontend developer interested in AI and distributed systems. I usually watch technical content and startup interviews.
-
-The user should be able to provide as much or as little information as they want.
-
-Do not make every field mandatory.
+Do not collect occupation/role or summary-style prefs as the primary onboarding surface for MVP unless product direction changes again.
 
 ---
 
@@ -220,39 +199,31 @@ The application should **not attempt to collect all useful information during on
 Instead:
 
 1. User adds a video.
-2. The application analyzes the video.
-3. The application compares the video with existing user context.
-4. It determines what additional information could meaningfully improve the summary.
-5. It optionally asks the user for that information.
-6. The answers are persisted and can be reused later.
+2. The application analyzes and **classifies** the video.
+3. If **not** educational → soft disclaimer; skip paste-time questions; generate sectioned summary using global context.
+4. If educational → compare video domains/prerequisites with existing user context.
+5. Ask only missing knowledge questions (select-only, max 3).
+6. Show the user which context will be used.
+7. Persist useful answers for reuse.
 
 Example:
 
-A user adds a technical React tutorial.
+Video title: `Taylor series | Chapter 11, Essence of calculus`
 
-The application already knows:
+Existing context:
 
 ```text
-Role: Frontend developer
-React experience: Advanced
+education_level: undergrad
+subjects: math
+topic calculus: intermediate
 ```
 
-It should not ask:
+Do **not** re-ask calculus level. Might ask (select):
 
-> How experienced are you with React?
+> How familiar are you with Taylor series?
+> none / heard of it / need a refresh / solid
 
-Instead, it might ask:
-
-> What are you hoping to get from this video?
-
-Possible answers:
-
-* Learn the concept
-* Apply it to a project
-* Decide whether to use the technology
-* General interest
-
-The answer can be saved as video-specific context or potentially inform broader preferences depending on its nature.
+Persist topic-level answers (e.g. `taylor_series = need_refresh`) so related videos skip the same question.
 
 ---
 
@@ -267,13 +238,12 @@ Information generally true about the user.
 Examples:
 
 ```text
-Role: Frontend developer
-Experience: 4 years
-Interests: AI, web development
-Preferred summary style: concise
+year_of_birth: 2003
+education_level: undergrad
+subjects: math, computer_science
 ```
 
-This context should be reused across videos.
+This context should be reused across videos (including non-educational summaries).
 
 ---
 
@@ -284,13 +254,12 @@ Information about the user's familiarity with a particular topic.
 Examples:
 
 ```text
-React: advanced
-TypeScript: intermediate
-Machine Learning: beginner
-Kubernetes: unfamiliar
+calculus: intermediate
+taylor_series: need_refresh
+react: advanced
 ```
 
-Topic context can be reused whenever a future video is related to that topic.
+Topic context can be reused whenever a future educational video is related to that topic.
 
 ---
 
@@ -301,14 +270,11 @@ Information that applies only to the current video.
 Examples:
 
 ```text
-Purpose:
-"I am evaluating this architecture for work."
-
 Focus:
-"Focus on implementation details."
+"Emphasize intuition over proofs."
 
 Preference:
-"Skip the historical background."
+"Skip historical asides."
 ```
 
 Video-specific context should not automatically become global context.
@@ -323,53 +289,43 @@ The application should avoid asking the same question repeatedly.
 
 For example:
 
-First React video:
+First calculus / Taylor series video:
 
-> How comfortable are you with React?
+> How familiar are you with Taylor series?
 
 User:
 
-> Advanced.
+> need_refresh
 
 Persist:
 
 ```text
-topic = React
-experience = advanced
+topic = taylor_series
+familiarity = need_refresh
 ```
 
-A month later, another React video should not ask the same question.
-
-Instead, the application should use the existing context and only ask for genuinely missing information.
+A later related video should not ask the same question.
 
 ---
 
 # 8. Context Questions
 
-Context questions are dynamically generated based on the video and existing user context.
+Context questions apply **only when the video is classified educational**.
 
-Questions should be:
+They are dynamically generated from the video understanding + existing user context.
 
-* relevant
-* minimal
-* optional
-* understandable
-* specific to the content
-* useful for improving the final summary
+Rules:
 
-The user must always have the ability to skip them.
+* educational videos only (non-edu → none)
+* select-only for MVP (no free-text answers in the paste-time flow)
+* **max 3** after filtering against stored context
+* relevant, optional, understandable
+* useful for improving personalized section explanations
+* always skippable
 
-The product should support:
+The product should support answering zero, some, or all. Summary must still work with zero answers.
 
-```text
-0 additional answers
-1 additional answer
-multiple additional answers
-```
-
-The application must still generate a high-quality summary when the user provides no additional information.
-
-More context should improve personalization, but context should never be a hard requirement for analysis.
+For educational videos, the UI should also display the **current user context that will be used** (global + matching topics) so the user can trust what personalization is based on.
 
 ---
 
@@ -403,7 +359,7 @@ Conceptually:
 00:21.200 → "The first important concept..."
 ```
 
-Timestamped transcript segments are important because they allow the generated chapters and summaries to be synchronized with the video.
+Timestamped transcript segments are important because they allow the generated **sections** and summaries to be synchronized with the video.
 
 Transcript acquisition should be treated as a separate concern from AI analysis.
 
@@ -436,21 +392,19 @@ Conceptually:
 ```text
 YouTube URL
     ↓
-Get metadata
+Get metadata (incl. categoryId hint if available)
     ↓
-Get timestamped transcript
+Get timestamped English transcript
     ↓
-Understand video
+Understand + classify video (isEducational, domains, prereqs, section skeleton)
     ↓
-Determine video type/topics/structure
+If educational:
+    determine useful missing knowledge questions (select, ≤3)
+    show applied context → optional answers → persist
+If not educational:
+    soft disclaimer → skip questions
     ↓
-Determine useful missing user context
-    ↓
-Ask optional context questions
-    ↓
-Persist new context
-    ↓
-Generate personalized summary
+Generate personalized section summaries (always may use global context)
     ↓
 Persist analysis
     ↓
@@ -461,70 +415,63 @@ The pipeline should be implemented as reusable application/domain logic.
 
 A Server Action should act as an entry point into the pipeline, not contain the entire pipeline itself.
 
-For example, conceptually:
-
-```text
-Server Action
-    ↓
-analyzeVideo(...)
-    ↓
-video analysis pipeline
-```
-
 This separation is intentional because the pipeline may eventually need to move into background processing without rewriting the business logic.
 
 ---
 
-# 12. Stage 1: Video Understanding
+# 12. Stage 1: Video Understanding & Classification
 
-The first AI stage should understand the video itself.
+The first AI stage should understand the video and decide whether it is educational.
 
 Input:
 
 ```text
-Video metadata
+Video metadata (title, description, channel, categoryId hint)
 +
-Timestamped transcript
+Timestamped transcript (or a cost-aware subset)
 +
-Relevant existing user context
+Relevant existing user context (optional at this stage)
 ```
 
-The system should determine things such as:
+The system should determine:
 
-* likely video type
-* major topics
-* important concepts
-* structure
-* chapters
-* key sections
-* potentially useful missing user context
+* `isEducational` (boolean) — primary product switch
+* `confidence` (`high` | `medium` | `low`) — if ambiguous, **prefer educational**
+* `domains[]` — learning domains (e.g. calculus, React)
+* `prerequisites[]` — useful prior knowledge
+* section skeleton (title + start/end times); may be a single section
+* candidate context questions (educational path only; filtered later)
 
-The output should be structured data.
+YouTube `categoryId` is a **hint** only (e.g. Education=27, Science & Technology=28). Do not treat creator category as ground truth.
 
-Conceptually:
+Conceptual output:
 
 ```json
 {
-  "videoType": "technical_tutorial",
-  "topics": ["React", "Server Components", "Next.js"],
-  "chapters": [
+  "isEducational": true,
+  "confidence": "high",
+  "domains": ["calculus", "taylor_series"],
+  "prerequisites": ["derivatives", "limits"],
+  "youtubeCategoryId": "27",
+  "sections": [
     {
-      "title": "What Server Components Are",
+      "title": "Why Taylor series",
       "startTime": 0,
       "endTime": 320
     }
   ],
   "contextQuestions": [
     {
-      "key": "learning_goal",
-      "question": "What are you hoping to get from this video?",
-      "type": "select"
+      "key": "topic:taylor_series",
+      "question": "How familiar are you with Taylor series?",
+      "type": "select",
+      "options": ["none", "heard_of_it", "need_refresh", "solid"]
     }
   ]
 }
 ```
 
-The exact schema should be defined and validated in code.
+The exact schema should be defined and validated in code. Persist classification on the shared video so later users reuse it.
 
 Do not rely on unvalidated arbitrary LLM output.
 
@@ -532,21 +479,23 @@ Do not rely on unvalidated arbitrary LLM output.
 
 # 13. Stage 2: Additional Context
 
-After the initial video understanding, compare the suggested context questions with the user's existing context.
+Run this stage **only if `isEducational`**.
 
-Only show questions that are genuinely useful and not already answered.
+After understanding, compare candidate questions with the user's existing context.
+
+Only show questions that are genuinely useful and not already answered. Cap at **3**. Select-only for MVP.
 
 Example:
 
 ```text
 Existing user context:
-React = advanced
+topic calculus = intermediate
 
-Video:
-Advanced React Server Components tutorial
+Video domains:
+calculus, taylor_series
 
 Potential question:
-"How comfortable are you with React?"
+"How comfortable are you with calculus?"
 
 Result:
 Do not ask.
@@ -556,15 +505,17 @@ But:
 
 ```text
 Potential question:
-"What are you watching this for?"
+"How familiar are you with Taylor series?"
 
 Result:
-Ask.
+Ask (select).
 ```
 
-The user can skip the question.
+Also show a read-only panel of context that will be used (global + matching topics).
 
-Answers should be persisted according to their appropriate scope.
+The user can skip all questions. Answers persist by scope (usually topic).
+
+If not educational: skip this stage entirely; UI shows a soft disclaimer.
 
 ---
 
@@ -577,38 +528,38 @@ Video metadata
 +
 Transcript / relevant transcript sections
 +
-Video-level understanding
+Video-level understanding + classification
 +
-Global user context
+Global user context (always eligible — including for non-edu)
 +
-Relevant topic context
+Relevant topic context (mainly educational)
 +
-Video-specific context
+Video-specific context (if any)
 ```
 
 The output should be structured.
-
-The primary output should include:
 
 ### Overview
 
 A concise explanation of what the video is about.
 
-### Chapters
+### Sections
 
-Each chapter should contain:
+Each section should contain:
 
 * title
 * start timestamp
 * end timestamp
-* personalized summary
+* personalized explanation (depth/framing from user context)
 * important points
+
+Short videos may have a **single** section.
 
 ### Key Takeaways
 
 A short list of the most important things the user should retain.
 
-Additional structured fields can be introduced when they have a clear product purpose.
+For non-educational videos: still produce sections + overview; personalization from global context is allowed; do not invent educational scaffolding that is not in the video.
 
 ---
 
@@ -628,7 +579,7 @@ It should not distort the actual content of the video.
 
 The summary must remain faithful to the source material.
 
-For example, if a user is an expert in React, the application can avoid explaining basic React concepts while emphasizing the new material.
+For example, if a user already knows calculus basics, the application can avoid re-explaining prerequisites while emphasizing Taylor series intuition.
 
 It should not invent claims because the user appears knowledgeable.
 
@@ -652,25 +603,27 @@ Conceptually:
 │ Transcript / controls                 │ AI Summary          │
 │                                       │                     │
 │                                       │ 01 Introduction     │
-│                                       │                    │
-│                                       │ Summary...          │
-│                                       │                    │
+│                                       │                     │
+│                                       │ Explanation...      │
+│                                       │                     │
 │                                       │ 02 Core Concept     │
-│                                       │                    │
-│                                       │ Summary...          │
-│                                       │                    │
+│                                       │                     │
+│                                       │ Explanation...      │
+│                                       │                     │
 └───────────────────────────────────────┴─────────────────────┘
 ```
 
 The exact visual design will be developed in Figma.
 
+For non-educational videos, show a soft disclaimer near the summary (e.g. personalization for learning may be limited).
+
 The most important interaction is synchronization.
 
 ---
 
-# 17. Synchronized Chapters
+# 17. Synchronized Sections
 
-Each generated chapter has:
+Each generated section has:
 
 ```text
 startTime
@@ -679,7 +632,7 @@ endTime
 
 The video player exposes `currentTime`.
 
-The frontend determines the active chapter:
+The frontend determines the active section:
 
 ```text
 currentTime >= startTime
@@ -687,19 +640,21 @@ AND
 currentTime < endTime
 ```
 
-The active chapter should:
+The active section should:
 
 * visually highlight
 * optionally scroll into view
 * remain synchronized as the video plays
 
-Clicking a chapter should seek the video to its `startTime`.
+Clicking a section should seek the video to its `startTime`.
 
 This synchronization should be handled on the client.
 
 Do not make AI calls during video playback.
 
 AI prepares the structured information ahead of time; the frontend handles synchronization.
+
+(Older docs may say "chapters"; product language is **sections**.)
 
 ---
 
@@ -726,21 +681,21 @@ Use a **hybrid** model:
 **Shared** (keyed by YouTube video id — reusable across users):
 
 ```text
-videos              # metadata
+videos              # metadata (+ categoryId hint)
 video_transcripts   # English timestamped segments
+# classification + optional section skeleton on videos or related shared row
 ```
 
-Optional shared generic structure (type/topics/chapter skeleton) may live with the shared video if it is not user-specific.
+Shared classification (`isEducational`, confidence, domains, prerequisites) and optional generic section skeleton should live with the shared video when not user-specific.
 
 **Per-user**:
 
 ```text
 profiles
-user_preferences / user_context
-topic_context
+user_context           # global + topic keys (YOB, education_level, subjects, topic familiarity, …)
 library / user_videos
 video_context           # answers for this user+video
-personalized_analysis   # overview, chapters, takeaways
+personalized_analysis   # overview, sections, takeaways
 ```
 
 Conceptually:
@@ -749,15 +704,16 @@ Conceptually:
 Shared Video (youtubeId)
 ├── metadata
 ├── English transcript
-└── optional generic structure
+├── classification (isEducational, …)
+└── optional section skeleton
 
 User × Video
 ├── library membership
 ├── video-specific context
 └── personalized analysis
     ├── context used
-    ├── personalized summary
-    └── personalized chapters
+    ├── personalized overview
+    └── personalized sections
 ```
 
 The exact schema should avoid unnecessary duplication and should be normalized where useful. Implement with Drizzle; enforce RLS on all user-owned tables.
@@ -881,9 +837,9 @@ Conceptually:
 
 ```text
 AIProvider
-├── analyzeVideo()
-├── determineContextQuestions()
-└── generatePersonalizedSummary()
+├── understandAndClassifyVideo()  # includes isEducational + section skeleton
+├── determineContextQuestions()   # educational path only; max 3 selects after filter
+└── generatePersonalizedSummary() # section explanations
 ```
 
 The actual implementation may combine these operations when appropriate.
@@ -916,13 +872,13 @@ Never blindly trust raw LLM output before writing it to the database.
 
 Schemas should explicitly define:
 
-* chapter timestamps
-* chapter titles
-* summaries
+* section timestamps
+* section titles
+* summaries / explanations
 * key points
-* topics
-* context questions
-* video type
+* domains / prerequisites
+* classification (`isEducational`, confidence)
+* context questions (select options)
 * final takeaways
 
 ---
@@ -1025,13 +981,13 @@ Potential states:
 pending
 fetching_transcript
 analyzing
-awaiting_context
+awaiting_context      # educational only; skip when non-edu or no questions
 generating_summary
 complete
 failed
 ```
 
-The exact state machine should be kept as simple as possible.
+The exact state machine should be kept as simple as possible. Skip `awaiting_context` when the video is not educational or when no useful questions remain after filtering.
 
 The UI should clearly communicate processing state.
 
@@ -1067,8 +1023,9 @@ The MVP includes:
 
 ### Onboarding
 
-* lightweight global user context
-* summary preferences
+* optional year of birth (`yyyy`, framing)
+* education-level enum
+* subject interest chips (fixed list + other)
 
 ### Library
 
@@ -1081,34 +1038,33 @@ The MVP includes:
 ### Video ingestion
 
 * YouTube URL validation
-* YouTube metadata
-* accessible timestamped transcript
+* YouTube metadata (categoryId as classifier hint)
+* accessible timestamped English transcript
 
 ### AI
 
-* video classification
-* topic extraction
-* chapter generation
-* context question generation
-* personalized summary
+* educational classification (`isEducational` + confidence + domains/prereqs)
+* section skeleton generation
+* context question generation (educational only; select; max 3)
+* personalized section explanations
 * key takeaways
 
 ### User context
 
-* global context
+* global educational baseline
 * topic context where useful
-* video-specific context
+* video-specific context when needed
 * persistent context reuse
-* optional context questions
+* optional context questions on educational videos only
+* soft disclaimer on non-educational videos
 
 ### Video workspace
 
 * YouTube video player
-* synchronized chapters
-* chapter summaries
-* key points
-* overview
-* takeaways
+* synchronized sections (highlight + seek)
+* section explanations
+* overview / takeaways
+* soft non-edu disclaimer when applicable
 
 ---
 
@@ -1258,7 +1214,7 @@ The summary should feel like a document that happens to be synchronized with a v
 The UI should make the relationship between:
 
 ```text
-video ↔ chapter ↔ summary
+video ↔ section ↔ explanation
 ```
 
 immediately obvious.
@@ -1274,32 +1230,31 @@ USER
   │
   │ YouTube URL
   ▼
-VIDEO UNDERSTANDING
+VIDEO UNDERSTANDING + CLASSIFICATION
   │
-  ├── What is this?
-  ├── What are the important topics?
-  ├── How is it structured?
-  └── What context would help?
+  ├── Is this educational?
+  ├── What domains / prerequisites?
+  ├── How is it structured into sections?
+  └── What missing knowledge would help? (edu only)
   │
   ▼
 USER CONTEXT
   │
-  ├── Existing global context
+  ├── Existing global context (YOB, education, subjects)
   ├── Existing topic context
-  └── Optional new information
+  └── Optional new answers (edu only; ≤3 selects)
   │
   ▼
 PERSONALIZED ANALYSIS
   │
   ├── Overview
-  ├── Chapters
-  ├── Summaries
+  ├── Sections + explanations
   └── Key takeaways
   │
   ▼
 VIDEO WORKSPACE
   │
-  └── Video synchronized with summary
+  └── Video synchronized with active section
 ```
 
 This loop is the heart of the application.
@@ -1350,17 +1305,17 @@ Build in this order:
 1. Project setup
 2. Supabase authentication
 3. Database schema + RLS
-4. Basic onboarding
+4. Basic educational onboarding (YOB, education level, subjects)
 5. User context persistence
 6. Library UI
 7. YouTube URL ingestion
 8. Transcript acquisition
-9. Video analysis pipeline
-10. Dynamic context questions
-11. Personalized summary generation
+9. Video understanding + educational classification
+10. Dynamic context questions (educational only; max 3 selects)
+11. Personalized section summary generation
 12. Video workspace
-13. Timestamp synchronization
-14. Error/loading states
+13. Timestamp synchronization (section highlight + seek)
+14. Soft non-edu disclaimer + error/loading states
 15. Unit tests (Vitest) for schemas and domain helpers
 16. Visual polish
 17. Responsive/mobile behavior
@@ -1369,7 +1324,7 @@ Do not begin by implementing every possible AI feature.
 
 The most important milestone is:
 
-> A user can paste a real YouTube video and receive a useful personalized summary synchronized with that video.
+> A user can paste a real educational YouTube video, optionally answer a few knowledge questions, and receive useful personalized sections synchronized with that video — and still get a sectioned summary for non-educational videos with a soft disclaimer.
 
 ---
 
@@ -1379,16 +1334,16 @@ A user should be able to:
 
 1. Visit the landing page.
 2. Create an account.
-3. Complete lightweight onboarding.
+3. Complete lightweight educational onboarding (or skip).
 4. Enter a YouTube URL.
-5. Wait while the application processes the video.
-6. See optional context questions if they are useful.
-7. Skip some or all questions.
-8. Have useful answers persisted.
-9. Receive a personalized summary.
+5. Wait while the application processes and classifies the video.
+6. If educational: see applied context and optional select questions (≤3); skip some or all.
+7. If not educational: see a soft disclaimer and no knowledge questions.
+8. Have useful answers persisted when provided.
+9. Receive a personalized sectioned summary (global context used when present).
 10. Watch the video.
-11. See the relevant chapter highlighted as the video progresses.
-12. Click a chapter and jump to that point in the video.
+11. See the relevant section highlighted as the video progresses.
+12. Click a section and jump to that point in the video.
 13. Return to the library and find the analyzed video.
 14. Open the video again later with its saved analysis.
 
@@ -1400,6 +1355,6 @@ If all of this works reliably, the MVP is successful.
 
 Whenever making an architectural or product decision, ask:
 
-> **Does this help us turn a user's YouTube video into a better personalized understanding of that video?**
+> **Does this help turn a user's YouTube video into a better personalized understanding of that video — especially for learning?**
 
 If not, it probably belongs outside the MVP.

@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");
+  // Default to library; RSC gates redirect unfinished users to /onboarding.
   const next = searchParams.get("next") ?? "/library";
 
   if (code) {

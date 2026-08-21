@@ -1,6 +1,6 @@
 # VideoBrief
 
-Personalized YouTube summaries synchronized with the video.
+Education-first personalized YouTube summaries synchronized with the video. Non-educational videos still get a sectioned summary with a soft disclaimer.
 
 ## Stack (slice 0)
 
@@ -24,10 +24,11 @@ cp .env.example .env.local
    - Soft confirm: turn **off** “Confirm email” (or allow unconfirmed sign-in)
    - Optional: enable Google provider + add redirect `http://localhost:3000/auth/callback`
 
-4. Run the profiles SQL in the Supabase SQL editor:
+4. Run SQL in the Supabase SQL editor (in order):
 
 ```text
 drizzle/0000_profiles.sql
+drizzle/0001_user_context.sql
 ```
 
 5. Install & run:

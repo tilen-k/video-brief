@@ -26,7 +26,7 @@ URL → parse youtubeId
 
 ## Player (workspace)
 
-`react-youtube` only for sync: current time → active chapter; click → `seekTo`.
+`react-youtube` only for sync: current time → active section; click → `seekTo`.
 
 ## Checklist
 

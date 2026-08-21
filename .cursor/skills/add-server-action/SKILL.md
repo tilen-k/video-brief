@@ -19,7 +19,7 @@ description: Scaffold a thin Next.js Server Action with Zod validation, Supabase
 ## Steps
 
 1. Define Zod schema in `src/lib/validations/` or next to the action.
-2. Create `src/app/.../actions.ts` (or `src/lib/actions/`) with `'use server'`.
+2. Create `src/lib/actions/<name>.ts` with `'use server'` (keep `app/` for routes only).
 3. Resolve session via `@supabase/ssr` server client.
 4. Call domain logic — no business rules inside the action.
 5. Wire UI with RHF + shadcn, or `useActionState` if progressive enhancement fits.

@@ -39,6 +39,19 @@ Never disable RLS to “make dev easier.” Never trust browser `user_id`.
 - Middleware / server layouts protect private routes
 - Server: `createServerClient` with full cookie `getAll`/`setAll` where writes happen
 
+## Database URL
+
+Use the **Transaction pooler** URI from Dashboard → **Connect**:
+`aws-*-<region>.pooler.supabase.com:6543`, user `postgres.<project_ref>`.
+
+Direct `db.<ref>.supabase.co:5432` is often **IPv6-only** (`ENETUNREACH` locally).
+
+## Authz / onboarding
+
+- Middleware: session refresh + unauthenticated redirects only
+- App gates (onboarding, etc.): RSC / Server Actions via **Drizzle**, not PostgREST
+- Source of truth: `profiles.onboarding_completed` (no client cookie flags)
+
 ## Clients
 
 - Browser: anon key only

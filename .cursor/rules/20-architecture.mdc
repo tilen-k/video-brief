@@ -24,17 +24,19 @@ Structure domain code so it can later move behind a queue without rewrite. Do **
 
 Shared (by YouTube video id):
 
-- `videos` — metadata
+- `videos` — metadata (+ optional YouTube `categoryId` as classifier hint)
 - `video_transcripts` — English timestamped segments
+- classification / content profile — `isEducational`, confidence, domains, prerequisites
+- optional shared **section skeleton** (titles + timestamps) when not user-specific
 
 Per-user:
 
 - library membership / saved videos
 - `user_context` / topic context / preferences
 - `video_context` (video-specific answers)
-- personalized analysis (overview, chapters, takeaways)
+- personalized analysis (overview, section explanations, takeaways)
 
-Reuse shared transcript/metadata when another user pastes the same URL.
+Reuse shared transcript/metadata/classification when another user pastes the same URL.
 
 ## Analysis states
 
@@ -42,7 +44,8 @@ Keep the state machine simple, e.g.:
 
 `pending` → `fetching_transcript` → `analyzing` → `awaiting_context` → `generating_summary` → `complete` | `failed`
 
-UI should communicate progress without leaking internals.
+- Skip `awaiting_context` when not educational (or when no useful questions remain).
+- UI should communicate progress without leaking internals.
 
 ## Suggested folder sketch
 
@@ -52,11 +55,11 @@ src/
   components/          # UI (shadcn + feature)
   domain/              # analysis pipeline, pure-ish business logic
   db/                  # drizzle schema, client
-  lib/                 # supabase, ai, youtube, utils
+  lib/                 # supabase, ai, youtube, utils, actions
   hooks/
   messages/            # next-intl (en.json)
 ```
 
 ## Cost awareness
 
-Reuse intermediate structured analysis; avoid re-sending full transcripts; skip known context questions; Haiku for all MVP LLM calls.
+Reuse intermediate structured analysis and shared classification; avoid re-sending full transcripts; skip known context questions; Haiku for all MVP LLM calls.

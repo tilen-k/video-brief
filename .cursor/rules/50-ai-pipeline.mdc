@@ -10,18 +10,21 @@ alwaysApply: false
 
 ```text
 AIProvider
-  analyzeVideo / determineContextQuestions / generatePersonalizedSummary
+  classifyOrUnderstandVideo / determineContextQuestions / generatePersonalizedSummary
 ```
 
 Implement with Vercel AI SDK. Default model: **Claude Haiku**. Do not hard-code Claude SDK calls outside the provider.
 
 ## Pipeline stages (domain)
 
-1. Metadata + English transcript
-2. Video understanding → structured (type, topics, chapters, candidate questions)
-3. Filter questions against existing user context
-4. Optional user answers → persist by scope
-5. Personalized summary → structured → persist
+1. Metadata + English transcript (YouTube `categoryId` as optional hint)
+2. Video understanding + classification → structured (`isEducational`, confidence, domains, prerequisites, section skeleton, candidate questions)
+3. If **not** educational → skip questions (soft disclaimer in UI); still generate sectioned summary using global context
+4. If educational → filter candidate questions against existing user context (select-only, **max 3**)
+5. Optional user answers → persist by scope
+6. Personalized section summaries → structured → persist
+
+Ambiguous classification → **prefer educational**.
 
 ## Validation (required)
 
@@ -29,12 +32,12 @@ Implement with Vercel AI SDK. Default model: **Claude Haiku**. Do not hard-code 
 LLM → structured output → Zod.parse → app types → DB
 ```
 
-Never persist raw/unvalidated model JSON. Schemas must cover timestamps, titles, summaries, topics, questions, takeaways.
+Never persist raw/unvalidated model JSON. Schemas must cover timestamps, section titles, summaries, topics/domains, questions, takeaways, and classification fields.
 
 ## Personalization
 
-Change emphasis, depth, and framing — not invent unrelated content. Skip questions already answered in stored context.
+Change emphasis, depth, and framing — not invent unrelated content. Skip questions already answered in stored context. Non-edu still may use global context for framing.
 
 ## Cost
 
-Reuse intermediate analysis; avoid duplicate full-transcript calls; Haiku for all MVP stages.
+Reuse intermediate analysis and shared classification; avoid duplicate full-transcript calls; Haiku for all MVP stages.

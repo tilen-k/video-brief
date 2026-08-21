@@ -1,7 +1,9 @@
 import { getTranslations } from "next-intl/server";
+import { redirect } from "next/navigation";
 
-import { signOut } from "@/app/actions/auth";
+import { signOut } from "@/lib/actions/auth";
 import { Button } from "@/components/ui/button";
+import { getOnboardingCompleted } from "@/domain/onboarding";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function LibraryPage() {
@@ -12,6 +14,14 @@ export default async function LibraryPage() {
     data: { user },
   } = await supabase.auth.getUser();
 
+  if (!user) {
+    redirect("/login?next=/library");
+  }
+
+  if (!(await getOnboardingCompleted(user.id))) {
+    redirect("/onboarding");
+  }
+
   return (
     <main className="mx-auto flex min-h-full w-full max-w-5xl flex-1 flex-col gap-10 px-6 py-8">
       <header className="flex items-center justify-between gap-4">
@@ -21,7 +31,7 @@ export default async function LibraryPage() {
         </div>
         <div className="flex items-center gap-3">
           <span className="hidden text-sm text-muted-foreground sm:inline">
-            {user?.email}
+            {user.email}
           </span>
           <form action={signOut}>
             <Button type="submit" variant="outline" size="sm">
