@@ -1,17 +1,31 @@
 import { z } from "zod";
 
+import {
+  EDUCATION_LEVELS,
+  MIN_YEAR_OF_BIRTH,
+  SUBJECTS,
+  maxYearOfBirth,
+} from "./onboarding-options";
+
+export {
+  EDUCATION_LEVELS,
+  MIN_YEAR_OF_BIRTH,
+  SUBJECTS,
+  maxYearOfBirth,
+  type EducationLevel,
+  type Subject,
+} from "./onboarding-options";
+
 export const GLOBAL_CONTEXT_KEYS = [
-  "role",
-  "background",
-  "interests",
-  "summary_style",
-  "detail_level",
+  "year_of_birth",
+  "education_level",
+  "subjects",
 ] as const;
 
 export type GlobalContextKey = (typeof GLOBAL_CONTEXT_KEYS)[number];
 
-export const summaryStyleSchema = z.enum(["concise", "structured", "narrative"]);
-export const detailLevelSchema = z.enum(["brief", "balanced", "detailed"]);
+export const educationLevelSchema = z.enum(EDUCATION_LEVELS);
+export const subjectSchema = z.enum(SUBJECTS);
 
 const emptyToUndefined = (value: unknown) => {
   if (value === "" || value === null || value === undefined) {
@@ -20,24 +34,57 @@ const emptyToUndefined = (value: unknown) => {
   return value;
 };
 
-const optionalTrimmedString = (max: number) =>
-  z.preprocess(
-    emptyToUndefined,
-    z.string().trim().max(max).optional(),
-  );
+const yearOfBirthSchema = z.preprocess((value) => {
+  const emptied = emptyToUndefined(value);
+  if (emptied === undefined) {
+    return undefined;
+  }
+  if (typeof emptied === "number" && Number.isFinite(emptied)) {
+    return emptied;
+  }
+  if (typeof emptied === "string") {
+    const trimmed = emptied.trim();
+    if (!trimmed) {
+      return undefined;
+    }
+    const parsed = Number(trimmed);
+    return Number.isFinite(parsed) ? parsed : emptied;
+  }
+  return emptied;
+}, z.number().int().optional()).superRefine((value, ctx) => {
+  if (value === undefined) {
+    return;
+  }
+  const max = maxYearOfBirth();
+  if (value < MIN_YEAR_OF_BIRTH || value > max) {
+    ctx.addIssue({
+      code: "custom",
+      message: `Year of birth must be between ${MIN_YEAR_OF_BIRTH} and ${max}`,
+    });
+  }
+});
+
+const subjectsSchema = z.preprocess((value) => {
+  if (value === undefined || value === null || value === "") {
+    return undefined;
+  }
+  if (Array.isArray(value)) {
+    const filtered = value.filter((item) => item !== "" && item != null);
+    return filtered.length > 0 ? filtered : undefined;
+  }
+  if (typeof value === "string") {
+    return [value];
+  }
+  return value;
+}, z.array(subjectSchema).max(SUBJECTS.length).optional());
 
 export const onboardingInputSchema = z.object({
-  role: optionalTrimmedString(200),
-  background: optionalTrimmedString(2000),
-  interests: optionalTrimmedString(1000),
-  summaryStyle: z.preprocess(
+  yearOfBirth: yearOfBirthSchema,
+  educationLevel: z.preprocess(
     emptyToUndefined,
-    summaryStyleSchema.optional(),
+    educationLevelSchema.optional(),
   ),
-  detailLevel: z.preprocess(
-    emptyToUndefined,
-    detailLevelSchema.optional(),
-  ),
+  subjects: subjectsSchema,
 });
 
 export type OnboardingInput = z.infer<typeof onboardingInputSchema>;
@@ -48,18 +95,27 @@ export function onboardingToContextEntries(
 ): Array<{ key: GlobalContextKey; value: string }> {
   const entries: Array<{ key: GlobalContextKey; value: string }> = [];
 
-  const push = (key: GlobalContextKey, value: string | undefined) => {
-    const trimmed = value?.trim();
-    if (trimmed) {
-      entries.push({ key, value: trimmed });
-    }
-  };
+  if (input.yearOfBirth !== undefined) {
+    entries.push({
+      key: "year_of_birth",
+      value: String(input.yearOfBirth),
+    });
+  }
 
-  push("role", input.role);
-  push("background", input.background);
-  push("interests", input.interests);
-  push("summary_style", input.summaryStyle);
-  push("detail_level", input.detailLevel);
+  if (input.educationLevel) {
+    entries.push({
+      key: "education_level",
+      value: input.educationLevel,
+    });
+  }
+
+  if (input.subjects && input.subjects.length > 0) {
+    const unique = [...new Set(input.subjects)];
+    entries.push({
+      key: "subjects",
+      value: unique.join(","),
+    });
+  }
 
   return entries;
 }

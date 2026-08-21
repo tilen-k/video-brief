@@ -12,11 +12,9 @@ export type OnboardingActionState = {
 
 function formToOnboardingInput(formData: FormData) {
   return onboardingInputSchema.safeParse({
-    role: formData.get("role") ?? undefined,
-    background: formData.get("background") ?? undefined,
-    interests: formData.get("interests") ?? undefined,
-    summaryStyle: formData.get("summaryStyle") ?? undefined,
-    detailLevel: formData.get("detailLevel") ?? undefined,
+    yearOfBirth: formData.get("yearOfBirth") ?? undefined,
+    educationLevel: formData.get("educationLevel") ?? undefined,
+    subjects: formData.getAll("subjects"),
   });
 }
 

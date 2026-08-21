@@ -1,12 +1,12 @@
 {
   "Brand": {
     "name": "VideoBrief",
-    "tagline": "Personalized YouTube summaries, synced to the video."
+    "tagline": "Education-first YouTube summaries, synced to the video."
   },
   "Landing": {
     "cta": "Get started",
     "secondary": "Log in",
-    "subtitle": "Paste any YouTube link. Get a summary shaped for you — chapters that follow as you watch."
+    "subtitle": "Paste a YouTube link. Get section summaries shaped for how you learn — synced as you watch."
   },
   "Auth": {
     "loginTitle": "Welcome back",
@@ -22,23 +22,36 @@
     "softConfirm": "You can start using VideoBrief right away. Check your email to confirm when you can."
   },
   "Onboarding": {
-    "title": "Tell us a little about yourself",
-    "subtitle": "A few optional details help VideoBrief personalize summaries. You can skip and fill gaps later.",
+    "title": "A bit about how you learn",
+    "subtitle": "Optional details help VideoBrief pitch explanations at the right level. Skip anytime — you can fill gaps when you paste a video.",
     "optionalHint": "Every field is optional.",
-    "role": "Role / occupation",
-    "rolePlaceholder": "e.g. Frontend developer",
-    "background": "Background",
-    "backgroundPlaceholder": "e.g. I build React apps and follow AI tooling…",
-    "interests": "Interests",
-    "interestsPlaceholder": "e.g. AI, distributed systems, startups",
-    "summaryStyle": "Summary style",
-    "detailLevel": "Level of detail",
-    "styleConcise": "Concise",
-    "styleStructured": "Structured",
-    "styleNarrative": "Narrative",
-    "detailBrief": "Brief",
-    "detailBalanced": "Balanced",
-    "detailDetailed": "Detailed",
+    "yearOfBirth": "Year of birth",
+    "yearOfBirthPlaceholder": "e.g. 2003",
+    "yearOfBirthHint": "Used only to frame explanations — never required.",
+    "educationLevel": "Education level",
+    "subjects": "Subjects you want to learn about",
+    "subjectsHint": "Pick any that apply. Other is fine if nothing fits.",
+    "educationLevels": {
+      "middle_school": "Middle school",
+      "high_school": "High school",
+      "undergrad": "Undergraduate",
+      "grad": "Graduate",
+      "bootcamp": "Bootcamp",
+      "self_taught": "Self-taught",
+      "other": "Other"
+    },
+    "subjectLabels": {
+      "math": "Math",
+      "physics": "Physics",
+      "chemistry": "Chemistry",
+      "biology": "Biology",
+      "computer_science": "Computer science",
+      "engineering": "Engineering",
+      "economics": "Economics",
+      "history": "History",
+      "languages": "Languages",
+      "other": "Other"
+    },
     "continue": "Continue",
     "skip": "Skip for now"
   },

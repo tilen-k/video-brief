@@ -29,6 +29,7 @@ cp .env.example .env.local
 ```text
 drizzle/0000_profiles.sql
 drizzle/0001_user_context.sql
+drizzle/0002_user_context_revoke_client_writes.sql
 ```
 
 5. Install & run:

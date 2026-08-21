@@ -15,6 +15,8 @@ import {
   FieldDescription,
   FieldGroup,
   FieldLabel,
+  FieldLegend,
+  FieldSet,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import {
@@ -22,13 +24,19 @@ import {
   NativeSelectOption,
 } from "@/components/ui/native-select";
 import { Spinner } from "@/components/ui/spinner";
-import { Textarea } from "@/components/ui/textarea";
+import {
+  EDUCATION_LEVELS,
+  SUBJECTS,
+  maxYearOfBirth,
+} from "@/lib/validations/onboarding-options";
+import { cn } from "@/lib/utils";
 
 const initial: OnboardingActionState = {};
 
 export function OnboardingForm() {
   const t = useTranslations("Onboarding");
   const [state, action, pending] = useActionState(completeOnboarding, initial);
+  const maxYear = maxYearOfBirth();
 
   return (
     <div className="flex w-full max-w-lg flex-col gap-8">
@@ -40,85 +48,64 @@ export function OnboardingForm() {
       <form action={action} className="flex flex-col gap-6">
         <FieldGroup>
           <Field>
-            <FieldLabel htmlFor="role">{t("role")}</FieldLabel>
+            <FieldLabel htmlFor="yearOfBirth">{t("yearOfBirth")}</FieldLabel>
             <Input
-              id="role"
-              name="role"
-              placeholder={t("rolePlaceholder")}
-              maxLength={200}
+              id="yearOfBirth"
+              name="yearOfBirth"
+              type="number"
+              inputMode="numeric"
+              min={1900}
+              max={maxYear}
+              placeholder={t("yearOfBirthPlaceholder")}
               disabled={pending}
+              className="max-w-40"
             />
+            <FieldDescription>{t("yearOfBirthHint")}</FieldDescription>
           </Field>
 
           <Field>
-            <FieldLabel htmlFor="background">{t("background")}</FieldLabel>
-            <Textarea
-              id="background"
-              name="background"
-              placeholder={t("backgroundPlaceholder")}
-              maxLength={2000}
-              rows={4}
+            <FieldLabel htmlFor="educationLevel">{t("educationLevel")}</FieldLabel>
+            <NativeSelect
+              id="educationLevel"
+              name="educationLevel"
+              defaultValue=""
               disabled={pending}
-              className="resize-none"
-            />
+              className="w-full"
+            >
+              <NativeSelectOption value="">—</NativeSelectOption>
+              {EDUCATION_LEVELS.map((level) => (
+                <NativeSelectOption key={level} value={level}>
+                  {t(`educationLevels.${level}`)}
+                </NativeSelectOption>
+              ))}
+            </NativeSelect>
           </Field>
 
-          <Field>
-            <FieldLabel htmlFor="interests">{t("interests")}</FieldLabel>
-            <Input
-              id="interests"
-              name="interests"
-              placeholder={t("interestsPlaceholder")}
-              maxLength={1000}
-              disabled={pending}
-            />
-          </Field>
-
-          <div className="grid gap-5 sm:grid-cols-2">
-            <Field>
-              <FieldLabel htmlFor="summaryStyle">{t("summaryStyle")}</FieldLabel>
-              <NativeSelect
-                id="summaryStyle"
-                name="summaryStyle"
-                defaultValue=""
-                disabled={pending}
-                className="w-full"
-              >
-                <NativeSelectOption value="">—</NativeSelectOption>
-                <NativeSelectOption value="concise">
-                  {t("styleConcise")}
-                </NativeSelectOption>
-                <NativeSelectOption value="structured">
-                  {t("styleStructured")}
-                </NativeSelectOption>
-                <NativeSelectOption value="narrative">
-                  {t("styleNarrative")}
-                </NativeSelectOption>
-              </NativeSelect>
-            </Field>
-
-            <Field>
-              <FieldLabel htmlFor="detailLevel">{t("detailLevel")}</FieldLabel>
-              <NativeSelect
-                id="detailLevel"
-                name="detailLevel"
-                defaultValue=""
-                disabled={pending}
-                className="w-full"
-              >
-                <NativeSelectOption value="">—</NativeSelectOption>
-                <NativeSelectOption value="brief">
-                  {t("detailBrief")}
-                </NativeSelectOption>
-                <NativeSelectOption value="balanced">
-                  {t("detailBalanced")}
-                </NativeSelectOption>
-                <NativeSelectOption value="detailed">
-                  {t("detailDetailed")}
-                </NativeSelectOption>
-              </NativeSelect>
-            </Field>
-          </div>
+          <FieldSet>
+            <FieldLegend>{t("subjects")}</FieldLegend>
+            <FieldDescription>{t("subjectsHint")}</FieldDescription>
+            <div className="flex flex-wrap gap-2 pt-1">
+              {SUBJECTS.map((subject) => (
+                <label
+                  key={subject}
+                  className={cn(
+                    "cursor-pointer select-none rounded-md border border-border bg-background px-3 py-1.5 text-sm transition-colors",
+                    "has-[:checked]:border-foreground has-[:checked]:bg-foreground has-[:checked]:text-background",
+                    "has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-50",
+                  )}
+                >
+                  <input
+                    type="checkbox"
+                    name="subjects"
+                    value={subject}
+                    disabled={pending}
+                    className="sr-only"
+                  />
+                  {t(`subjectLabels.${subject}`)}
+                </label>
+              ))}
+            </div>
+          </FieldSet>
 
           <FieldDescription>{t("optionalHint")}</FieldDescription>
         </FieldGroup>
@@ -132,7 +119,13 @@ export function OnboardingForm() {
         ) : null}
 
         <Field orientation="horizontal" className="flex-wrap sm:flex-nowrap">
-          <Button type="submit" name="intent" value="save" disabled={pending} className="sm:flex-1">
+          <Button
+            type="submit"
+            name="intent"
+            value="save"
+            disabled={pending}
+            className="sm:flex-1"
+          >
             {pending ? <Spinner /> : null}
             {t("continue")}
           </Button>
@@ -142,6 +135,7 @@ export function OnboardingForm() {
             value="skip"
             variant="ghost"
             disabled={pending}
+            formNoValidate
           >
             {t("skip")}
           </Button>
