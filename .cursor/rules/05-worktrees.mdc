@@ -1,0 +1,33 @@
+---
+description: In-repo git worktrees for parallel agent work — use repo scripts, not ~/.cursor/worktrees
+alwaysApply: true
+---
+
+# VideoBrief — Worktrees
+
+Use **in-repo** worktrees under `.worktrees/` via the repo scripts. Do **not** hand-roll `git worktree add` to `~/.cursor/worktrees/` — that path needs sandbox escalation and breaks on trivial tasks.
+
+## When to use
+
+| Situation | Action |
+|-----------|--------|
+| Parallel agents / conflicting edits | Create worktree |
+| Copy, CSS, one-field i18n, no other agent active | Edit primary checkout — **skip worktree** |
+
+## Commands (run from repo root)
+
+```bash
+.cursor/worktree-create.sh [name] [start-ref]   # prints WORKTREE_PATH
+.cursor/worktree-apply.sh <name>                # merge wt/<name> into current branch
+.cursor/worktree-delete.sh <name>               # remove worktree + branch
+```
+
+After `worktree-create.sh`, do all reads/edits/shell for that task in `WORKTREE_PATH` until apply or delete.
+
+Before creating, check for an existing worktree: `git worktree list`. Reuse `.worktrees/<name>` when present.
+
+Setup runs automatically (`.cursor/setup-worktree-unix.sh` / `worktrees.json`): `pnpm install`, copy `.env.local` from primary checkout.
+
+Do **not** run `db:migrate` from a worktree against shared Supabase unless that is the task.
+
+Land one worktree at a time: apply → type-check, lint, test in primary checkout → delete.

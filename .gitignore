@@ -47,3 +47,6 @@ notes/
 
 # Cursor hook dirty-flag (set by afterFileEdit, cleared by stop verify)
 .cursor/hooks/state/
+
+# Agent git worktrees (see .cursor/worktree-create.sh)
+.worktrees/

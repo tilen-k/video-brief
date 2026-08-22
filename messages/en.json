@@ -4,9 +4,28 @@
     "tagline": "Education-first YouTube summaries, synced to the video."
   },
   "Landing": {
+    "eyebrow": "Education-first summaries",
+    "headline": "Turn any lecture into sections you can follow",
+    "subtitle": "Paste a YouTube link. Get section summaries shaped for how you learn — synced as you watch.",
     "cta": "Get started",
     "secondary": "Log in",
-    "subtitle": "Paste a YouTube link. Get section summaries shaped for how you learn — synced as you watch."
+    "previewLabel": "Workspace preview",
+    "previewVideoTitle": "Introduction to neural networks",
+    "previewActive": "Now playing",
+    "previewSections": {
+      "s1": {
+        "time": "0:00",
+        "title": "Why depth helps generalization"
+      },
+      "s2": {
+        "time": "4:12",
+        "title": "Backpropagation in plain terms"
+      },
+      "s3": {
+        "time": "9:38",
+        "title": "Common pitfalls for beginners"
+      }
+    }
   },
   "Auth": {
     "loginTitle": "Welcome back",
@@ -63,7 +82,7 @@
     "pasteLabel": "YouTube URL",
     "pastePlaceholder": "https://www.youtube.com/watch?v=…",
     "pasteHint": "English captions are required. Analysis continues after the transcript is ready.",
-    "add": "Add video",
+    "add": "Add",
     "adding": "Adding…",
     "addErrorTitle": "Couldn’t add video",
     "yourVideos": "Your videos",

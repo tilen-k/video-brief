@@ -34,9 +34,23 @@ Skip the full loop for copy/CSS/one-field tweaks. Explicit `/architect`, `/revie
 
 ## Parallel agents
 
-Subagents in this chat share the same checkout. Independent writing tasks (CSS, copy, a second feature) need `/worktree` or a cloud agent so tests and edits do not collide.
+Subagents in this chat share the same checkout. Independent writing tasks (CSS, copy, a second feature) need a worktree or a cloud agent so tests and edits do not collide.
 
-`.cursor/worktrees.json` installs deps and copies `.env.local` from the primary checkout. Do **not** run `db:migrate` from a worktree against the shared Supabase project unless that *is* the task. Land or `/apply-worktree` one result at a time, then re-run type-check, lint, and test.
+**Skip worktrees** for isolated one-field copy/CSS/i18n when no other agent is active — edit the primary checkout.
+
+**In-repo worktrees** (sandbox-safe, no approval card):
+
+```bash
+.cursor/worktree-create.sh [name] [start-ref]   # → WORKTREE_PATH under .worktrees/
+.cursor/worktree-apply.sh <name>                # merge into current branch
+.cursor/worktree-delete.sh <name>
+```
+
+Do **not** create worktrees under `~/.cursor/worktrees/` for this repo. Reuse an existing entry from `git worktree list` before creating another.
+
+`.cursor/worktrees.json` bootstrap: `pnpm install`, copy `.env.local`. Do **not** run `db:migrate` from a worktree against shared Supabase unless that *is* the task. Land one result at a time, then type-check, lint, and test in the primary checkout.
+
+See `.cursor/rules/05-worktrees.mdc`.
 
 ## Hard constraints (MVP)
 
