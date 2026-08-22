@@ -8,13 +8,13 @@ description: Add or change Drizzle schema tables with migrations and Supabase RL
 ## Steps
 
 1. Edit `src/db/schema.ts` (UUID PKs, `createdAt`/`updatedAt`, FKs, indexes).
-2. Respect hybrid model: shared `videos` / `video_transcripts` by YouTube id; per-user analysis/context.
+2. Per-user video model: `user_videos` (metadata + transcript) + `personalized_analyses` (1:1, status machine).
 3. Export `$inferSelect` / `$inferInsert` types.
 4. `pnpm drizzle-kit generate` then `pnpm drizzle-kit migrate`.
 5. Add RLS policies in the same change for every user-owned table:
    - `USING (user_id = auth.uid())` (or equivalent join) for select/update/delete
    - matching `WITH CHECK` for inserts
-6. Shared transcript/video rows: policies that allow authenticated read; writes via controlled server path (document if service role is required).
+6. **REVOKE ALL** from `anon`, `authenticated` on user tables — writes via Drizzle `DATABASE_URL` only.
 
 ## Checklist
 
@@ -22,4 +22,4 @@ description: Add or change Drizzle schema tables with migrations and Supabase RL
 - [ ] RLS enabled (never left off)
 - [ ] Policies match ownership model
 - [ ] No client-supplied user id trusted in app code
-- [ ] Indexes for `userId`, `youtubeId`, status filters as needed
+- [ ] Indexes for `userId`, `(userId, youtubeId)`, status filters as needed

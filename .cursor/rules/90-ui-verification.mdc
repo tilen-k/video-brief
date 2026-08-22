@@ -1,18 +1,17 @@
 ---
-description: Require Cursor browser verification for UI changes before finishing
+description: Humans test UI in the browser; agents must not use Cursor browser tools unless asked
 alwaysApply: true
 ---
 
 # VideoBrief — UI verification
 
-After any change that affects user-visible UI (pages, forms, layouts, components, i18n copy on screens):
+The human tests UI in the browser. Agents do **not**.
 
-1. Ensure `pnpm dev` is running (or start it).
-2. Use **Cursor browser tools** against `http://localhost:3000`.
-3. Exercise the real flow (navigate, snapshot, click/type as needed). Screenshot when layout matters.
-4. Do **not** treat `pnpm test` / type-check alone as UI verification.
-5. Do **not** add Playwright for this — browser tools only.
+After UI changes (pages, forms, layouts, components, i18n copy on screens):
 
-Mechanical stop hooks only cover type-check / lint / test. Browser checks are your responsibility before ending the turn.
+1. Finish with `pnpm type-check`, `pnpm lint`, and `pnpm test`.
+2. Do **not** start `pnpm dev` just to drive a browser.
+3. Do **not** use Cursor browser tools unless the user explicitly asks.
+4. Do **not** add Playwright / E2E.
 
 Canonical note also lives in `AGENTS.md` → “UI verification”.

@@ -26,24 +26,32 @@ For non-trivial work, prefer `/ship-feature` (or say “ship this feature”):
 
 1. `architect` (readonly) — plan boundaries **before** coding when domain/data/pipeline/authz change
 2. Main agent implements (use existing skills)
-3. `reviewer` + `verifier` (readonly) — critique and prove it works (Vitest + browser tools; no Playwright)
+3. `reviewer` + `verifier` (readonly) — critique and prove it works (Vitest; no Playwright). The human tests UI in the browser.
 4. `security` when auth/RLS/AI trust boundaries change
 5. Main agent fixes Critical/High; specialists do not rewrite production code
 
 Skip the full loop for copy/CSS/one-field tweaks. Explicit `/architect`, `/reviewer`, `/verifier`, or `/security` is fine mid-feature.
+
+## Parallel agents
+
+Subagents in this chat share the same checkout. Independent writing tasks (CSS, copy, a second feature) need `/worktree` or a cloud agent so tests and edits do not collide.
+
+`.cursor/worktrees.json` installs deps and copies `.env.local` from the primary checkout. Do **not** run `db:migrate` from a worktree against the shared Supabase project unless that *is* the task. Land or `/apply-worktree` one result at a time, then re-run type-check, lint, and test.
 
 ## Hard constraints (MVP)
 
 - Stack: Next.js App Router (`src/`), Drizzle (not Prisma), Vitest unit tests only (no Playwright/E2E)
 - AI: Vercel AI SDK + Claude Haiku; Zod-validate all structured LLM output before persist
 - YouTube English captions only; domain pipeline in `src/domain/` (not in Server Actions or UI)
+- Per-user `user_videos` — re-paste refreshes; no shared transcript cache
+- No lint/type suppressions without justification — see `.cursor/rules/15-code-quality.mdc`
 - No chat, uploads, Whisper, Redis, workers, tRPC, Stripe, or analytics in MVP
 
 ## UI verification
 
-For UI changes: with `pnpm dev` running, use the Cursor browser tools against `http://localhost:3000`. Snapshot, click the real flow, screenshot if layout matters. Do not add Playwright.
+The human tests UI in the browser. Agents finish at type-check / lint / test. Do **not** use Cursor browser tools unless explicitly asked. Do not add Playwright.
 
-This is mandatory before finishing UI work — not optional. Mechanical `stop` hooks only run type-check / lint / test; they do **not** replace browser verification. See `.cursor/rules/90-ui-verification.mdc`.
+See `.cursor/rules/90-ui-verification.mdc`.
 
 ## Before finishing work that changed code
 

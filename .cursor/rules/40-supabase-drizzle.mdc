@@ -20,7 +20,7 @@ alwaysApply: false
 - UUID PKs with defaults where appropriate
 - `createdAt` / `updatedAt` on tables
 - Export inferred types (`$inferSelect` / `$inferInsert`)
-- Hybrid model: shared video/transcript by YouTube id; per-user analysis & context
+- Per-user model: `user_videos` (metadata + transcript); `personalized_analyses` for status
 - Indexes on foreign keys and frequent filters (`userId`, `youtubeId`, analysis status)
 
 ## Migrations
@@ -56,6 +56,6 @@ Direct `db.<ref>.supabase.co:5432` is often **IPv6-only** (`ENETUNREACH` locally
 
 - Browser: anon key only
 - Server user-scoped: SSR client
-- Service role: rare, server-only, comment why when used (e.g. shared transcript upsert)
+- Service role: rare, server-only, comment why when used
 
 Use Supabase MCP (read-only preferred) for live schema/RLS inspection when configured.

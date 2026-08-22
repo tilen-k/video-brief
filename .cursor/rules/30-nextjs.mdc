@@ -13,7 +13,7 @@ Adapted from modern App Router practice (async request APIs, RSC-first).
 - Server Components by default; `'use client'` only for interactivity
 - Prefer Server Actions for mutations; no tRPC; no REST unless required
 - Named exports for components; TypeScript strict
-- `next/image`, `next/link`
+- `next/image`, `next/link` — configure `remotePatterns` for YouTube thumbnails; see `.cursor/rules/15-code-quality.mdc`
 - Await `params`, `searchParams`, `cookies()`, `headers()` (async APIs)
 
 ## Thin Server Actions

@@ -163,8 +163,7 @@ Prisma, tRPC, Redis, background workers, PostHog/analytics, Stripe, Jest, Playwr
 ### Recommended MCP (Cursor)
 
 * Supabase MCP (prefer read-only) for schema/RLS inspection
-* cursor-ide-browser for UI checks
-* Do not rely on Prisma MCP
+* Do not rely on Prisma MCP. Humans test UI in the browser; agents do not use cursor-ide-browser unless asked.
 
 ---
 

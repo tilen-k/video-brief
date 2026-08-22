@@ -20,23 +20,22 @@ Server Actions authenticate, authorize, validate input, then call domain functio
 
 Structure domain code so it can later move behind a queue without rewrite. Do **not** add Redis/workers until a concrete timeout/requirement appears.
 
-## Hybrid video data
+## Per-user video data
 
-Shared (by YouTube video id):
+Each library entry is one row per `(user_id, youtube_id)`:
 
-- `videos` — metadata (+ optional YouTube `categoryId` as classifier hint)
-- `video_transcripts` — English timestamped segments
-- classification / content profile — `isEducational`, confidence, domains, prerequisites
-- optional shared **section skeleton** (titles + timestamps) when not user-specific
+- `user_videos` — metadata + English transcript snapshot (refreshed on every ingest/re-paste)
+- `personalized_analyses` — analysis state machine (1:1 with `user_videos`)
 
-Per-user:
+Re-pasting the same URL **always refetches** from YouTube and upserts that user's row. There is **no shared global cache** of videos/transcripts across users.
 
-- library membership / saved videos
+Also per-user:
+
 - `user_context` / topic context / preferences
-- `video_context` (video-specific answers)
-- personalized analysis (overview, section explanations, takeaways)
+- `video_context` (video-specific answers, later)
+- personalized sections / takeaways (later columns or tables)
 
-Reuse shared transcript/metadata/classification when another user pastes the same URL.
+Classification (`isEducational`, domains, section skeleton) lands on the user video or analysis row in a later slice — not a shared `videos` table.
 
 ## Analysis states
 
@@ -62,4 +61,4 @@ src/
 
 ## Cost awareness
 
-Reuse intermediate structured analysis and shared classification; avoid re-sending full transcripts; skip known context questions; Haiku for all MVP LLM calls.
+Reuse intermediate structured analysis per user where possible; avoid re-sending full transcripts on LLM retries; skip known context questions; Haiku for all MVP LLM calls.

@@ -24,7 +24,7 @@ Preserve segment timestamps for chapter sync.
 
 ## Metadata
 
-Fetch title, channel, duration, thumbnail via the same provider boundary (or YouTube Data API later if needed). Cache on shared `videos` / `video_transcripts` by YouTube id.
+Fetch title, channel, duration, thumbnail via the same provider boundary. Persist on **`user_videos`** per user; refresh on every ingest/re-paste.
 
 ## Player
 

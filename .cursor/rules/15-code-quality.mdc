@@ -1,0 +1,25 @@
+---
+description: Lint, type, and suppression conventions for VideoBrief
+alwaysApply: true
+---
+
+# VideoBrief — Code quality
+
+## Suppressions
+
+Do **not** suppress ESLint, TypeScript, or build warnings/errors unless unavoidable.
+
+1. **Fix first** — config, types, refactor, or tests.
+2. If suppression is required:
+   - Smallest scope (single line over file).
+   - Comment: which rule, why fix is not viable now, what removes it.
+   - Prefer `@ts-expect-error` over `@ts-ignore`; no `@ts-nocheck` in app code.
+3. **Invalid justifications:** "avoid churn", "too noisy", "works fine".
+
+Agents must not add new suppressions without the justification pattern above.
+
+## Images
+
+- Default: `next/image` for remote images in app UI.
+- Configure `images.remotePatterns` in `next.config.ts` for stable CDNs (YouTube: `i.ytimg.com`, `yt3.ggpht.com`).
+- Raw `<img>` only with a documented exception (unknown user-supplied host, data URL, etc.) — not for YouTube library thumbs.

@@ -23,7 +23,7 @@ Skip for copy, CSS, or single-field tweaks — implement directly instead.
 
 - **Needs architect** if it introduces or changes: domain boundaries, shared vs per-user data, analysis states, Server Action vs route, authz model, or AI pipeline stages.
 - **Needs security** if it touches: auth, RLS, Server Actions writes, user-owned rows, service role, or AI/tool trust boundaries.
-- **Needs UI verification** if pages/forms/layouts/i18n on screens change (see `.cursor/rules/90-ui-verification.mdc`).
+- **UI changed** if pages/forms/layouts/i18n on screens change — the human tests that in the browser (see `.cursor/rules/90-ui-verification.mdc`). Agents do not.
 
 ### 1. Architect (when needed)
 
@@ -61,7 +61,7 @@ Delegate to the `reviewer` subagent. Pass: what was built, key paths, and that i
 
 Delegate to the `verifier` subagent. Pass: claimed behavior and whether UI changed.
 
-For UI: ensure `pnpm dev` is running; verifier uses browser tools on `http://localhost:3000` (no Playwright).
+Do not start `pnpm dev` or use browser tools for UI. Note UI flows for the human to click through. No Playwright.
 
 ### 6. Security (when needed)
 
@@ -96,7 +96,7 @@ Deferred / residual
 
 Verified
 - type-check / lint / test: …
-- browser: … (or N/A)
+- UI for human: … (or N/A)
 ```
 
 ## Trust boundary

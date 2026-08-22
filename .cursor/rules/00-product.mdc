@@ -19,7 +19,7 @@ Does this help turn a YouTube video into a better personalized understanding for
 
 ## MVP includes
 
-Landing, auth (email/password + Google), soft email confirm, lightweight **educational** onboarding (YOB, education level, subject chips — all optional), library, YouTube ingest, English timestamped captions, AI classification + analysis (Haiku), dynamic optional context questions (**educational only**, select, max 3), persistent context (global / topic / video), hybrid shared video+transcript+classification cache, video workspace with synced sections, soft non-edu disclaimer, dark-default UI, EN-only i18n scaffolding, unit tests.
+Landing, auth (email/password + Google), soft email confirm, lightweight **educational** onboarding (YOB, education level, subject chips — all optional), library, YouTube ingest (per-user `user_videos`, re-paste refreshes), English timestamped captions, AI classification + analysis (Haiku), dynamic optional context questions (**educational only**, select, max 3), persistent context (global / topic / video), video workspace with synced sections, soft non-edu disclaimer, dark-default UI, EN-only i18n scaffolding, unit tests.
 
 ## MVP excludes
 

@@ -8,6 +8,9 @@ importers:
 
   .:
     dependencies:
+      '@bufbuild/protobuf':
+        specifier: ^2.14.0
+        version: 2.14.0
       '@hookform/resolvers':
         specifier: ^5.9.1
         version: 5.9.1(@standard-schema/spec@1.1.0)(ajv-formats@2.1.1(ajv@8.20.0))(ajv@8.20.0)(react-hook-form@7.85.0(react@19.2.8))(zod@4.4.3)
@@ -29,9 +32,15 @@ importers:
       drizzle-orm:
         specifier: ^0.45.2
         version: 0.45.2(postgres@3.4.9)
+      fflate:
+        specifier: ^0.8.3
+        version: 0.8.3
       lucide-react:
         specifier: ^1.33.0
         version: 1.33.0(react@19.2.8)
+      meriyah:
+        specifier: ^7.3.2
+        version: 7.3.2
       next:
         specifier: 16.3.1
         version: 16.3.1(@babel/core@7.29.7(supports-color@7.2.0))(@types/node@20.19.43)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
@@ -65,6 +74,9 @@ importers:
       tw-animate-css:
         specifier: ^1.4.0
         version: 1.4.0
+      youtubei.js:
+        specifier: ^18.0.0
+        version: 18.0.0
       zod:
         specifier: ^4.4.3
         version: 4.4.3
@@ -274,6 +286,9 @@ packages:
   '@bramus/specificity@2.4.2':
     resolution: {integrity: sha512-ctxtJ/eA+t+6q2++vj5j7FYX3nRu311q1wfYH3xjlLOsczhlhxAg2FWNUXhpGvAw3BWo1xBcvOV6/YLc2r5FJw==}
     hasBin: true
+
+  '@bufbuild/protobuf@2.14.0':
+    resolution: {integrity: sha512-C3UGsiCwSprE2NKIIFA3hCDlpXTMCAXRZuEVp88L1GY36Y41+rYL5fryE+nOFhp4p4JPQvdV8PQ4DWgHgeTE+w==}
 
   '@csstools/color-helpers@6.1.1':
     resolution: {integrity: sha512-gLNsunvwf3mCi5u5o46/Z/JcJMnhbHSaZ69rkgPzNM3J4s8hWwpPUQB6/tt0EDFyCiWzxANlx+2LJwpYj4zS1w==}
@@ -3477,6 +3492,9 @@ packages:
       picomatch:
         optional: true
 
+  fflate@0.8.3:
+    resolution: {integrity: sha512-tbZNuJrLwGUp3zshBtdy4W+ORxZuIh8a5ilyIEQDC5rY1f3U20JMry0Ll3WBzU58EZKsEuJFXhb5gwv8CsPvgA==}
+
   figures@6.1.0:
     resolution: {integrity: sha512-d+l3qxjSesT4V7v2fh+QnmFnUWv9lSpjarhShNTgBOfA0ttejbQUAlHLitbjkoRiDulW0OPoQPYIGhIC8ohejg==}
     engines: {node: '>=18'}
@@ -4204,6 +4222,10 @@ packages:
   merge2@1.4.1:
     resolution: {integrity: sha512-8q7VEgMJW4J8tcfVPy8g09NcQwZdbwFEqhe/WZkoIzjn/3TGDwtOCYtXGxA3O8tPzpczCCDgv+P2P5y00ZJOOg==}
     engines: {node: '>= 8'}
+
+  meriyah@7.3.2:
+    resolution: {integrity: sha512-uFPXbsoxaEd7PafMz3K/n/Z3kXz7iZBJtYU0VQB/kcV7i33+JghLTKweabLir480FUsyLz6gUIj4LW7kCQ35TA==}
+    engines: {node: '>=20.0.0'}
 
   micromatch@4.0.8:
     resolution: {integrity: sha512-PXwfBhYu0hBCPw8Dn0E+WDYb7af3dSLVWKi3HGv84IdF4TyFoC0ysxFd0Goxw7nSv4T/PzEJQxsYsEiFCKo2BA==}
@@ -5272,6 +5294,9 @@ packages:
     resolution: {integrity: sha512-xYqdZFUK/VYazNl/oCDYN+3WloWQwMfZxBoiNt6qNyk+xfOdi598muWE42rNZFp1kNOiqW936q5RhUdnpqElSg==}
     engines: {node: '>=18'}
 
+  youtubei.js@18.0.0:
+    resolution: {integrity: sha512-7Tztl5QzNL4nIhiAxa4P/0C8cDDsUe0j4iaUeNiaA+ZfSe/l+HkHxXyoWlQXNW7IPi2n6AW23ysVMJLDh+AwWQ==}
+
   zod-to-json-schema@3.25.2:
     resolution: {integrity: sha512-O/PgfnpT1xKSDeQYSCfRI5Gy3hPf91mKVDuYLUHZJMiDFptvP41MSnWofm8dnCm0256ZNfZIM7DSzuSMAFnjHA==}
     peerDependencies:
@@ -5501,6 +5526,8 @@ snapshots:
   '@bramus/specificity@2.4.2':
     dependencies:
       css-tree: 3.2.1
+
+  '@bufbuild/protobuf@2.14.0': {}
 
   '@csstools/color-helpers@6.1.1': {}
 
@@ -8417,6 +8444,8 @@ snapshots:
     optionalDependencies:
       picomatch: 4.0.5
 
+  fflate@0.8.3: {}
+
   figures@6.1.0:
     dependencies:
       is-unicode-supported: 2.1.0
@@ -9055,6 +9084,8 @@ snapshots:
   merge-stream@2.0.0: {}
 
   merge2@1.4.1: {}
+
+  meriyah@7.3.2: {}
 
   micromatch@4.0.8:
     dependencies:
@@ -10288,6 +10319,12 @@ snapshots:
       yoctocolors: 2.2.0
 
   yoctocolors@2.2.0: {}
+
+  youtubei.js@18.0.0:
+    dependencies:
+      '@bufbuild/protobuf': 2.14.0
+      fflate: 0.8.3
+      meriyah: 7.3.2
 
   zod-to-json-schema@3.25.2(zod@3.25.76):
     dependencies:

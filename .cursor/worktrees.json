@@ -1,0 +1,8 @@
+{
+  "setup-worktree-unix": "setup-worktree-unix.sh",
+  "setup-worktree-windows": "setup-worktree-windows.ps1",
+  "setup-worktree": [
+    "pnpm install",
+    "if [ -f \"$ROOT_WORKTREE_PATH/.env.local\" ]; then cp \"$ROOT_WORKTREE_PATH/.env.local\" .env.local; elif [ -f .env.example ]; then cp .env.example .env.local; fi"
+  ]
+}

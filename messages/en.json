@@ -57,7 +57,21 @@
   },
   "Library": {
     "title": "Library",
-    "empty": "Your library is empty. Video ingest comes next.",
-    "logout": "Log out"
+    "empty": "No videos yet. Paste a YouTube link above to get started.",
+    "logout": "Log out",
+    "addTitle": "Add a video",
+    "pasteLabel": "YouTube URL",
+    "pastePlaceholder": "https://www.youtube.com/watch?v=…",
+    "pasteHint": "English captions are required. Analysis continues after the transcript is ready.",
+    "add": "Add video",
+    "adding": "Adding…",
+    "addErrorTitle": "Couldn’t add video",
+    "yourVideos": "Your videos",
+    "status": {
+      "fetching": "Fetching transcript…",
+      "analyzing": "Ready for analysis",
+      "complete": "Ready",
+      "failed": "Failed"
+    }
   }
 }

@@ -1,9 +1,12 @@
 import { getTranslations } from "next-intl/server";
 import { redirect } from "next/navigation";
 
-import { signOut } from "@/lib/actions/auth";
+import { AddVideoForm } from "@/components/library/add-video-form";
+import { LibraryList } from "@/components/library/library-list";
 import { Button } from "@/components/ui/button";
+import { listLibraryForUser } from "@/domain/ingest/ingest-youtube-video";
 import { getOnboardingCompleted } from "@/domain/onboarding";
+import { signOut } from "@/lib/actions/auth";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function LibraryPage() {
@@ -21,6 +24,8 @@ export default async function LibraryPage() {
   if (!(await getOnboardingCompleted(user.id))) {
     redirect("/onboarding");
   }
+
+  const items = await listLibraryForUser(user.id);
 
   return (
     <main className="mx-auto flex min-h-full w-full max-w-5xl flex-1 flex-col gap-10 px-6 py-8">
@@ -41,8 +46,16 @@ export default async function LibraryPage() {
         </div>
       </header>
 
-      <section className="rounded-lg border border-dashed border-border px-6 py-16 text-center">
-        <p className="text-muted-foreground">{t("empty")}</p>
+      <section className="space-y-3">
+        <h2 className="font-heading text-2xl tracking-tight">{t("addTitle")}</h2>
+        <AddVideoForm />
+      </section>
+
+      <section className="space-y-4">
+        <h2 className="text-sm font-medium text-muted-foreground">
+          {t("yourVideos")}
+        </h2>
+        <LibraryList items={items} />
       </section>
     </main>
   );
