@@ -35,7 +35,10 @@ else
 fi
 
 export ROOT_WORKTREE_PATH="$REPO_ROOT"
-bash "${REPO_ROOT}/.cursor/setup-worktree-unix.sh"
+(
+  cd "$WORKTREE_DIR"
+  bash "${REPO_ROOT}/.cursor/setup-worktree-unix.sh"
+)
 
 echo "WORKTREE_NAME=${SAFE_NAME}"
 echo "WORKTREE_PATH=${WORKTREE_DIR}"

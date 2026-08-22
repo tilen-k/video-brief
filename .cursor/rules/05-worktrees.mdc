@@ -26,7 +26,7 @@ After `worktree-create.sh`, do all reads/edits/shell for that task in `WORKTREE_
 
 Before creating, check for an existing worktree: `git worktree list`. Reuse `.worktrees/<name>` when present.
 
-Setup runs automatically (`.cursor/setup-worktree-unix.sh` / `worktrees.json`): `pnpm install`, copy `.env.local` from primary checkout.
+Setup runs automatically from inside the new worktree (`.cursor/setup-worktree-unix.sh` / `worktrees.json`): `pnpm install`, copy `.env.local` from primary checkout. If an existing worktree is missing env, run: `cp .env.local .worktrees/<name>/.env.local` from repo root.
 
 Do **not** run `db:migrate` from a worktree against shared Supabase unless that is the task.
 

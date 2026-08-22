@@ -128,7 +128,7 @@ describe("ingestYoutubeVideo", () => {
     expect(getEnglishTranscript).toHaveBeenCalledTimes(2);
   });
 
-  it("persists failed row when English captions missing but metadata exists", async () => {
+  it("returns failed when English captions are missing but a row was written", async () => {
     const provider = mockProvider(async () => {
       throw new TranscriptProviderError(
         "missing_english_captions",
@@ -137,15 +137,20 @@ describe("ingestYoutubeVideo", () => {
       );
     });
 
-    mocks.returning.mockResolvedValueOnce([{ id: "uv-1" }]);
+    mocks.returning
+      .mockResolvedValueOnce([{ id: "uv-1" }])
+      .mockResolvedValueOnce([{ id: "analysis-1" }]);
 
-    await expect(
-      ingestYoutubeVideo(
-        { userId: "user-1", youtubeId: "dQw4w9WgXcQ" },
-        { transcriptProvider: provider },
-      ),
-    ).rejects.toMatchObject({ code: "missing_english_captions" });
+    const result = await ingestYoutubeVideo(
+      { userId: "user-1", youtubeId: "dQw4w9WgXcQ" },
+      { transcriptProvider: provider },
+    );
 
+    expect(result).toEqual({
+      userVideoId: "uv-1",
+      analysisId: "analysis-1",
+      status: "failed",
+    });
     expect(mocks.insert).toHaveBeenCalled();
   });
 

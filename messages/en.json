@@ -86,11 +86,32 @@
     "adding": "Adding…",
     "addErrorTitle": "Couldn’t add video",
     "yourVideos": "Your videos",
-    "status": {
-      "fetching": "Fetching transcript…",
-      "analyzing": "Ready for analysis",
-      "complete": "Ready",
-      "failed": "Failed"
-    }
+    "openVideo": "Open {title}"
+  },
+  "AnalysisStatus": {
+    "fetching": "Loading captions",
+    "understanding": "Understanding the video",
+    "generating": "Writing your sections",
+    "awaiting": "A few questions",
+    "complete": "Ready",
+    "failed": "Failed"
+  },
+  "Workspace": {
+    "back": "Library",
+    "statusLabel": "Status",
+    "checklist": {
+      "found": "Video found",
+      "transcript": "Captions loaded",
+      "understanding": "Understanding the video",
+      "summary": "Writing your sections"
+    },
+    "awaitingPlaceholder": "A few questions will appear here when needed.",
+    "completePlaceholder": "Sections will appear here.",
+    "failedTitle": "Couldn’t analyze this video",
+    "failedFallback": "Something went wrong while reading this video.",
+    "failedHint": "Paste the link again from the library to retry.",
+    "notFoundTitle": "Video not found",
+    "notFoundBody": "This video isn’t in your library, or the link is invalid.",
+    "notFoundBack": "Back to library"
   }
 }

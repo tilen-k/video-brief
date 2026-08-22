@@ -48,8 +48,9 @@ export async function updateSession(request: NextRequest) {
     path.startsWith("/login") || path.startsWith("/signup");
   const isProtected =
     path.startsWith("/library") || path.startsWith("/onboarding");
+  const isServerAction = request.headers.has("next-action");
 
-  if (!user && isProtected) {
+  if (!user && isProtected && !isServerAction) {
     const redirectUrl = request.nextUrl.clone();
     redirectUrl.pathname = "/login";
     redirectUrl.searchParams.set("next", path);

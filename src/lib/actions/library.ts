@@ -44,13 +44,13 @@ export async function addVideo(
     };
   }
 
+  let result;
   try {
-    await ingestYoutubeVideo({
+    result = await ingestYoutubeVideo({
       userId: user.id,
       youtubeId: parsed.data.youtubeId,
     });
   } catch (error) {
-    // Domain may have written failed/library rows — refresh the list.
     revalidatePath("/library");
 
     if (error instanceof TranscriptProviderError) {
@@ -67,5 +67,5 @@ export async function addVideo(
   }
 
   revalidatePath("/library");
-  return {};
+  redirect(`/library/${result.userVideoId}`);
 }

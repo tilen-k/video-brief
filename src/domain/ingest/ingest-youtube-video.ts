@@ -103,7 +103,7 @@ async function upsertAnalysisFailed(
   code: string,
   message: string,
 ) {
-  await tx
+  const [row] = await tx
     .insert(personalizedAnalyses)
     .values({
       userId,
@@ -120,7 +120,10 @@ async function upsertAnalysisFailed(
         errorMessage: message,
         updatedAt: new Date(),
       },
-    });
+    })
+    .returning();
+
+  return row;
 }
 
 /**
@@ -153,7 +156,7 @@ export async function ingestYoutubeVideo(
           );
 
     if (providerError.metadata) {
-      await db.transaction(async (tx) => {
+      return db.transaction(async (tx) => {
         const userVideo = await upsertUserVideoMetadata(
           tx,
           userId,
@@ -168,13 +171,19 @@ export async function ingestYoutubeVideo(
           [],
           "en",
         );
-        await upsertAnalysisFailed(
+        const analysis = await upsertAnalysisFailed(
           tx,
           userId,
           userVideo.id,
           providerError.code,
           providerError.message,
         );
+
+        return {
+          userVideoId: userVideo.id,
+          analysisId: analysis.id,
+          status: "failed" as const,
+        };
       });
     }
 
