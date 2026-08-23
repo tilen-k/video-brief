@@ -79,6 +79,10 @@ export function shouldPoll(status: AnalysisStatus): boolean {
   );
 }
 
+export function isFailedStatus(status: AnalysisStatus): boolean {
+  return status === "failed";
+}
+
 function steps(
   transcript: ChecklistStepState,
   understanding: ChecklistStepState,

@@ -42,7 +42,7 @@ export default async function RootLayout({
   return (
     <html
       lang={locale}
-      className={`${newsreader.variable} ${sourceSans.variable} dark h-full`}
+      className={`${newsreader.variable} ${sourceSans.variable} h-full`}
       suppressHydrationWarning
     >
       <body className="min-h-full flex flex-col bg-background font-sans text-foreground antialiased">

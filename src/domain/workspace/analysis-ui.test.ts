@@ -6,6 +6,7 @@ import { ANALYSIS_STATUSES } from "@/db/schema";
 import {
   analysisChecklist,
   analysisUiPhase,
+  isFailedStatus,
   paneKind,
   shouldPoll,
 } from "./analysis-ui";
@@ -64,6 +65,14 @@ describe("shouldPoll", () => {
     for (const status of STOP_POLL) {
       expect(shouldPoll(status)).toBe(false);
     }
+  });
+});
+
+describe("isFailedStatus", () => {
+  it("returns true only for failed", () => {
+    expect(isFailedStatus("failed")).toBe(true);
+    expect(isFailedStatus("complete")).toBe(false);
+    expect(isFailedStatus("analyzing")).toBe(false);
   });
 });
 
