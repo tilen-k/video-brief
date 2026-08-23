@@ -1,15 +1,10 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { z } from "zod";
 
 import { getOnboardingCompleted } from "@/domain/onboarding";
 import { createClient } from "@/lib/supabase/server";
-
-const credentialsSchema = z.object({
-  email: z.string().email(),
-  password: z.string().min(8, "Password must be at least 8 characters"),
-});
+import { credentialsSchema } from "@/lib/validations/auth";
 
 export type AuthActionState = {
   error?: string;

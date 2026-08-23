@@ -1,4 +1,5 @@
 import { getTranslations } from "next-intl/server";
+import Link from "next/link";
 
 import { AppBrand } from "@/components/shared/layout/app-brand";
 import { ThemeToggle } from "@/components/shared/layout/theme-toggle";
@@ -9,6 +10,8 @@ import { cn } from "@/lib/utils";
 type AppShellProps = {
   children: React.ReactNode;
   userEmail?: string | null;
+  userEmailHref?: string;
+  sectionLabel?: string;
   showLogout?: boolean;
   contentClassName?: string;
 };
@@ -16,6 +19,8 @@ type AppShellProps = {
 export async function AppShell({
   children,
   userEmail,
+  userEmailHref,
+  sectionLabel,
   showLogout = true,
   contentClassName,
 }: AppShellProps) {
@@ -30,15 +35,24 @@ export async function AppShell({
             <AppBrand name={brand("name")} />
             <span className="hidden h-4 w-px bg-border sm:block" aria-hidden />
             <span className="hidden truncate text-sm text-muted-foreground sm:inline">
-              {library("title")}
+              {sectionLabel ?? library("title")}
             </span>
           </div>
 
           <div className="flex shrink-0 items-center gap-1 sm:gap-2">
             {userEmail ? (
-              <span className="hidden max-w-[11rem] truncate text-sm text-muted-foreground md:inline">
-                {userEmail}
-              </span>
+              userEmailHref ? (
+                <Link
+                  href={userEmailHref}
+                  className="max-w-[7rem] cursor-pointer truncate text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline sm:max-w-[11rem]"
+                >
+                  {userEmail}
+                </Link>
+              ) : (
+                <span className="hidden max-w-[11rem] truncate text-sm text-muted-foreground md:inline">
+                  {userEmail}
+                </span>
+              )
             ) : null}
             <ThemeToggle />
             {showLogout ? (

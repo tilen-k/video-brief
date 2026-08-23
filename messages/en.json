@@ -97,6 +97,24 @@
     "yourVideos": "Your videos",
     "openVideo": "Open {title}"
   },
+  "Account": {
+    "title": "Account",
+    "profileTab": "Profile",
+    "usageTab": "Usage",
+    "email": "Email",
+    "passwordTitle": "Password",
+    "currentPassword": "Current password",
+    "newPassword": "New password",
+    "confirmPassword": "Confirm password",
+    "changePassword": "Change password",
+    "createPassword": "Create password",
+    "createPasswordHint": "Add a password to sign in with email as well as Google.",
+    "save": "Save",
+    "saving": "Saving…",
+    "passwordUpdated": "Password updated.",
+    "usageTitle": "Usage",
+    "usageBody": "Usage tracking isn't live yet. There's no limit on videos for now."
+  },
   "AnalysisStatus": {
     "fetching": "Loading captions",
     "understanding": "Understanding",

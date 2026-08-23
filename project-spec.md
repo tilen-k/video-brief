@@ -120,7 +120,7 @@ Do not substitute these without an explicit product decision.
 | Client data | TanStack Query (mutations + analysis-status polling; RSC for primary reads) |
 | Theme | next-themes, **dark default** |
 | i18n | next-intl, **English only** for MVP |
-| Fonts | **Newsreader** (display/brand), **Source Sans 3** (UI/body) |
+| Fonts | **Nunito** (display/brand and UI/body) |
 
 ### Data & auth
 
@@ -1007,8 +1007,8 @@ Brand name **VideoBrief** should read as a hero-level signal on marketing surfac
 
 Typography:
 
-* Display / brand: **Newsreader**
-* UI / body: **Source Sans 3**
+* Display / brand: **Nunito**
+* UI / body: **Nunito**
 
 Theme: **dark default** via next-themes (users may switch; respect system after first choice when appropriate).
 

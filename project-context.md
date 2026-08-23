@@ -30,7 +30,7 @@ Landing → Auth → Onboarding → Library → Paste URL
 | App | Next.js App Router, React, TS, `src/`, pnpm, Vercel |
 | UI | Tailwind, shadcn, lucide, RHF, Zod, TanStack Query |
 | Theme / i18n | next-themes (**dark default**), next-intl (**en only**) |
-| Fonts | Newsreader + Source Sans 3 |
+| Fonts | Nunito |
 | Auth | Supabase email/password + Google; soft email confirm |
 | DB | Supabase Postgres + **Drizzle** + RLS |
 | AI | Vercel AI SDK behind `AIProvider`; default model in `analysisConfig` (OpenRouter) |
