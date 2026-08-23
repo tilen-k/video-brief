@@ -27,7 +27,7 @@ export default async function LibraryPage() {
   const items = await listLibraryForUser(user.id);
 
   return (
-    <AppShell userEmail={user.email}>
+    <AppShell userEmail={user.email} userEmailHref="/account">
       <div className="flex flex-col gap-8">
         <Panel>
           <AddVideoForm />

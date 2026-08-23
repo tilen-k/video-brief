@@ -35,8 +35,8 @@ Implement colors in `src/app/globals.css` only. Light mode: neutral white/gray a
 
 ## Fonts
 
-- Display / brand: **Newsreader**
-- UI / body: **Source Sans 3**
+- Display / brand: **Nunito**
+- UI / body: **Nunito**
 - Avoid Inter, Roboto, Arial, system-ui as the primary brand face
 
 ## Composition

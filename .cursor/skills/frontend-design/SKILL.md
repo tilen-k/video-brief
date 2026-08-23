@@ -16,7 +16,7 @@ Approach this as the design lead at a small studio known for giving every client
 Before brainstorming, read `.cursor/rules/70-ui.mdc` and `project-spec.md` §34.
 
 - **Stack:** Next.js App Router, Tailwind, shadcn/ui, lucide, next-themes (system default), next-intl (`messages/en.json`).
-- **Fonts (locked):** Newsreader (display, `font-heading`), Source Sans 3 (body, `font-sans`). Do not swap font families — differentiate via type scale, weight, tracking, and hierarchy.
+- **Fonts (locked):** Nunito for display (`font-heading`) and body (`font-sans`). Do not swap font families — differentiate via type scale, weight, tracking, and hierarchy.
 - **Implement tokens** as shadcn CSS variables in `src/app/globals.css`, not ad-hoc CSS files.
 - **Component layout:** `ui/` = shadcn only; `shared/` = reusable VideoBrief components; feature folders compose both. No local `*Class()` variant maps or ad-hoc semantic colors in features.
 - **Composition:** marketing = editorial; app routes = tool-first (library paste bar, inventory rows, shared chrome). Workspace = document + synced video.
