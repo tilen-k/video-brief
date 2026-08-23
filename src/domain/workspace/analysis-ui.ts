@@ -39,13 +39,13 @@ export type ChecklistStep = {
 export function analysisUiPhase(status: AnalysisStatus): AnalysisUiPhase {
   switch (status) {
     case "pending":
-    case "fetching_transcript":
+    case "fetching":
       return "fetching";
-    case "analyzing":
+    case "classifying":
       return "understanding";
-    case "generating_summary":
+    case "generating":
       return "generating";
-    case "awaiting_context":
+    case "awaiting":
       return "awaiting";
     case "complete":
       return "complete";
@@ -58,14 +58,14 @@ export function paneKind(status: AnalysisStatus): PaneKind {
   switch (status) {
     case "failed":
       return "failed";
-    case "awaiting_context":
+    case "awaiting":
       return "awaiting";
     case "complete":
       return "complete";
     case "pending":
-    case "fetching_transcript":
-    case "analyzing":
-    case "generating_summary":
+    case "fetching":
+    case "classifying":
+    case "generating":
       return "progress";
   }
 }
@@ -73,9 +73,9 @@ export function paneKind(status: AnalysisStatus): PaneKind {
 export function shouldPoll(status: AnalysisStatus): boolean {
   return (
     status === "pending" ||
-    status === "fetching_transcript" ||
-    status === "analyzing" ||
-    status === "generating_summary"
+    status === "fetching" ||
+    status === "classifying" ||
+    status === "generating"
   );
 }
 
@@ -99,13 +99,13 @@ function steps(
 export function analysisChecklist(status: AnalysisStatus): ChecklistStep[] {
   switch (status) {
     case "pending":
-    case "fetching_transcript":
+    case "fetching":
       return steps("current", "upcoming", "upcoming");
-    case "analyzing":
+    case "classifying":
       return steps("done", "current", "upcoming");
-    case "awaiting_context":
+    case "awaiting":
       return steps("done", "done", "upcoming");
-    case "generating_summary":
+    case "generating":
       return steps("done", "done", "current");
     case "complete":
       return steps("done", "done", "done");

@@ -57,7 +57,7 @@ Omit empty severity sections. Do not report pure style preferences unless they h
 2. Authorization bugs (session user id, RLS + app checks)
 3. Server/client boundary mistakes; secrets or service-role in client
 4. Business logic in Server Actions or React instead of `src/domain/`
-5. Wrong data scope (shared vs per-user; context global/topic/video)
+5. Wrong data scope (everything per-user; prefs on the analysis row, not the profile; no EAV / shared video cache)
 6. Unvalidated LLM output persisted
 7. MVP creep (chat, Whisper, Redis, workers, Prisma, tRPC, Playwright, non-EN)
 8. Duplicated logic vs existing helpers/skills patterns

@@ -9,32 +9,42 @@ const mocks = vi.hoisted(() => {
   const limit = vi.fn();
   const where = vi.fn(() => ({ limit }));
   const leftJoin = vi.fn(() => ({ where }));
-  const from = vi.fn(() => ({ leftJoin }));
+  const innerJoin = vi.fn(() => ({ leftJoin }));
+  const from = vi.fn(() => ({ innerJoin }));
   const select = vi.fn(() => ({ from }));
-  return { limit, where, leftJoin, from, select };
+  return { limit, where, leftJoin, innerJoin, from, select };
 });
 
 function mockDb(): Db {
   return { select: mocks.select } as unknown as Db;
 }
 
+const ownedRow = {
+  userVideoId: "uv-1",
+  youtubeId: "dQw4w9WgXcQ",
+  title: "Sample",
+  channelTitle: "Channel",
+  status: "classifying",
+  errorCode: null,
+  errorMessage: null,
+  classification: {
+    isEducational: true,
+    confidence: "high",
+    topic: "physics",
+  },
+  familiarity: null,
+  summaryLength: null,
+  sections: [],
+  summaryStyle: null,
+};
+
 describe("getWorkspaceVideo", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it("returns the owned row", async () => {
-    mocks.limit.mockResolvedValueOnce([
-      {
-        userVideoId: "uv-1",
-        youtubeId: "dQw4w9WgXcQ",
-        title: "Sample",
-        channelTitle: "Channel",
-        status: "analyzing",
-        errorCode: null,
-        errorMessage: null,
-      },
-    ]);
+  it("returns the owned row with prefs flags", async () => {
+    mocks.limit.mockResolvedValueOnce([ownedRow]);
 
     const result = await getWorkspaceVideo("user-1", "uv-1", { db: mockDb() });
 
@@ -43,9 +53,16 @@ describe("getWorkspaceVideo", () => {
       youtubeId: "dQw4w9WgXcQ",
       title: "Sample",
       channelTitle: "Channel",
-      status: "analyzing",
+      status: "classifying",
       errorCode: null,
       errorMessage: null,
+      classification: ownedRow.classification,
+      familiarity: null,
+      summaryLength: null,
+      defaultLength: "moderate",
+      askFamiliarity: true,
+      askLength: true,
+      sections: [],
     });
     expect(mocks.select).toHaveBeenCalled();
   });
@@ -66,6 +83,7 @@ describe("getWorkspaceVideo", () => {
     await getWorkspaceVideo("owner-user", "video-row", { db: mockDb() });
 
     expect(mocks.where).toHaveBeenCalledTimes(1);
+    expect(mocks.innerJoin).toHaveBeenCalledTimes(1);
     expect(mocks.leftJoin).toHaveBeenCalledTimes(1);
 
     const joinCalls = mocks.leftJoin.mock.calls as unknown[][];
@@ -82,18 +100,16 @@ describe("getWorkspaceVideo", () => {
   it("treats a missing analysis row as pending", async () => {
     mocks.limit.mockResolvedValueOnce([
       {
-        userVideoId: "uv-1",
-        youtubeId: "dQw4w9WgXcQ",
-        title: "Sample",
-        channelTitle: null,
+        ...ownedRow,
         status: null,
-        errorCode: null,
-        errorMessage: null,
+        classification: null,
+        sections: null,
       },
     ]);
 
     const result = await getWorkspaceVideo("user-1", "uv-1", { db: mockDb() });
 
     expect(result?.status).toBe("pending");
+    expect(result?.askFamiliarity).toBe(false);
   });
 });

@@ -55,11 +55,12 @@ See `.cursor/rules/05-worktrees.mdc`.
 ## Hard constraints (MVP)
 
 - Stack: Next.js App Router (`src/`), Drizzle (not Prisma), Vitest unit tests only (no Playwright/E2E)
-- AI: Vercel AI SDK + Claude Haiku; Zod-validate all structured LLM output before persist
+- AI: Vercel AI SDK behind `AIProvider` (`classifyVideo`, `generateSections`); Zod-validate all structured LLM output before persist; model in `analysisConfig`
 - YouTube English captions only; domain pipeline in `src/domain/` (not in Server Actions or UI)
-- Per-user `user_videos` — re-paste refreshes; no shared transcript cache
+- Per-user `user_videos` — paste stubs then redirects; re-paste refreshes; no shared transcript/classification cache
+- Typed profile (not EAV); per-video prefs on the analysis row
 - No lint/type suppressions without justification — see `.cursor/rules/15-code-quality.mdc`
-- No chat, uploads, Whisper, Redis, workers, tRPC, Stripe, or analytics in MVP
+- No chat, uploads, Whisper, Redis, workers, tRPC, Stripe, analytics, or LLM-invented knowledge questions in MVP
 
 ## UI verification
 

@@ -1,5 +1,5 @@
 ---
-description: AI provider, Claude Haiku, and Zod-validated structured LLM output
+description: AI provider and Zod-validated structured LLM output
 globs: src/domain/**/*.{ts,tsx},src/lib/ai/**/*.{ts,tsx}
 alwaysApply: false
 ---
@@ -10,19 +10,21 @@ alwaysApply: false
 
 ```text
 AIProvider
-  classifyOrUnderstandVideo / determineContextQuestions / generatePersonalizedSummary
+  classifyVideo
+  generateSections
 ```
 
-Implement with Vercel AI SDK. Default model: **Claude Haiku**. Do not hard-code Claude SDK calls outside the provider.
+Implement with Vercel AI SDK. Default model: `analysisConfig.model.defaultId` (OpenRouter). Do not call a vendor SDK from UI or Server Actions.
 
 ## Pipeline stages (domain)
 
-1. Metadata + English transcript (YouTube `categoryId` as optional hint)
-2. Video understanding + classification → structured (`isEducational`, confidence, domains, prerequisites, section skeleton, candidate questions)
-3. If **not** educational → skip questions (soft disclaimer in UI); still generate sectioned summary using global context
-4. If educational → filter candidate questions against existing user context (select-only, **max 3**)
-5. Optional user answers → persist by scope
-6. Personalized section summaries → structured → persist
+1. Workspace stub exists; fetch metadata + English transcript (YouTube `categoryId` as optional hint)
+2. `classifyVideo` → `{ isEducational, confidence, topic? }` — **no** section skeleton, **no** LLM questions
+3. If educational and topic known → optional familiarity select (3 levels)
+4. If appropriate → optional length select (3 levels; default from profile `summary_style` or moderate)
+5. Persist per-video prefs on the analysis row (empty answers allowed)
+6. `generateSections` → `{ title, startTime, endTime, body }[]` using transcript subset + profile + prefs
+7. If not educational → skip familiarity; still generate sectioned summary using profile when present; soft disclaimer in UI
 
 Ambiguous classification → **prefer educational**.
 
@@ -32,12 +34,12 @@ Ambiguous classification → **prefer educational**.
 LLM → structured output → Zod.parse → app types → DB
 ```
 
-Never persist raw/unvalidated model JSON. Schemas must cover timestamps, section titles, summaries, topics/domains, questions, takeaways, and classification fields.
+Never persist raw/unvalidated model JSON.
 
 ## Personalization
 
-Change emphasis, depth, and framing — not invent unrelated content. Skip questions already answered in stored context. Non-edu still may use global context for framing.
+Change emphasis, depth, and framing — not invent unrelated content. Non-edu still may use profile for framing.
 
 ## Cost
 
-Reuse intermediate analysis and shared classification; avoid duplicate full-transcript calls; Haiku for all MVP stages.
+Classify stays tiny. Generate is one transcript-shaped call after prefs. Cap `maxOutputTokens` on generate. Do not regenerate classify in order to write bodies.

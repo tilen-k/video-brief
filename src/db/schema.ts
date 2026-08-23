@@ -10,17 +10,24 @@ import {
   uuid,
 } from "drizzle-orm/pg-core";
 
+import type {
+  FamiliarityLevel,
+  SummaryStyle,
+} from "@/lib/validations/onboarding-options";
+
 export const ANALYSIS_STATUSES = [
   "pending",
-  "fetching_transcript",
-  "analyzing",
-  "awaiting_context",
-  "generating_summary",
+  "fetching",
+  "classifying",
+  "awaiting",
+  "generating",
   "complete",
   "failed",
 ] as const;
 
 export type AnalysisStatus = (typeof ANALYSIS_STATUSES)[number];
+
+export type { FamiliarityLevel, SummaryStyle };
 
 export type TranscriptSegment = {
   startMs: number;
@@ -28,11 +35,30 @@ export type TranscriptSegment = {
   text: string;
 };
 
+export type ClassificationConfidence = "high" | "medium" | "low";
+
+export type ClassificationSnapshot = {
+  isEducational: boolean;
+  confidence: ClassificationConfidence;
+  topic: string | null;
+};
+
+export type GeneratedSection = {
+  title: string;
+  startTime: number;
+  endTime: number;
+  body: string;
+};
+
 export const profiles = pgTable("profiles", {
   id: uuid("id").primaryKey(),
   email: text("email"),
   displayName: text("display_name"),
   onboardingCompleted: boolean("onboarding_completed").notNull().default(false),
+  yearOfBirth: integer("year_of_birth"),
+  educationLevel: text("education_level"),
+  subjects: jsonb("subjects").$type<string[] | null>(),
+  summaryStyle: text("summary_style").$type<SummaryStyle | null>(),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
@@ -41,34 +67,6 @@ export const profiles = pgTable("profiles", {
     .defaultNow()
     .$onUpdate(() => new Date()),
 });
-
-export const userContext = pgTable(
-  "user_context",
-  {
-    id: uuid("id").primaryKey().defaultRandom(),
-    userId: uuid("user_id")
-      .notNull()
-      .references(() => profiles.id, { onDelete: "cascade" }),
-    scope: text("scope").notNull().default("global"),
-    key: text("key").notNull(),
-    value: text("value").notNull(),
-    createdAt: timestamp("created_at", { withTimezone: true })
-      .notNull()
-      .defaultNow(),
-    updatedAt: timestamp("updated_at", { withTimezone: true })
-      .notNull()
-      .defaultNow()
-      .$onUpdate(() => new Date()),
-  },
-  (table) => [
-    uniqueIndex("user_context_user_scope_key_uidx").on(
-      table.userId,
-      table.scope,
-      table.key,
-    ),
-    index("user_context_user_id_idx").on(table.userId),
-  ],
-);
 
 /**
  * Per-user library entry: metadata + English transcript snapshot.
@@ -123,6 +121,13 @@ export const personalizedAnalyses = pgTable(
     status: text("status").$type<AnalysisStatus>().notNull().default("pending"),
     errorCode: text("error_code"),
     errorMessage: text("error_message"),
+    classification: jsonb("classification").$type<ClassificationSnapshot | null>(),
+    familiarity: text("familiarity").$type<FamiliarityLevel | null>(),
+    summaryLength: text("summary_length").$type<SummaryStyle | null>(),
+    sections: jsonb("sections")
+      .$type<GeneratedSection[]>()
+      .notNull()
+      .default([]),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -140,8 +145,6 @@ export const personalizedAnalyses = pgTable(
 
 export type Profile = typeof profiles.$inferSelect;
 export type NewProfile = typeof profiles.$inferInsert;
-export type UserContextRow = typeof userContext.$inferSelect;
-export type NewUserContextRow = typeof userContext.$inferInsert;
 export type UserVideo = typeof userVideos.$inferSelect;
 export type NewUserVideo = typeof userVideos.$inferInsert;
 export type PersonalizedAnalysis = typeof personalizedAnalyses.$inferSelect;

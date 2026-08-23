@@ -9,6 +9,8 @@ import { AnalysisStatusBadge } from "@/components/shared/status/analysis-status-
 import { ThemeToggle } from "@/components/shared/layout/theme-toggle";
 import { analysisUiPhase } from "@/domain/workspace/analysis-ui";
 import type { WorkspaceVideo } from "@/domain/workspace/get-workspace-video";
+import { useContinueAnalysis } from "@/hooks/use-continue-analysis";
+import { usePlayerSync } from "@/hooks/use-player-sync";
 import { useWorkspaceStatus } from "@/hooks/use-workspace-status";
 
 import { WorkspacePane } from "./workspace-pane";
@@ -27,6 +29,8 @@ type WorkspaceShellProps = {
 
 export function WorkspaceShell({ initial }: WorkspaceShellProps) {
   const video = useWorkspaceStatus(initial);
+  useContinueAnalysis(video);
+  const { currentTime, onReady, seekTo } = usePlayerSync();
   const t = useTranslations("Workspace");
   const statusT = useTranslations("AnalysisStatus");
   const phase = analysisUiPhase(video.status);
@@ -66,10 +70,14 @@ export function WorkspaceShell({ initial }: WorkspaceShellProps) {
 
       <div className="grid min-h-0 flex-1 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)]">
         <section className="border-b border-border lg:border-r lg:border-b-0">
-          <WorkspacePlayer youtubeId={video.youtubeId} />
+          <WorkspacePlayer youtubeId={video.youtubeId} onReady={onReady} />
         </section>
         <aside className="min-h-0 overflow-y-auto p-4 sm:p-6">
-          <WorkspacePane video={video} />
+          <WorkspacePane
+            video={video}
+            currentTime={currentTime}
+            onSeek={seekTo}
+          />
         </aside>
       </div>
     </main>

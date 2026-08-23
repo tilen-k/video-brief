@@ -4,28 +4,26 @@ import {
   EDUCATION_LEVELS,
   MIN_YEAR_OF_BIRTH,
   SUBJECTS,
+  SUMMARY_STYLES,
   maxYearOfBirth,
 } from "./onboarding-options";
 
 export {
   EDUCATION_LEVELS,
+  FAMILIARITY_LEVELS,
   MIN_YEAR_OF_BIRTH,
   SUBJECTS,
+  SUMMARY_STYLES,
   maxYearOfBirth,
   type EducationLevel,
+  type FamiliarityLevel,
   type Subject,
+  type SummaryStyle,
 } from "./onboarding-options";
-
-export const GLOBAL_CONTEXT_KEYS = [
-  "year_of_birth",
-  "education_level",
-  "subjects",
-] as const;
-
-export type GlobalContextKey = (typeof GLOBAL_CONTEXT_KEYS)[number];
 
 export const educationLevelSchema = z.enum(EDUCATION_LEVELS);
 export const subjectSchema = z.enum(SUBJECTS);
+export const summaryStyleSchema = z.enum(SUMMARY_STYLES);
 
 const emptyToUndefined = (value: unknown) => {
   if (value === "" || value === null || value === undefined) {
@@ -85,37 +83,10 @@ export const onboardingInputSchema = z.object({
     educationLevelSchema.optional(),
   ),
   subjects: subjectsSchema,
+  summaryStyle: z.preprocess(
+    emptyToUndefined,
+    summaryStyleSchema.optional(),
+  ),
 });
 
 export type OnboardingInput = z.infer<typeof onboardingInputSchema>;
-
-/** Map form fields to persisted context key/value pairs (omit empties). */
-export function onboardingToContextEntries(
-  input: OnboardingInput,
-): Array<{ key: GlobalContextKey; value: string }> {
-  const entries: Array<{ key: GlobalContextKey; value: string }> = [];
-
-  if (input.yearOfBirth !== undefined) {
-    entries.push({
-      key: "year_of_birth",
-      value: String(input.yearOfBirth),
-    });
-  }
-
-  if (input.educationLevel) {
-    entries.push({
-      key: "education_level",
-      value: input.educationLevel,
-    });
-  }
-
-  if (input.subjects && input.subjects.length > 0) {
-    const unique = [...new Set(input.subjects)];
-    entries.push({
-      key: "subjects",
-      value: unique.join(","),
-    });
-  }
-
-  return entries;
-}

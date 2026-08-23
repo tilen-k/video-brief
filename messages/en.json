@@ -43,7 +43,7 @@
   },
   "Onboarding": {
     "title": "A bit about how you learn",
-    "subtitle": "Optional details help VideoBrief pitch explanations at the right level. Skip anytime — you can fill gaps when you paste a video.",
+    "subtitle": "Optional details help VideoBrief pitch explanations at the right level. Skip anytime.",
     "optionalHint": "Every field is optional.",
     "yearOfBirth": "Year of birth",
     "yearOfBirthPlaceholder": "e.g. 2003",
@@ -51,6 +51,13 @@
     "educationLevel": "Education level",
     "subjects": "Subjects you want to learn about",
     "subjectsHint": "Pick any that apply. Other is fine if nothing fits.",
+    "summaryStyle": "Usual summary length",
+    "summaryStyleHint": "Used as the default when we ask how detailed a video summary should be.",
+    "summaryStyles": {
+      "brief": "Brief",
+      "moderate": "Moderate",
+      "extensive": "Extensive"
+    },
     "educationLevels": {
       "middle_school": "Middle school",
       "high_school": "High school",
@@ -83,7 +90,7 @@
     "addTitle": "Add a video",
     "pasteLabel": "YouTube URL",
     "pastePlaceholder": "Paste a YouTube link…",
-    "pasteHint": "English captions required. Analysis starts after the transcript loads.",
+    "pasteHint": "English captions required. You'll open the workspace while captions load.",
     "add": "Add video",
     "adding": "Adding…",
     "addErrorTitle": "Couldn't add video",
@@ -94,7 +101,7 @@
     "fetching": "Loading captions",
     "understanding": "Understanding",
     "generating": "Writing sections",
-    "awaiting": "Needs input",
+    "awaiting": "Almost ready",
     "complete": "Ready",
     "failed": "Failed"
   },
@@ -108,8 +115,28 @@
       "understanding": "Understanding the video",
       "summary": "Writing your sections"
     },
-    "awaitingPlaceholder": "A few questions will appear here when needed.",
+    "awaitingPlaceholder": "We'll write your sections next.",
     "completePlaceholder": "Sections will appear here.",
+    "prefsTitle": "Before we write your sections",
+    "prefsHint": "Optional — skip anything you don't want to answer.",
+    "prefsFamiliarity": "How familiar are you with {topic}?",
+    "prefsTopicFallback": "this topic",
+    "prefsLength": "How detailed should the summary be?",
+    "prefsSkip": "Skip for now",
+    "prefsContinue": "Continue",
+    "prefsSkipOption": "—",
+    "familiarityLevels": {
+      "not_familiar": "Not familiar",
+      "somewhat": "Somewhat",
+      "very": "Very"
+    },
+    "lengthLevels": {
+      "brief": "Brief",
+      "moderate": "Moderate",
+      "extensive": "Extensive"
+    },
+    "nonEduDisclaimer": "This doesn't look like a learning video. The sections still follow the transcript, with less educational framing.",
+    "sectionsLabel": "Sections",
     "failedTitle": "Couldn't analyze this video",
     "failedFallback": "Something went wrong while reading this video.",
     "failedHint": "Paste the link again from the library to retry.",

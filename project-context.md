@@ -8,18 +8,19 @@ Short overview for agents and humans. Full detail: `project-spec.md`. Agent rule
 
 **Education-first** personalized YouTube summaries, synchronized with the video.
 
-Paste a URL → classify whether it is educational → for educational videos, ask only missing knowledge questions → generate **sections** explained with the user's context → watch with synced highlight/seek. Not a chatbot. Not a generic summarizer.
+Paste a URL → immediately open the workspace → fetch metadata + English transcript → classify → optional **fixed** per-video prefs → generate **section bodies** from profile + those prefs → watch with synced highlight/seek. Not a chatbot. Not a generic summarizer.
 
-Non-educational videos are still allowed: soft disclaimer, **no** paste-time questions, sectioned summary that still uses global context when present.
+Non-educational videos still get a sectioned summary (soft disclaimer). No familiarity question.
 
 ```text
 Landing → Auth → Onboarding → Library → Paste URL
-  → Metadata + English transcript
-  → Classify (isEducational + domains/prereqs; YouTube category as hint)
-  → If educational: optional select questions (max 3) for missing knowledge
-       + show context that will be used
-  → If not: soft disclaimer → skip questions
-  → Personalized section summaries → Video workspace (sync + seek)
+  → Stub library row + redirect to workspace
+  → Fetch metadata + English transcript (fail in workspace)
+  → Classify (isEducational, topic; YouTube category as hint)
+  → If educational: optional familiarity (3 levels) when a topic is known
+  → Optional summary length (3 levels; default from profile summary_style)
+  → Generate sections { title, startTime, endTime, body }
+  → Workspace: highlight active section from currentTime; click seeks
 ```
 
 ## Locked stack
@@ -32,57 +33,79 @@ Landing → Auth → Onboarding → Library → Paste URL
 | Fonts | Newsreader + Source Sans 3 |
 | Auth | Supabase email/password + Google; soft email confirm |
 | DB | Supabase Postgres + **Drizzle** + RLS |
-| AI | Vercel AI SDK → **Claude Haiku**; Zod-validate outputs |
+| AI | Vercel AI SDK behind `AIProvider`; default model in `analysisConfig` (OpenRouter) |
 | YouTube | `youtubei.js` (EN captions required), `react-youtube` |
 | Tests | Vitest unit only (no E2E in MVP) |
 
-**Not in MVP:** chat, uploads, Whisper, Redis, workers, tRPC, Prisma, Stripe, PostHog, non-English UI/captions.
+**Not in MVP:** chat, uploads, Whisper, Redis, workers, tRPC, Prisma, Stripe, PostHog, non-English UI/captions, LLM-invented knowledge questions, topic/video EAV context, shared cross-user transcript/classification cache.
 
 ## Onboarding (all optional)
 
-Stable educational baseline — skip allowed:
+Stable profile — skip allowed. Typed fields (not open key/value):
 
 | Field | Notes |
 |-------|--------|
-| Year of birth | Number → store `yyyy`; framing only (not gating) |
+| Year of birth | Number → store `yyyy`; framing only |
 | Education level | Enum: `middle_school`, `high_school`, `undergrad`, `grad`, `bootcamp`, `self_taught`, `other` |
 | Subjects | Fixed chips + `other` last; no free-text for Other in MVP |
+| Summary style | Optional global default for length (`brief` / `moderate` / `extensive`); settings later if not collected at onboarding |
 
 Suggested subject chips: Math, Physics, Chemistry, Biology, Computer Science, Engineering, Economics, History, Languages, Other.
 
-## Classification
+## Classification (stage 1)
 
-LLM structured stage (Zod-validated), persisted on shared video:
+Cheap structured call. **No** section skeleton, **no** dynamic questions.
 
 ```text
-isEducational, confidence, domains[], prerequisites[], youtubeCategoryId?
+isEducational, confidence, topic?
 ```
 
-YouTube `categoryId` is a **hint**, not the decision. If confidence is ambiguous, **prefer educational** so the core learning loop is not starved.
+YouTube `categoryId` is a **hint**. Ambiguous → **prefer educational**.
 
-## Context scopes
+## Per-video prefs (not global context)
 
-Global · Topic · Video-specific.
+Product-owned selects, skippable. Persist on the **analysis row** (not the profile):
 
-- Educational: ask only useful **missing** knowledge questions; **select-only**, **max 3**; zero answers still produce a summary.
-- Non-educational: no questions; still use global context in the summary; soft disclaimer.
+- **Familiarity** (educational + topic known): How familiar with {topic}? `not_familiar` / `somewhat` / `very`
+- **Length** (when appropriate): How detailed? `brief` / `moderate` / `extensive` — default from profile `summary_style` or `moderate`
 
-## Hybrid data
+User may answer zero, some, or all. Summary still generates.
 
-- **Shared** by YouTube id: metadata, English transcript, classification + section skeleton (non-personalized)
-- **Per-user:** library, context, personalized section explanations
+## Generate (stage 2)
+
+After prefs (or skip). One call returns sections with **bodies**:
+
+```text
+{ title, startTime, endTime, body }[]
+```
+
+Uses transcript subset + profile + per-video prefs. Personalization changes depth/framing — does not invent unrelated facts. Non-edu still uses profile when present.
+
+## Data
+
+All **per-user**. No shared video/transcript/classification cache.
+
+- `user_videos` — metadata + English transcript (re-paste refreshes)
+- `personalized_analyses` — state machine, classify result, per-video prefs, generated sections
+- Profile / preferences — typed columns: YOB, education level, subjects, summary style
 
 ## Architecture
 
-Thin Server Actions → domain pipeline (`analyzeVideo`, etc.) → Drizzle / TranscriptProvider / AIProvider. Pipeline must be movable to a worker later without rewrite. Transcript provider must be swappable if Vercel IPs get blocked (no proxy on day one).
+Thin Server Actions → domain pipeline → Drizzle / TranscriptProvider / AIProvider (`classifyVideo`, `generateSections`). Pipeline must be movable to a worker later. Transcript provider swappable if Vercel IPs get blocked.
+
+States (keep simple):
+
+`pending` → `fetching` → `classifying` → `awaiting` → `generating` → `complete` | `failed`
+
+Skip `awaiting` when there is nothing to ask (non-edu, or neither question is appropriate).
 
 ## Workspace
 
-Video + section panel. Sections may be a single section for short videos. Active section highlights from `currentTime`; click seeks. No AI calls during playback.
+Video + section panel. Active section from `currentTime`; click seeks. No AI during playback.
 
 ## MVP done when
 
-User can sign up, onboard lightly (educational baseline), paste a real YouTube URL with English captions, see edu vs non-edu behavior, optionally answer up to 3 select questions when educational, and watch with synced personalized sections — then reopen from the library.
+User can sign up, onboard lightly, paste a YouTube URL with English captions, land on the workspace immediately, see edu vs non-edu behavior, optionally set familiarity/length, and watch **personalized section bodies** with highlight + seek — then reopen from the library.
 
 ## Guiding question
 

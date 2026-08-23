@@ -7,11 +7,11 @@ alwaysApply: true
 
 Brand: **VideoBrief** · **Domain:** videobrief.app
 
-**Education-first** personalized YouTube summaries synced with the video. Not a generic AI summarizer. Not a chatbot. Non-educational videos still get a sectioned summary (soft disclaimer, no knowledge questions).
+**Education-first** personalized YouTube summaries synced with the video. Not a generic AI summarizer. Not a chatbot. Non-educational videos still get a sectioned summary (soft disclaimer, no familiarity question).
 
 ## Core loop
 
-Paste URL → metadata + EN transcript → classify (`isEducational`) → if educational: optional select questions (max 3) for missing knowledge + show applied context → personalized **sections** → watch with sync highlight/seek.
+Paste URL → stub + **redirect to workspace** → fetch metadata + EN transcript → classify (`isEducational` + topic) → optional fixed per-video prefs (familiarity, length) → generate sections **with bodies** → watch with sync highlight/seek.
 
 ## Guiding question
 
@@ -19,11 +19,11 @@ Does this help turn a YouTube video into a better personalized understanding for
 
 ## MVP includes
 
-Landing, auth (email/password + Google), soft email confirm, lightweight **educational** onboarding (YOB, education level, subject chips — all optional), library, YouTube ingest (per-user `user_videos`, re-paste refreshes), English timestamped captions, AI classification + analysis (Haiku), dynamic optional context questions (**educational only**, select, max 3), persistent context (global / topic / video), video workspace with synced sections, soft non-edu disclaimer, dark-default UI, EN-only i18n scaffolding, unit tests.
+Landing, auth (email/password + Google), soft email confirm, lightweight **educational** onboarding (YOB, education level, subject chips, optional summary style — all optional), library, YouTube ingest (per-user `user_videos`, re-paste refreshes; fetch **after** workspace redirect), English timestamped captions, AI classify + generate (via `AIProvider`), **fixed** optional per-video selects (familiarity + length, skip always allowed), typed profile prefs, video workspace with section **bodies** + highlight/seek, soft non-edu disclaimer, dark-default UI, EN-only i18n scaffolding, unit tests.
 
 ## MVP excludes
 
-Chat, uploads, Whisper/audio transcription, non-YouTube, recommendations, knowledge graph, cross-video search, quizzes, social/sharing, Stripe, Redis, background workers, tRPC, PostHog/analytics, E2E tests, non-English UI or captions.
+Chat, uploads, Whisper/audio transcription, non-YouTube, recommendations, knowledge graph, cross-video search, quizzes, social/sharing, Stripe, Redis, background workers, tRPC, PostHog/analytics, E2E tests, non-English UI or captions, **LLM-invented knowledge questions**, topic/video EAV context, shared cross-user transcript/classification cache.
 
 ## UX
 
@@ -32,10 +32,10 @@ Editorial, premium, content-first, typography-led. AI stays invisible in the wor
 ## Context rules
 
 - Onboarding stays lightweight; every field optional.
-- Onboarding fields: year of birth (`yyyy`, framing only), education-level enum, subject chips (fixed list + `other`).
-- Ask paste-time questions only when `isEducational`; skip when not.
-- Ask only questions that materially improve the summary and are not already answered; select-only; max 3.
+- Profile fields (typed, not open key/value): year of birth (`yyyy`, framing), education-level enum, subject chips (fixed list + `other`), optional `summary_style` (`brief` / `moderate` / `extensive`).
+- Per-video prefs live on the **analysis row**, not the profile: familiarity (3 levels, educational + topic known) and summary length (3 levels; default from `summary_style` or moderate).
+- Ask paste-time questions only when appropriate; skip familiarity when not educational or topic unknown; skip always allowed.
 - User may answer zero, some, or all; summary must still work.
-- Non-edu summaries still use global context when present; soft disclaimer.
-- Persist useful answers at the correct scope (global / topic / video-specific).
+- Non-edu summaries still use profile when present; soft disclaimer; no familiarity question.
 - Ambiguous classification → prefer educational.
+- Classify does **not** emit section skeleton or dynamic questions. Generate emits `{ title, startTime, endTime, body }`.

@@ -59,9 +59,9 @@ Recommendation
 ## VideoBrief specifics
 
 - Prefer testing Zod schemas, domain helpers, pure transforms; mock `AIProvider` / `TranscriptProvider` at the interface.
-- No live Anthropic/YouTube in unit tests.
+- No live OpenRouter/YouTube in unit tests.
 - No Playwright/E2E. UI is human-tested; do not use Cursor browser tools unless asked.
-- Soft email confirm, onboarding optional fields, analysis failure states, cache-hit ingest paths are high-value adversarial cases when relevant.
+- Soft email confirm, onboarding optional fields, workspace fetch/classify failures, and skip-prefs generate paths are high-value adversarial cases when relevant.
 
 ## Tone
 

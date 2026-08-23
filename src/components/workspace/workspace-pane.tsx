@@ -4,7 +4,6 @@ import { AlertCircleIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { AnalysisChecklist } from "@/components/shared/status/analysis-checklist";
-import { EmptyState } from "@/components/shared/list/empty-state";
 import { Panel } from "@/components/shared/list/panel";
 import {
   analysisChecklist,
@@ -13,11 +12,20 @@ import {
 import type { WorkspaceVideo } from "@/domain/workspace/get-workspace-video";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
+import { VideoPrefsForm } from "./video-prefs-form";
+import { WorkspaceSections } from "./workspace-sections";
+
 type WorkspacePaneProps = {
   video: WorkspaceVideo;
+  currentTime: number;
+  onSeek: (startTime: number) => void;
 };
 
-export function WorkspacePane({ video }: WorkspacePaneProps) {
+export function WorkspacePane({
+  video,
+  currentTime,
+  onSeek,
+}: WorkspacePaneProps) {
   const t = useTranslations("Workspace");
   const checklistT = useTranslations("Workspace.checklist");
   const kind = paneKind(video.status);
@@ -38,11 +46,24 @@ export function WorkspacePane({ video }: WorkspacePaneProps) {
   }
 
   if (kind === "awaiting") {
-    return <EmptyState>{t("awaitingPlaceholder")}</EmptyState>;
+    return <VideoPrefsForm video={video} />;
   }
 
   if (kind === "complete") {
-    return <EmptyState>{t("completePlaceholder")}</EmptyState>;
+    return (
+      <div className="flex flex-col gap-4">
+        {video.classification && !video.classification.isEducational ? (
+          <p className="text-sm text-muted-foreground">{t("nonEduDisclaimer")}</p>
+        ) : null}
+        <WorkspaceSections
+          sections={video.sections}
+          emptyLabel={t("completePlaceholder")}
+          listLabel={t("sectionsLabel")}
+          currentTime={currentTime}
+          onSeek={onSeek}
+        />
+      </div>
+    );
   }
 
   return (

@@ -20,18 +20,20 @@ YouTube URLs only. No uploads. No audio transcription.
 
 Prefer/require **English** caption tracks. If no accessible English timestamped transcript → user-facing error; do not fall back to Whisper or other languages.
 
-Preserve segment timestamps for chapter sync.
+Preserve segment timestamps for section sync.
 
 ## Metadata
 
 Fetch title, channel, duration, thumbnail via the same provider boundary. Persist on **`user_videos`** per user; refresh on every ingest/re-paste.
 
+Paste creates a stub and **redirects to the workspace immediately**. Metadata + transcript fetch run there; YouTube failures surface on the workspace failed pane.
+
 ## Player
 
 Use **`react-youtube`** for the workspace (IFrame API):
 
-- Poll or listen for current time → highlight active chapter
-- Chapter click → `seekTo`
+- Poll or listen for current time → highlight active section
+- Section click → `seekTo`
 - Sync is client-only; no AI during playback
 
 Do not use lite-embed for the workspace (insufficient control).

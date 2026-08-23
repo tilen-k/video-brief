@@ -15,6 +15,7 @@ function formToOnboardingInput(formData: FormData) {
     yearOfBirth: formData.get("yearOfBirth") ?? undefined,
     educationLevel: formData.get("educationLevel") ?? undefined,
     subjects: formData.getAll("subjects"),
+    summaryStyle: formData.get("summaryStyle") ?? undefined,
   });
 }
 

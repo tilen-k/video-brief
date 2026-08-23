@@ -3,10 +3,9 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
-import { ingestYoutubeVideo } from "@/domain/ingest/ingest-youtube-video";
+import { startYoutubeIngest } from "@/domain/ingest/ingest-youtube-video";
 import { getOnboardingCompleted } from "@/domain/onboarding";
 import { createClient } from "@/lib/supabase/server";
-import { TranscriptProviderError } from "@/lib/youtube/transcript-provider";
 import { addVideoInputSchema } from "@/lib/validations/library";
 
 export type AddVideoActionState = {
@@ -46,20 +45,13 @@ export async function addVideo(
 
   let result;
   try {
-    result = await ingestYoutubeVideo({
+    result = await startYoutubeIngest({
       userId: user.id,
       youtubeId: parsed.data.youtubeId,
     });
   } catch (error) {
     revalidatePath("/library");
-
-    if (error instanceof TranscriptProviderError) {
-      return {
-        error: error.message,
-        errorCode: error.code,
-      };
-    }
-    console.error("ingestYoutubeVideo failed", error);
+    console.error("startYoutubeIngest failed", error);
     return {
       error: "Could not add this video. Try again.",
       errorCode: "provider_error",

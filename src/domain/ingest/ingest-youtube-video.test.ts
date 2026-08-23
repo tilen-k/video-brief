@@ -15,20 +15,26 @@ const mocks = vi.hoisted(() => {
   }));
   const insert = vi.fn(() => ({ values }));
 
-  const updateWhere = vi.fn().mockResolvedValue([]);
+  const updateReturning = vi.fn();
+  const updateWhere = vi.fn(() => ({ returning: updateReturning }));
   const set = vi.fn(() => ({ where: updateWhere }));
   const update = vi.fn(() => ({ set }));
 
   const limit = vi.fn();
   const where = vi.fn(() => ({ limit }));
   const orderBy = vi.fn().mockResolvedValue([]);
-  const from = vi.fn(() => ({ where, leftJoin: vi.fn(() => ({ where, orderBy })) }));
+  const from = vi.fn(() => ({
+    where,
+    leftJoin: vi.fn(() => ({ where, orderBy })),
+  }));
   const select = vi.fn(() => ({ from }));
 
   return {
     insert,
     update,
+    set,
     returning,
+    updateReturning,
     onConflictDoUpdate,
     select,
   };
@@ -54,7 +60,10 @@ vi.mock("@/lib/youtube/youtubei-transcript-provider", () => ({
   }),
 }));
 
-import { ingestYoutubeVideo } from "@/domain/ingest/ingest-youtube-video";
+import {
+  fetchYoutubeVideo,
+  startYoutubeIngest,
+} from "@/domain/ingest/ingest-youtube-video";
 
 const sampleTranscript: EnglishTranscriptResult = {
   metadata: {
@@ -75,60 +84,101 @@ function mockProvider(
   return { getEnglishTranscript: impl };
 }
 
-describe("ingestYoutubeVideo", () => {
+describe("startYoutubeIngest", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it("always fetches from provider and lands on analyzing", async () => {
-    const getEnglishTranscript = vi.fn(async () => sampleTranscript);
-    const provider = mockProvider(getEnglishTranscript);
-
+  it("stubs a library row as pending without calling YouTube", async () => {
     mocks.returning
       .mockResolvedValueOnce([{ id: "uv-1" }])
-      .mockResolvedValueOnce([
-        { id: "analysis-1", status: "fetching_transcript" },
-      ]);
+      .mockResolvedValueOnce([{ id: "analysis-1", status: "pending" }]);
 
-    const result = await ingestYoutubeVideo(
+    const provider = mockProvider(vi.fn());
+    const result = await startYoutubeIngest(
       { userId: "user-1", youtubeId: "dQw4w9WgXcQ" },
       { transcriptProvider: provider },
     );
 
+    expect(provider.getEnglishTranscript).not.toHaveBeenCalled();
+    expect(result).toEqual({
+      userVideoId: "uv-1",
+      analysisId: "analysis-1",
+      status: "pending",
+    });
+  });
+});
+
+describe("fetchYoutubeVideo", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("always fetches from provider and lands on classifying", async () => {
+    const getEnglishTranscript = vi.fn(async () => sampleTranscript);
+    const provider = mockProvider(getEnglishTranscript);
+
+    mocks.updateReturning.mockResolvedValueOnce([
+      { id: "analysis-1", status: "classifying" },
+    ]);
+    mocks.returning.mockResolvedValueOnce([{ id: "uv-1" }]);
+
+    const result = await fetchYoutubeVideo(
+      { userId: "user-1", youtubeId: "dQw4w9WgXcQ", userVideoId: "uv-1" },
+      { transcriptProvider: provider },
+    );
+
     expect(getEnglishTranscript).toHaveBeenCalledTimes(1);
-    expect(getEnglishTranscript).toHaveBeenCalledWith("dQw4w9WgXcQ");
-    expect(result.status).toBe("analyzing");
+    expect(result.status).toBe("classifying");
     expect(result.userVideoId).toBe("uv-1");
-    expect(mocks.update).toHaveBeenCalled();
   });
 
   it("calls provider again on re-paste (no shared cache skip)", async () => {
     const getEnglishTranscript = vi.fn(async () => sampleTranscript);
     const provider = mockProvider(getEnglishTranscript);
 
+    mocks.updateReturning
+      .mockResolvedValueOnce([{ id: "analysis-1", status: "classifying" }])
+      .mockResolvedValueOnce([{ id: "analysis-1", status: "classifying" }]);
     mocks.returning
       .mockResolvedValueOnce([{ id: "uv-1" }])
-      .mockResolvedValueOnce([
-        { id: "analysis-1", status: "fetching_transcript" },
-      ])
-      .mockResolvedValueOnce([{ id: "uv-1" }])
-      .mockResolvedValueOnce([
-        { id: "analysis-1", status: "fetching_transcript" },
-      ]);
+      .mockResolvedValueOnce([{ id: "uv-1" }]);
 
-    await ingestYoutubeVideo(
-      { userId: "user-1", youtubeId: "dQw4w9WgXcQ" },
-      { transcriptProvider: provider },
-    );
-    await ingestYoutubeVideo(
-      { userId: "user-1", youtubeId: "dQw4w9WgXcQ" },
-      { transcriptProvider: provider },
-    );
+    const input = {
+      userId: "user-1",
+      youtubeId: "dQw4w9WgXcQ",
+      userVideoId: "uv-1",
+    };
+    await fetchYoutubeVideo(input, { transcriptProvider: provider });
+    await fetchYoutubeVideo(input, { transcriptProvider: provider });
 
     expect(getEnglishTranscript).toHaveBeenCalledTimes(2);
   });
 
-  it("returns failed when English captions are missing but a row was written", async () => {
+  it("only promotes fetching analyses and clears classification", async () => {
+    const provider = mockProvider(async () => sampleTranscript);
+
+    mocks.updateReturning.mockResolvedValueOnce([
+      { id: "analysis-1", status: "classifying" },
+    ]);
+    mocks.returning.mockResolvedValueOnce([{ id: "uv-1" }]);
+
+    await fetchYoutubeVideo(
+      { userId: "user-1", youtubeId: "dQw4w9WgXcQ", userVideoId: "uv-1" },
+      { transcriptProvider: provider },
+    );
+
+    expect(mocks.set).toHaveBeenCalledWith(
+      expect.objectContaining({
+        status: "classifying",
+        classification: null,
+        sections: [],
+      }),
+    );
+    expect(mocks.update).toHaveBeenCalled();
+  });
+
+  it("returns failed when English captions are missing but metadata exists", async () => {
     const provider = mockProvider(async () => {
       throw new TranscriptProviderError(
         "missing_english_captions",
@@ -137,12 +187,11 @@ describe("ingestYoutubeVideo", () => {
       );
     });
 
-    mocks.returning
-      .mockResolvedValueOnce([{ id: "uv-1" }])
-      .mockResolvedValueOnce([{ id: "analysis-1" }]);
+    mocks.updateReturning.mockResolvedValueOnce([{ id: "analysis-1" }]);
+    mocks.returning.mockResolvedValueOnce([{ id: "uv-1" }]);
 
-    const result = await ingestYoutubeVideo(
-      { userId: "user-1", youtubeId: "dQw4w9WgXcQ" },
+    const result = await fetchYoutubeVideo(
+      { userId: "user-1", youtubeId: "dQw4w9WgXcQ", userVideoId: "uv-1" },
       { transcriptProvider: provider },
     );
 
@@ -151,10 +200,10 @@ describe("ingestYoutubeVideo", () => {
       analysisId: "analysis-1",
       status: "failed",
     });
-    expect(mocks.insert).toHaveBeenCalled();
+    expect(mocks.update).toHaveBeenCalled();
   });
 
-  it("does not create a row when metadata is unavailable", async () => {
+  it("marks the stub failed when metadata is unavailable", async () => {
     const provider = mockProvider(async () => {
       throw new TranscriptProviderError(
         "missing_english_captions",
@@ -162,13 +211,14 @@ describe("ingestYoutubeVideo", () => {
       );
     });
 
-    await expect(
-      ingestYoutubeVideo(
-        { userId: "user-1", youtubeId: "dQw4w9WgXcQ" },
-        { transcriptProvider: provider },
-      ),
-    ).rejects.toMatchObject({ code: "missing_english_captions" });
+    mocks.updateReturning.mockResolvedValueOnce([{ id: "analysis-1" }]);
 
-    expect(mocks.insert).not.toHaveBeenCalled();
+    const result = await fetchYoutubeVideo(
+      { userId: "user-1", youtubeId: "dQw4w9WgXcQ", userVideoId: "uv-1" },
+      { transcriptProvider: provider },
+    );
+
+    expect(result.status).toBe("failed");
+    expect(mocks.update).toHaveBeenCalled();
   });
 });

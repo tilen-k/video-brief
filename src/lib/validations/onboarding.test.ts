@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 
 import {
   onboardingInputSchema,
-  onboardingToContextEntries,
 } from "./onboarding";
 
 describe("onboardingInputSchema", () => {
@@ -16,6 +15,7 @@ describe("onboardingInputSchema", () => {
       yearOfBirth: 2003,
       educationLevel: "undergrad",
       subjects: ["math", "computer_science"],
+      summaryStyle: "brief",
     });
     expect(result.success).toBe(true);
   });
@@ -35,12 +35,14 @@ describe("onboardingInputSchema", () => {
       yearOfBirth: "",
       educationLevel: "",
       subjects: [],
+      summaryStyle: "",
     });
     expect(result.success).toBe(true);
     if (result.success) {
       expect(result.data.yearOfBirth).toBeUndefined();
       expect(result.data.educationLevel).toBeUndefined();
       expect(result.data.subjects).toBeUndefined();
+      expect(result.data.summaryStyle).toBeUndefined();
     }
   });
 
@@ -66,23 +68,10 @@ describe("onboardingInputSchema", () => {
     });
     expect(result.success).toBe(false);
   });
-});
 
-describe("onboardingToContextEntries", () => {
-  it("maps educational fields and omits empties", () => {
-    const parsed = onboardingInputSchema.parse({
-      yearOfBirth: 2001,
-      educationLevel: "high_school",
-      subjects: ["math", "other", "math"],
-    });
-    expect(onboardingToContextEntries(parsed)).toEqual([
-      { key: "year_of_birth", value: "2001" },
-      { key: "education_level", value: "high_school" },
-      { key: "subjects", value: "math,other" },
-    ]);
-  });
-
-  it("returns no entries for full skip", () => {
-    expect(onboardingToContextEntries({})).toEqual([]);
+  it("rejects unknown summary style", () => {
+    expect(
+      onboardingInputSchema.safeParse({ summaryStyle: "novel" }).success,
+    ).toBe(false);
   });
 });

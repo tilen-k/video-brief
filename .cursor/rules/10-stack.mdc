@@ -26,8 +26,7 @@ alwaysApply: true
 ## AI & YouTube
 
 - Vercel AI SDK behind an `AIProvider` abstraction
-- Default model: **Claude Haiku** (latest via AI SDK)
-- Zod-validate all LLM structured output before persist
+- Default model: `analysisConfig` (OpenRouter). Zod-validate all structured LLM output before persist
 - Transcript/metadata: `youtubei.js` behind a swappable `TranscriptProvider`
 - Player: `react-youtube` (IFrame API — seek/time sync required)
 - English captions only; if missing → clear error (no Whisper)

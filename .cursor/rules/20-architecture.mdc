@@ -1,5 +1,5 @@
 ---
-description: Domain architecture, hybrid data model, and analysis pipeline boundaries
+description: Domain architecture, per-user data model, and analysis pipeline boundaries
 alwaysApply: true
 ---
 
@@ -13,7 +13,7 @@ Browser
       → domain/application logic (analysis pipeline lives here)
           → Drizzle / Supabase
           → TranscriptProvider (youtubei.js)
-          → AIProvider (Vercel AI SDK + Claude Haiku)
+          → AIProvider (Vercel AI SDK; model from analysisConfig)
 ```
 
 Server Actions authenticate, authorize, validate input, then call domain functions. **Do not** embed the analysis pipeline in actions or React components.
@@ -25,26 +25,35 @@ Structure domain code so it can later move behind a queue without rewrite. Do **
 Each library entry is one row per `(user_id, youtube_id)`:
 
 - `user_videos` — metadata + English transcript snapshot (refreshed on every ingest/re-paste)
-- `personalized_analyses` — analysis state machine (1:1 with `user_videos`)
+- `personalized_analyses` — state machine, classify result, per-video prefs, generated sections (1:1 with `user_videos`)
 
-Re-pasting the same URL **always refetches** from YouTube and upserts that user's row. There is **no shared global cache** of videos/transcripts across users.
+Re-pasting the same URL **always refetches** from YouTube and upserts that user's row. There is **no shared global cache** of videos/transcripts/classification across users.
 
-Also per-user:
+Profile (typed columns, not EAV): year of birth, education level, subjects, summary style. Settings can edit these later.
 
-- `user_context` / topic context / preferences
-- `video_context` (video-specific answers, later)
-- personalized sections / takeaways (later columns or tables)
+Per-video familiarity and summary length persist on the **analysis row**, not the profile.
 
-Classification (`isEducational`, domains, section skeleton) lands on the user video or analysis row in a later slice — not a shared `videos` table.
+## Ingest vs workspace
+
+Paste creates/upserts a stub and **redirects to the workspace immediately**. Metadata + transcript fetch, classify, prefs, and generate run from the workspace (same continue-kick pattern). YouTube failures surface on the workspace failed pane.
 
 ## Analysis states
 
-Keep the state machine simple, e.g.:
+Keep the state machine simple:
 
-`pending` → `fetching_transcript` → `analyzing` → `awaiting_context` → `generating_summary` → `complete` | `failed`
+`pending` → `fetching` → `classifying` → `awaiting` → `generating` → `complete` | `failed`
 
-- Skip `awaiting_context` when not educational (or when no useful questions remain).
+- Skip `awaiting` when there is nothing to ask (non-edu, or neither familiarity nor length is appropriate).
 - UI should communicate progress without leaking internals.
+
+## AIProvider
+
+```text
+classifyVideo     # isEducational, confidence, topic? — no skeleton, no dynamic questions
+generateSections  # { title, startTime, endTime, body }[] after prefs (or skip)
+```
+
+Domain owns the pipeline. Callers must not import a vendor SDK.
 
 ## Suggested folder sketch
 
@@ -61,4 +70,4 @@ src/
 
 ## Cost awareness
 
-Reuse intermediate structured analysis per user where possible; avoid re-sending full transcripts on LLM retries; skip known context questions; Haiku for all MVP LLM calls.
+Classify is a small JSON call. Generate is the expensive call (transcript subset + profile + per-video prefs). Do not send the full transcript twice. Cap generate output tokens. Model id lives in `analysisConfig`, not env.

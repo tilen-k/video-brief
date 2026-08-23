@@ -96,48 +96,136 @@ async function upsertUserVideoMetadata(
   return row;
 }
 
-async function upsertAnalysisFailed(
+async function markFetchOutcome(
   tx: TransactionClient,
   userId: string,
   userVideoId: string,
-  code: string,
-  message: string,
+  outcome:
+    | { status: "classifying" }
+    | { status: "failed"; code: string; message: string },
 ) {
   const [row] = await tx
-    .insert(personalizedAnalyses)
-    .values({
-      userId,
-      userVideoId,
-      status: "failed",
-      errorCode: code,
-      errorMessage: message,
+    .update(personalizedAnalyses)
+    .set({
+      status: outcome.status,
+      errorCode: outcome.status === "failed" ? outcome.code : null,
+      errorMessage: outcome.status === "failed" ? outcome.message : null,
+      classification: null,
+      sections: [],
+      updatedAt: new Date(),
     })
-    .onConflictDoUpdate({
-      target: personalizedAnalyses.userVideoId,
-      set: {
-        status: "failed",
-        errorCode: code,
-        errorMessage: message,
-        updatedAt: new Date(),
-      },
-    })
+    .where(
+      and(
+        eq(personalizedAnalyses.userVideoId, userVideoId),
+        eq(personalizedAnalyses.userId, userId),
+        eq(personalizedAnalyses.status, "fetching"),
+      ),
+    )
     .returning();
 
-  return row;
+  return row ?? null;
+}
+
+async function currentIngestResult(
+  tx: TransactionClient,
+  userId: string,
+  userVideoId: string,
+): Promise<IngestYoutubeVideoResult | null> {
+  const [row] = await tx
+    .select({
+      analysisId: personalizedAnalyses.id,
+      status: personalizedAnalyses.status,
+    })
+    .from(personalizedAnalyses)
+    .where(
+      and(
+        eq(personalizedAnalyses.userVideoId, userVideoId),
+        eq(personalizedAnalyses.userId, userId),
+      ),
+    )
+    .limit(1);
+
+  if (!row) {
+    return null;
+  }
+
+  return {
+    userVideoId,
+    analysisId: row.analysisId,
+    status: row.status,
+  };
 }
 
 /**
- * Fetch metadata + English transcript for this user and upsert user_videos.
- * Re-pasting the same URL always refetches and refreshes the row.
- * LLM classification starts later (success lands on `analyzing`).
+ * Create or refresh a stub library row and land on `pending`.
+ * YouTube fetch runs later from the workspace.
  */
-export async function ingestYoutubeVideo(
+export async function startYoutubeIngest(
   input: IngestYoutubeVideoInput,
   deps: IngestYoutubeVideoDeps = {},
 ): Promise<IngestYoutubeVideoResult> {
   const db = deps.db ?? createDb();
-  const provider = deps.transcriptProvider ?? getDefaultTranscriptProvider();
   const { userId, youtubeId } = input;
+
+  return db.transaction(async (tx) => {
+    const [userVideo] = await tx
+      .insert(userVideos)
+      .values({
+        userId,
+        youtubeId,
+        title: youtubeId,
+      })
+      .onConflictDoUpdate({
+        target: [userVideos.userId, userVideos.youtubeId],
+        set: {
+          updatedAt: new Date(),
+        },
+      })
+      .returning();
+
+    const [analysis] = await tx
+      .insert(personalizedAnalyses)
+      .values({
+        userId,
+        userVideoId: userVideo.id,
+        status: "pending",
+        errorCode: null,
+        errorMessage: null,
+        classification: null,
+        sections: [],
+      })
+      .onConflictDoUpdate({
+        target: personalizedAnalyses.userVideoId,
+        set: {
+          status: "pending",
+          errorCode: null,
+          errorMessage: null,
+          classification: null,
+          sections: [],
+          updatedAt: new Date(),
+        },
+      })
+      .returning();
+
+    return {
+      userVideoId: userVideo.id,
+      analysisId: analysis.id,
+      status: "pending" as const,
+    };
+  });
+}
+
+/**
+ * Fetch metadata + English transcript and move pending/fetching → classifying | failed.
+ * Re-pasting the same URL always refetches and refreshes the row.
+ */
+export async function fetchYoutubeVideo(
+  input: IngestYoutubeVideoInput & { userVideoId: string },
+  deps: IngestYoutubeVideoDeps = {},
+): Promise<IngestYoutubeVideoResult> {
+  const db = deps.db ?? createDb();
+  const provider = deps.transcriptProvider ?? getDefaultTranscriptProvider();
+  const { userId, youtubeId, userVideoId } = input;
 
   let fetchResult: Awaited<
     ReturnType<TranscriptProvider["getEnglishTranscript"]>
@@ -157,7 +245,20 @@ export async function ingestYoutubeVideo(
 
     if (providerError.metadata) {
       return db.transaction(async (tx) => {
-        const userVideo = await upsertUserVideoMetadata(
+        const analysis = await markFetchOutcome(tx, userId, userVideoId, {
+          status: "failed",
+          code: providerError.code,
+          message: providerError.message,
+        });
+        if (!analysis) {
+          const current = await currentIngestResult(tx, userId, userVideoId);
+          if (current) {
+            return current;
+          }
+          throw providerError;
+        }
+
+        await upsertUserVideoMetadata(
           tx,
           userId,
           youtubeId,
@@ -171,27 +272,61 @@ export async function ingestYoutubeVideo(
           [],
           "en",
         );
-        const analysis = await upsertAnalysisFailed(
-          tx,
-          userId,
-          userVideo.id,
-          providerError.code,
-          providerError.message,
-        );
 
         return {
-          userVideoId: userVideo.id,
+          userVideoId,
           analysisId: analysis.id,
           status: "failed" as const,
         };
       });
     }
 
+    const [failed] = await db
+      .update(personalizedAnalyses)
+      .set({
+        status: "failed",
+        errorCode: providerError.code,
+        errorMessage: providerError.message,
+        classification: null,
+        sections: [],
+        updatedAt: new Date(),
+      })
+      .where(
+        and(
+          eq(personalizedAnalyses.userVideoId, userVideoId),
+          eq(personalizedAnalyses.userId, userId),
+          eq(personalizedAnalyses.status, "fetching"),
+        ),
+      )
+      .returning();
+
+    if (failed) {
+      return {
+        userVideoId,
+        analysisId: failed.id,
+        status: "failed",
+      };
+    }
+
     throw providerError;
   }
 
   return db.transaction(async (tx) => {
-    const userVideo = await upsertUserVideoMetadata(
+    const analysis = await markFetchOutcome(tx, userId, userVideoId, {
+      status: "classifying",
+    });
+    if (!analysis) {
+      const current = await currentIngestResult(tx, userId, userVideoId);
+      if (current) {
+        return current;
+      }
+      throw new TranscriptProviderError(
+        "provider_error",
+        "Could not update analysis after fetching the transcript",
+      );
+    }
+
+    await upsertUserVideoMetadata(
       tx,
       userId,
       youtubeId,
@@ -206,45 +341,10 @@ export async function ingestYoutubeVideo(
       fetchResult.language,
     );
 
-    const [analysis] = await tx
-      .insert(personalizedAnalyses)
-      .values({
-        userId,
-        userVideoId: userVideo.id,
-        status: "fetching_transcript",
-        errorCode: null,
-        errorMessage: null,
-      })
-      .onConflictDoUpdate({
-        target: personalizedAnalyses.userVideoId,
-        set: {
-          status: "fetching_transcript",
-          errorCode: null,
-          errorMessage: null,
-          updatedAt: new Date(),
-        },
-      })
-      .returning();
-
-    await tx
-      .update(personalizedAnalyses)
-      .set({
-        status: "analyzing",
-        errorCode: null,
-        errorMessage: null,
-        updatedAt: new Date(),
-      })
-      .where(
-        and(
-          eq(personalizedAnalyses.id, analysis.id),
-          eq(personalizedAnalyses.userId, userId),
-        ),
-      );
-
     return {
-      userVideoId: userVideo.id,
+      userVideoId,
       analysisId: analysis.id,
-      status: "analyzing" as const,
+      status: "classifying" as const,
     };
   });
 }

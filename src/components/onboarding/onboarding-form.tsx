@@ -28,6 +28,7 @@ import { SubjectChip } from "@/components/shared/form/subject-chip";
 import {
   EDUCATION_LEVELS,
   SUBJECTS,
+  SUMMARY_STYLES,
   maxYearOfBirth,
 } from "@/lib/validations/onboarding-options";
 
@@ -95,6 +96,25 @@ export function OnboardingForm() {
               ))}
             </div>
           </FieldSet>
+
+          <Field>
+            <FieldLabel htmlFor="summaryStyle">{t("summaryStyle")}</FieldLabel>
+            <NativeSelect
+              id="summaryStyle"
+              name="summaryStyle"
+              defaultValue=""
+              disabled={pending}
+              className="w-full"
+            >
+              <NativeSelectOption value="">—</NativeSelectOption>
+              {SUMMARY_STYLES.map((style) => (
+                <NativeSelectOption key={style} value={style}>
+                  {t(`summaryStyles.${style}`)}
+                </NativeSelectOption>
+              ))}
+            </NativeSelect>
+            <FieldDescription>{t("summaryStyleHint")}</FieldDescription>
+          </Field>
 
           <FieldDescription>{t("optionalHint")}</FieldDescription>
         </FieldGroup>

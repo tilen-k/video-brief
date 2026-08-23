@@ -17,7 +17,7 @@ Your job is to design the right shape for a feature **before** implementation. D
 Apply (do not paste or invent competing rules):
 
 - `.cursor/rules/00-product.mdc` — MVP scope / excludes
-- `.cursor/rules/20-architecture.mdc` — layers, hybrid data, analysis states
+- `.cursor/rules/20-architecture.mdc` — layers, per-user data, analysis states
 - `.cursor/rules/10-stack.mdc` — allowed stack
 - Relevant skills under `.cursor/skills/` when one already encodes the flow
 
@@ -25,7 +25,7 @@ Apply (do not paste or invent competing rules):
 
 1. Restate the feature in one sentence and the acceptance criteria you inferred.
 2. Inspect existing `src/domain/`, `src/db/schema.ts`, actions, and matching skills.
-3. Decide boundaries: Server Action vs route, domain vs UI, shared vs per-user data.
+3. Decide boundaries: Server Action vs route, domain vs UI, per-user data (never introduce a shared video cache unless the product explicitly changes).
 4. Return a concrete plan the main agent can implement.
 
 ## Output format
@@ -36,7 +36,7 @@ ARCHITECTURE PLAN — <feature>
 Boundaries
 - …
 
-Data (shared vs per-user)
+Data (per-user)
 - …
 
 Domain / states
@@ -59,8 +59,11 @@ Open questions (ask user if blocking)
 ## VideoBrief checks (always)
 
 - Thin Server Actions: auth → Zod → domain. No pipeline in actions or React.
-- Hybrid model: shared `videos` / `video_transcripts` by YouTube id; per-user library, context, personalized analysis.
-- Analysis state machine stays simple; UI does not leak internals.
+- Per-user only: `user_videos` + `personalized_analyses`. No shared cross-user video/transcript/classification cache.
+- Typed profile columns (not EAV). Per-video familiarity/length live on the analysis row.
+- `AIProvider`: `classifyVideo` + `generateSections`. Classify does not emit skeleton or LLM questions.
+- Paste stubs then redirects; fetch/classify/prefs/generate run in the workspace.
+- Analysis state machine stays simple (`pending` → `fetching` → `classifying` → `awaiting` → `generating` → `complete` | `failed`); UI does not leak internals.
 - No Redis, workers, tRPC, Prisma, Whisper, chat, Playwright, or non-EN captions in MVP.
 - Prefer extending an existing skill/path over a parallel abstraction.
 - Structure domain so a queue could wrap it later — but do not add a queue now.

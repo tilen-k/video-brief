@@ -3,9 +3,16 @@ import { and, eq } from "drizzle-orm";
 import { createDb, type Db } from "@/db";
 import {
   personalizedAnalyses,
+  profiles,
   userVideos,
   type AnalysisStatus,
+  type ClassificationSnapshot,
+  type FamiliarityLevel,
+  type GeneratedSection,
+  type SummaryStyle,
 } from "@/db/schema";
+import { defaultSummaryLength } from "@/domain/analysis/prefs";
+import { prefsToAsk } from "@/domain/analysis/prefs-to-ask";
 
 export type WorkspaceVideo = {
   userVideoId: string;
@@ -15,7 +22,18 @@ export type WorkspaceVideo = {
   status: AnalysisStatus;
   errorCode: string | null;
   errorMessage: string | null;
+  classification: ClassificationSnapshot | null;
+  familiarity: FamiliarityLevel | null;
+  summaryLength: SummaryStyle | null;
+  defaultLength: SummaryStyle;
+  askFamiliarity: boolean;
+  askLength: boolean;
+  sections: GeneratedSection[];
 };
+
+function asSections(value: unknown): GeneratedSection[] {
+  return Array.isArray(value) ? (value as GeneratedSection[]) : [];
+}
 
 export async function getWorkspaceVideo(
   userId: string,
@@ -33,8 +51,14 @@ export async function getWorkspaceVideo(
       status: personalizedAnalyses.status,
       errorCode: personalizedAnalyses.errorCode,
       errorMessage: personalizedAnalyses.errorMessage,
+      classification: personalizedAnalyses.classification,
+      familiarity: personalizedAnalyses.familiarity,
+      summaryLength: personalizedAnalyses.summaryLength,
+      sections: personalizedAnalyses.sections,
+      summaryStyle: profiles.summaryStyle,
     })
     .from(userVideos)
+    .innerJoin(profiles, eq(profiles.id, userVideos.userId))
     .leftJoin(
       personalizedAnalyses,
       and(
@@ -51,6 +75,9 @@ export async function getWorkspaceVideo(
     return null;
   }
 
+  const classification = row.classification ?? null;
+  const asked = prefsToAsk(classification);
+
   return {
     userVideoId: row.userVideoId,
     youtubeId: row.youtubeId,
@@ -59,5 +86,12 @@ export async function getWorkspaceVideo(
     status: (row.status ?? "pending") as AnalysisStatus,
     errorCode: row.errorCode,
     errorMessage: row.errorMessage,
+    classification,
+    familiarity: row.familiarity ?? null,
+    summaryLength: row.summaryLength ?? null,
+    defaultLength: defaultSummaryLength(row.summaryStyle),
+    askFamiliarity: asked.askFamiliarity,
+    askLength: asked.askLength,
+    sections: asSections(row.sections),
   };
 }

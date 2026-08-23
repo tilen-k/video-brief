@@ -20,7 +20,7 @@ alwaysApply: false
 
 - Co-locate `*.test.ts` next to code or under `__tests__/`
 - Assert validation failures and happy-path structured outputs
-- Do not hit live Anthropic/YouTube in unit tests
+- No live OpenRouter/YouTube in unit tests.
 - `pnpm test` must be runnable in CI later
 
 ## Out of scope for now

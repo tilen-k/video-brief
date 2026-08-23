@@ -21,7 +21,7 @@ Skip for copy, CSS, or single-field tweaks — implement directly instead.
 
 ### 0. Classify
 
-- **Needs architect** if it introduces or changes: domain boundaries, shared vs per-user data, analysis states, Server Action vs route, authz model, or AI pipeline stages.
+- **Needs architect** if it introduces or changes: domain boundaries, per-user data model, analysis states, Server Action vs route, authz model, or AI pipeline stages (`classifyVideo` / `generateSections`).
 - **Needs security** if it touches: auth, RLS, Server Actions writes, user-owned rows, service role, or AI/tool trust boundaries.
 - **UI changed** if pages/forms/layouts/i18n on screens change — the human tests that in the browser (see `.cursor/rules/90-ui-verification.mdc`). Agents do not.
 

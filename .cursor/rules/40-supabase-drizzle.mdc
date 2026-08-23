@@ -20,7 +20,8 @@ alwaysApply: false
 - UUID PKs with defaults where appropriate
 - `createdAt` / `updatedAt` on tables
 - Export inferred types (`$inferSelect` / `$inferInsert`)
-- Per-user model: `user_videos` (metadata + transcript); `personalized_analyses` for status
+- Per-user model: `user_videos` (metadata + transcript); `personalized_analyses` (status, prefs, generated sections)
+- Profile prefs: typed columns (YOB, education level, subjects, summary style) — not open key/value
 - Indexes on foreign keys and frequent filters (`userId`, `youtubeId`, analysis status)
 
 ## Migrations
