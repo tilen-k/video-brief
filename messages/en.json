@@ -101,6 +101,7 @@
   "Workspace": {
     "back": "Library",
     "statusLabel": "Status",
+    "checklistLabel": "Analysis progress",
     "checklist": {
       "found": "Video found",
       "transcript": "Captions loaded",
