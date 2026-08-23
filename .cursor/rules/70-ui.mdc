@@ -8,14 +8,30 @@ alwaysApply: false
 
 ## Look
 
-Editorial, premium, restrained, content-first. Workspace is the product centerpiece — not a SaaS card grid or chatbot shell.
+Editorial, premium, restrained, content-first on **marketing** surfaces. **App** surfaces (library, onboarding, workspace) are tool-first — paste/action prominent, scannable inventory, shared chrome. Workspace is the product centerpiece — not a SaaS card grid or chatbot shell.
 
 ## Stack
 
 - Tailwind + **shadcn/ui** + lucide-react
 - Forms: RHF + Zod + shadcn form controls
-- Theme: **next-themes**, default **dark**
+- Theme: **next-themes**, default **system** (dark-friendly tokens)
 - i18n: **next-intl**, locale **`en` only** for MVP (keep message files structured)
+
+## Component layout
+
+```text
+src/components/ui/       shadcn primitives only (add via shadcn CLI; variants OK inside)
+src/components/shared/   reusable VideoBrief UI (layout, status, sync, list, form)
+src/components/<feature>/ feature wiring; compose shared + ui
+```
+
+**Do not** put product-specific components in `ui/`. **Do not** add local `*Class()` maps or new semantic color combos in feature files — extend `ui/` variants or add `shared/` components.
+
+Before duplicating Tailwind for the same pattern twice → extract to `shared/` or extend `ui/`.
+
+## Tokens
+
+Implement colors in `src/app/globals.css` only. Light mode: neutral white/gray app surfaces; warmth reserved for `--sync` and marketing backgrounds. Dark mode may stay warmer.
 
 ## Fonts
 
@@ -26,13 +42,18 @@ Editorial, premium, restrained, content-first. Workspace is the product centerpi
 ## Composition
 
 - Landing: brand-first, one clear CTA, not dashboard clutter
+- Library: paste bar first, video inventory below; rows link to workspace unless failed
 - Onboarding: optional YOB number, education-level select, subject chips (+ Other)
 - Paste / analyze (educational): show context that will be used; up to 3 select questions; skip always allowed
 - Paste / analyze (non-educational): soft disclaimer; no knowledge questions
 - Workspace: video | summary/**sections** split; active section follows playback and highlights; click seeks
 - Prefer document-like summary panels over chat bubbles
-- Cards only when they contain real interaction
+- Use `shared/list/panel` for bordered surfaces; not ad-hoc card class strings in features
 
 ## Motion
 
-Intentional, minimal (2–3 purposeful motions max on marketing). Avoid glow spam and pill clusters.
+Intentional, minimal (2–3 purposeful motions max on marketing). Avoid glow spam and pill clusters. Respect `prefers-reduced-motion`.
+
+## Interactivity
+
+Buttons and links use `cursor-pointer`; disabled controls use `cursor-not-allowed` or `cursor-default`.

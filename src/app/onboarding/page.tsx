@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 
 import { OnboardingForm } from "@/components/onboarding/onboarding-form";
+import { AppShell } from "@/components/shared/layout/app-shell";
 import { getOnboardingCompleted } from "@/domain/onboarding";
 import { createClient } from "@/lib/supabase/server";
 
@@ -19,8 +20,8 @@ export default async function OnboardingPage() {
   }
 
   return (
-    <main className="mx-auto flex min-h-full w-full max-w-5xl flex-1 flex-col justify-center px-6 py-16">
+    <AppShell userEmail={user.email} showLogout={false}>
       <OnboardingForm />
-    </main>
+    </AppShell>
   );
 }

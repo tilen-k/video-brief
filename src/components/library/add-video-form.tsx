@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertCircleIcon } from "lucide-react";
+import { AlertCircleIcon, Link2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useActionState } from "react";
 
@@ -10,7 +10,6 @@ import {
 } from "@/lib/actions/library";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { Field, FieldDescription, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 
@@ -21,10 +20,13 @@ export function AddVideoForm() {
   const [state, action, pending] = useActionState(addVideo, initial);
 
   return (
-    <form action={action} className="flex w-full flex-col gap-4">
-      <Field>
-        <FieldLabel htmlFor="url">{t("pasteLabel")}</FieldLabel>
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
+    <form action={action} className="flex w-full flex-col gap-3">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+        <div className="relative min-w-0 flex-1">
+          <Link2
+            className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground"
+            aria-hidden
+          />
           <Input
             id="url"
             name="url"
@@ -34,15 +36,21 @@ export function AddVideoForm() {
             placeholder={t("pastePlaceholder")}
             disabled={pending}
             required
-            className="sm:flex-1"
+            className="h-11 pl-9"
+            aria-label={t("pasteLabel")}
           />
-          <Button type="submit" disabled={pending} className="sm:shrink-0">
-            {pending ? <Spinner /> : null}
-            {pending ? t("adding") : t("add")}
-          </Button>
         </div>
-        <FieldDescription>{t("pasteHint")}</FieldDescription>
-      </Field>
+        <Button
+          type="submit"
+          disabled={pending}
+          size="lg"
+          className="h-11 shrink-0 px-6 sm:min-w-[7rem]"
+        >
+          {pending ? <Spinner /> : null}
+          {pending ? t("adding") : t("add")}
+        </Button>
+      </div>
+      <p className="text-xs text-muted-foreground">{t("pasteHint")}</p>
 
       {state.error ? (
         <Alert variant="destructive">

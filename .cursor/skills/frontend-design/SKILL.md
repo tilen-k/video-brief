@@ -15,15 +15,16 @@ Approach this as the design lead at a small studio known for giving every client
 
 Before brainstorming, read `.cursor/rules/70-ui.mdc` and `project-spec.md` §34.
 
-- **Stack:** Next.js App Router, Tailwind, shadcn/ui, lucide, next-themes (dark default), next-intl (`messages/en.json`).
+- **Stack:** Next.js App Router, Tailwind, shadcn/ui, lucide, next-themes (system default), next-intl (`messages/en.json`).
 - **Fonts (locked):** Newsreader (display, `font-heading`), Source Sans 3 (body, `font-sans`). Do not swap font families — differentiate via type scale, weight, tracking, and hierarchy.
-- **Implement tokens** as shadcn CSS variables in `src/app/globals.css`, not ad-hoc CSS files. Prefer Tailwind utilities and shadcn components over bespoke selectors.
-- **Composition:** editorial, content-first; workspace = document + synced video, not chat or SaaS card grid.
+- **Implement tokens** as shadcn CSS variables in `src/app/globals.css`, not ad-hoc CSS files.
+- **Component layout:** `ui/` = shadcn only; `shared/` = reusable VideoBrief components; feature folders compose both. No local `*Class()` variant maps or ad-hoc semantic colors in features.
+- **Composition:** marketing = editorial; app routes = tool-first (library paste bar, inventory rows, shared chrome). Workspace = document + synced video.
 - **Motion:** 2–3 purposeful motions on marketing; respect `prefers-reduced-motion`.
 - **Copy:** all user-facing strings in `messages/en.json`.
 - **Verification:** agents run type-check / lint / test; human verifies UI in browser.
 
-VideoBrief defaults to dark. Avoid generic "dark SaaS + neon accent." Differentiate through editorial layout, the video↔section sync metaphor, and subject-grounded palette — not only a new accent hex.
+VideoBrief light mode uses neutral white/gray app surfaces; warmth is for `--sync` and marketing only. Dark can stay warmer. Avoid generic "dark SaaS + neon accent." Differentiate through editorial layout, the video↔section sync metaphor, and subject-grounded palette — not only a new accent hex.
 
 If the design plan conflicts with locked fonts or stack, revise the plan — do not override locked choices without explicit user approval.
 

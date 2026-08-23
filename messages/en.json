@@ -4,12 +4,11 @@
     "tagline": "Education-first YouTube summaries, synced to the video."
   },
   "Landing": {
-    "eyebrow": "Education-first summaries",
     "headline": "Turn any lecture into sections you can follow",
     "subtitle": "Paste a YouTube link. Get section summaries shaped for how you learn — synced as you watch.",
     "cta": "Get started",
     "secondary": "Log in",
-    "previewLabel": "Workspace preview",
+    "previewLabel": "Synced sections",
     "previewVideoTitle": "Introduction to neural networks",
     "previewActive": "Now playing",
     "previewSections": {
@@ -29,7 +28,9 @@
   },
   "Auth": {
     "loginTitle": "Welcome back",
+    "loginSubtitle": "Pick up where you left off in your library.",
     "signupTitle": "Create your account",
+    "signupSubtitle": "Paste a lecture link and follow along in sections.",
     "email": "Email",
     "password": "Password",
     "login": "Log in",
@@ -72,7 +73,8 @@
       "other": "Other"
     },
     "continue": "Continue",
-    "skip": "Skip for now"
+    "skip": "Skip for now",
+    "errorTitle": "Couldn't save profile"
   },
   "Library": {
     "title": "Library",
@@ -80,17 +82,23 @@
     "logout": "Log out",
     "addTitle": "Add a video",
     "pasteLabel": "YouTube URL",
-    "pastePlaceholder": "https://www.youtube.com/watch?v=…",
-    "pasteHint": "English captions are required. Analysis continues after the transcript is ready.",
-    "add": "Add",
+    "pastePlaceholder": "Paste a YouTube link…",
+    "pasteHint": "English captions required. Analysis starts after the transcript loads.",
+    "add": "Add video",
     "adding": "Adding…",
-    "addErrorTitle": "Couldn’t add video",
+    "addErrorTitle": "Couldn't add video",
     "yourVideos": "Your videos",
-    "status": {
-      "fetching": "Fetching transcript…",
-      "analyzing": "Ready for analysis",
-      "complete": "Ready",
-      "failed": "Failed"
-    }
+    "openVideo": "Open {title}"
+  },
+  "AnalysisStatus": {
+    "fetching": "Loading captions",
+    "understanding": "Understanding",
+    "generating": "Writing sections",
+    "awaiting": "Needs input",
+    "complete": "Ready",
+    "failed": "Failed"
+  },
+  "Theme": {
+    "toggle": "Toggle color theme"
   }
 }

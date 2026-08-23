@@ -24,12 +24,12 @@ import {
   NativeSelectOption,
 } from "@/components/ui/native-select";
 import { Spinner } from "@/components/ui/spinner";
+import { SubjectChip } from "@/components/shared/form/subject-chip";
 import {
   EDUCATION_LEVELS,
   SUBJECTS,
   maxYearOfBirth,
 } from "@/lib/validations/onboarding-options";
-import { cn } from "@/lib/utils";
 
 const initial: OnboardingActionState = {};
 
@@ -86,23 +86,12 @@ export function OnboardingForm() {
             <FieldDescription>{t("subjectsHint")}</FieldDescription>
             <div className="flex flex-wrap gap-2 pt-1">
               {SUBJECTS.map((subject) => (
-                <label
+                <SubjectChip
                   key={subject}
-                  className={cn(
-                    "cursor-pointer select-none rounded-md border border-border bg-background px-3 py-1.5 text-sm transition-colors",
-                    "has-[:checked]:border-foreground has-[:checked]:bg-foreground has-[:checked]:text-background",
-                    "has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-50",
-                  )}
-                >
-                  <input
-                    type="checkbox"
-                    name="subjects"
-                    value={subject}
-                    disabled={pending}
-                    className="sr-only"
-                  />
-                  {t(`subjectLabels.${subject}`)}
-                </label>
+                  value={subject}
+                  label={t(`subjectLabels.${subject}`)}
+                  disabled={pending}
+                />
               ))}
             </div>
           </FieldSet>
@@ -113,7 +102,7 @@ export function OnboardingForm() {
         {state.error ? (
           <Alert variant="destructive">
             <AlertCircleIcon />
-            <AlertTitle>Something went wrong</AlertTitle>
+            <AlertTitle>{t("errorTitle")}</AlertTitle>
             <AlertDescription>{state.error}</AlertDescription>
           </Alert>
         ) : null}
