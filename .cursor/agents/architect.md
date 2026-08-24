@@ -62,11 +62,10 @@ Open questions (ask user if blocking)
 - Per-user only: `user_videos` + `personalized_analyses`. No shared cross-user video/transcript/classification cache.
 - Typed profile columns (not EAV). Per-video familiarity/length live on the analysis row.
 - `AIProvider`: `classifyVideo` + `generateSections`. Classify does not emit skeleton or LLM questions.
-- Paste stubs then redirects; fetch/classify/prefs/generate run in the workspace.
-- Analysis state machine stays simple (`pending` → `fetching` → `classifying` → `awaiting` → `generating` → `complete` | `failed`); UI does not leak internals.
-- No Redis, workers, tRPC, Prisma, Whisper, chat, Playwright, or non-EN captions in MVP.
+- Paste stubs stay on the library; worker loops `continueAnalysis` (fetch → classify → generate).
+- Analysis state machine stays simple (`pending` → `fetching` → `classifying` → `generating` → `complete` | `failed`); UI does not leak internals.
+- Redis is queue + lock only. No shared transcript cache. No Prisma, Whisper, chat, Playwright, or non-EN captions in MVP.
 - Prefer extending an existing skill/path over a parallel abstraction.
-- Structure domain so a queue could wrap it later — but do not add a queue now.
 
 ## Tone
 

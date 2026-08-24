@@ -14,14 +14,12 @@ type AnalysisStatusBadgeProps = {
 
 function badgeVariantForPhase(
   phase: AnalysisUiPhase,
-): "sync" | "destructive" | "awaiting" | "progress" {
+): "sync" | "destructive" | "progress" {
   switch (phase) {
     case "complete":
       return "sync";
     case "failed":
       return "destructive";
-    case "awaiting":
-      return "awaiting";
     default:
       return "progress";
   }

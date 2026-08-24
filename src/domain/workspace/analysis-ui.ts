@@ -4,7 +4,6 @@ export const ANALYSIS_UI_PHASES = [
   "fetching",
   "understanding",
   "generating",
-  "awaiting",
   "complete",
   "failed",
 ] as const;
@@ -14,7 +13,6 @@ export type AnalysisUiPhase = (typeof ANALYSIS_UI_PHASES)[number];
 export const PANE_KINDS = [
   "progress",
   "failed",
-  "awaiting",
   "complete",
 ] as const;
 
@@ -45,8 +43,6 @@ export function analysisUiPhase(status: AnalysisStatus): AnalysisUiPhase {
       return "understanding";
     case "generating":
       return "generating";
-    case "awaiting":
-      return "awaiting";
     case "complete":
       return "complete";
     case "failed":
@@ -58,8 +54,6 @@ export function paneKind(status: AnalysisStatus): PaneKind {
   switch (status) {
     case "failed":
       return "failed";
-    case "awaiting":
-      return "awaiting";
     case "complete":
       return "complete";
     case "pending":
@@ -103,8 +97,6 @@ export function analysisChecklist(status: AnalysisStatus): ChecklistStep[] {
       return steps("current", "upcoming", "upcoming");
     case "classifying":
       return steps("done", "current", "upcoming");
-    case "awaiting":
-      return steps("done", "done", "upcoming");
     case "generating":
       return steps("done", "done", "current");
     case "complete":

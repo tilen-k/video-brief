@@ -42,12 +42,12 @@ Implement colors in `src/app/globals.css` only. Light mode: neutral white/gray a
 ## Composition
 
 - Landing: brand-first, one clear CTA, not dashboard clutter
-- Library: paste bar first, video inventory below; rows link to workspace unless failed
+- Library: paste bar first, video inventory below; rows (including in-progress and failed) link to workspace
 - Onboarding: optional YOB number, education-level select, subject chips (+ Other), optional summary style
-- Paste: create stub, redirect to workspace; progress lives there
-- Analyze (educational): optional familiarity + length selects; skip always allowed
-- Analyze (non-educational): soft disclaimer; no familiarity question
-- Workspace: video | section **bodies** split; active section follows playback and highlights; click seeks
+- Paste: create stub, stay on library; worker runs fetch/classify/generate
+- Analyze: familiarity + length sliders at paste (0–100)
+- Analyze (non-educational): soft disclaimer; omit familiarity from the generate prompt
+- Workspace: smaller player + sections below | overview summary on the right; active section follows playback and highlights; click seeks
 - Prefer document-like summary panels over chat bubbles
 - Use `shared/list/panel` for bordered surfaces; not ad-hoc card class strings in features
 

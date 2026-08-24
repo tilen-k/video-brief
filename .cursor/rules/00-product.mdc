@@ -11,7 +11,7 @@ Brand: **VideoBrief** · **Domain:** videobrief.app
 
 ## Core loop
 
-Paste URL → stub + **redirect to workspace** → fetch metadata + EN transcript → classify (`isEducational` + topic) → optional fixed per-video prefs (familiarity, length) → generate sections **with bodies** → watch with sync highlight/seek.
+Paste URL + familiarity/length sliders (0–100) → stub on library (no redirect) → enqueue analysis job → fetch metadata + EN transcript → classify (`isEducational` + topic) → generate overview + sections **with bodies** → open workspace anytime; watch with sync highlight/seek.
 
 ## Guiding question
 
@@ -19,11 +19,11 @@ Does this help turn a YouTube video into a better personalized understanding for
 
 ## MVP includes
 
-Landing, auth (email/password + Google), soft email confirm, lightweight **educational** onboarding (YOB, education level, subject chips, optional summary style — all optional), library, YouTube ingest (per-user `user_videos`, re-paste refreshes; fetch **after** workspace redirect), English timestamped captions, AI classify + generate (via `AIProvider`), **fixed** optional per-video selects (familiarity + length, skip always allowed), typed profile prefs, video workspace with section **bodies** + highlight/seek, soft non-edu disclaimer, dark-default UI, EN-only i18n scaffolding, unit tests.
+Landing, auth (email/password + Google), soft email confirm, lightweight **educational** onboarding (YOB, education level, subject chips, optional summary style — all optional), library, YouTube ingest (per-user `user_videos`, re-paste refreshes; fetch **from the analysis worker**), English timestamped captions, AI classify + generate (via `AIProvider`), paste-time familiarity + length sliders (0–100), typed profile prefs, video workspace with overview **summary** + section **bodies** + highlight/seek, soft non-edu disclaimer, dark-default UI, EN-only i18n scaffolding, unit tests, BullMQ analysis worker (Redis queue-only).
 
 ## MVP excludes
 
-Chat, uploads, Whisper/audio transcription, non-YouTube, recommendations, knowledge graph, cross-video search, quizzes, social/sharing, Stripe, Redis, background workers, tRPC, PostHog/analytics, E2E tests, non-English UI or captions, **LLM-invented knowledge questions**, topic/video EAV context, shared cross-user transcript/classification cache.
+Chat, uploads, Whisper/audio transcription, non-YouTube, recommendations, knowledge graph, cross-video search, quizzes, social/sharing, Stripe, tRPC, PostHog/analytics, E2E tests, non-English UI or captions, **LLM-invented knowledge questions**, topic/video EAV context, shared cross-user transcript/classification cache. Redis is **queue + per-video lock only** (not a transcript cache).
 
 ## UX
 
@@ -33,9 +33,7 @@ Editorial, premium, content-first, typography-led. AI stays invisible in the wor
 
 - Onboarding stays lightweight; every field optional.
 - Profile fields (typed, not open key/value): year of birth (`yyyy`, framing), education-level enum, subject chips (fixed list + `other`), optional `summary_style` (`brief` / `moderate` / `extensive`).
-- Per-video prefs live on the **analysis row**, not the profile: familiarity (3 levels, educational + topic known) and summary length (3 levels; default from `summary_style` or moderate).
-- Ask paste-time questions only when appropriate; skip familiarity when not educational or topic unknown; skip always allowed.
-- User may answer zero, some, or all; summary must still work.
-- Non-edu summaries still use profile when present; soft disclaimer; no familiarity question.
+- Per-video prefs live on the **analysis row**, not the profile: familiarity and summary length as integers 0–100 (defaults: familiarity 50; length from `summary_style`). Collected at paste. Re-paste overwrites.
+- Non-edu summaries still use profile + length; omit familiarity from the generate prompt; soft disclaimer.
 - Ambiguous classification → prefer educational.
-- Classify does **not** emit section skeleton or dynamic questions. Generate emits `{ title, startTime, endTime, body }`.
+- Classify does **not** emit section skeleton or dynamic questions. Generate emits `{ summary, sections: { title, startTime, endTime, body }[] }`.

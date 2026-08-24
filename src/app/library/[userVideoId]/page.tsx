@@ -68,6 +68,3 @@ export default async function WorkspacePage({ params }: WorkspacePageProps) {
 
   return <WorkspaceShell initial={result.video} />;
 }
-
-/** Covers client-invoked continue/generate on this route. Not valid in a "use server" file. */
-export const maxDuration = 180;

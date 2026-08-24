@@ -9,12 +9,11 @@ description: Ingest a YouTube URL into VideoBrief — validate URL, fetch metada
 
 ```text
 URL → parse youtubeId
-  → upsert stub user_videos + personalized_analyses (pending / fetching)
-  → redirect to workspace
-  → TranscriptProvider.getEnglishTranscript(youtubeId)  (always — no shared cache skip)
+  → upsert stub + prefs + new runId (pending)
+  → enqueue analyze job (stay on library)
+  → worker: TranscriptProvider.getEnglishTranscript(youtubeId)  (always — no shared cache skip)
   → upsert metadata + transcript segments
-  → set analysis state (fetching → classifying | failed)
-  → continue domain pipeline (classify → awaiting? → generate)
+  → classify → generate
 ```
 
 Re-pasting the same URL refreshes **that user's** row (refetch + touch updated_at).
@@ -26,7 +25,7 @@ Re-pasting the same URL refreshes **that user's** row (refetch + touch updated_a
 - Use `youtubei.js` behind `TranscriptProvider`. Optional `YOUTUBE_PROXY_URL` is transport-only (same provider).
 - **Always** call provider on ingest/re-paste — no cross-user or global transcript cache
 - One row per `(user_id, youtube_id)`
-- Do not block the library paste action on YouTube fetch; workspace owns fetch + errors
+- Do not block the library paste action on YouTube fetch; the worker owns fetch + errors
 
 ## Player (workspace)
 

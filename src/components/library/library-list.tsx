@@ -1,5 +1,7 @@
+"use client";
+
 import Image from "next/image";
-import { getTranslations } from "next-intl/server";
+import { useTranslations } from "next-intl";
 
 import { AnalysisStatusBadge } from "@/components/shared/status/analysis-status-badge";
 import { EmptyState } from "@/components/shared/list/empty-state";
@@ -10,14 +12,16 @@ import {
   analysisUiPhase,
   isFailedStatus,
 } from "@/domain/workspace/analysis-ui";
+import { useLibraryStatus } from "@/hooks/use-library-status";
 
 type LibraryListProps = {
-  items: LibraryListItem[];
+  initialItems: LibraryListItem[];
 };
 
-export async function LibraryList({ items }: LibraryListProps) {
-  const t = await getTranslations("Library");
-  const statusT = await getTranslations("AnalysisStatus");
+export function LibraryList({ initialItems }: LibraryListProps) {
+  const t = useTranslations("Library");
+  const statusT = useTranslations("AnalysisStatus");
+  const items = useLibraryStatus(initialItems);
 
   if (items.length === 0) {
     return <EmptyState>{t("empty")}</EmptyState>;
@@ -32,8 +36,7 @@ export async function LibraryList({ items }: LibraryListProps) {
         return (
           <ListRowLink
             key={item.userVideoId}
-            href={failed ? undefined : `/library/${item.userVideoId}`}
-            disabled={failed}
+            href={`/library/${item.userVideoId}`}
             aria-label={t("openVideo", { title: item.title })}
           >
             {item.thumbnailUrl ? (

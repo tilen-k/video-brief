@@ -27,7 +27,7 @@ domain function
 
 - Default model: `analysisConfig.model.defaultId`
 - Classify: `isEducational`, `confidence`, `topic?`. YouTube category is a hint only; ambiguous → prefer educational. **No** section skeleton. **No** LLM-invented questions.
-- Per-video prefs are product-owned selects (familiarity, length), skippable; persist on the analysis row
-- `generateSections` returns `{ title, startTime, endTime, body }[]`
+- Per-video prefs are 0–100 integers on the analysis row (set at paste)
+- `generateSections` returns `{ summary, sections: { title, startTime, endTime, body }[] }`
 - Personalization changes emphasis/depth — do not invent unrelated facts
 - Never persist unvalidated model JSON

@@ -36,6 +36,7 @@ export const generatedSectionSchema = z.object({
 });
 
 export const generateSectionsSchema = z.object({
+  summary: z.string().trim().min(1).max(generate.maxSummaryChars),
   sections: z
     .array(generatedSectionSchema)
     .min(1)
