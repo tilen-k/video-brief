@@ -91,7 +91,7 @@ All **per-user**. No shared video/transcript/classification cache.
 
 ## Architecture
 
-Thin Server Actions → domain pipeline → Drizzle / TranscriptProvider / AIProvider (`classifyVideo`, `generateSections`). Pipeline must be movable to a worker later. Transcript provider swappable if Vercel IPs get blocked.
+Thin Server Actions → domain pipeline → Drizzle / TranscriptProvider / AIProvider (`classifyVideo`, `generateSections`). Pipeline must be movable to a worker later. Optional `YOUTUBE_PROXY_URL` for YouTube fetch on Vercel.
 
 States (keep simple):
 

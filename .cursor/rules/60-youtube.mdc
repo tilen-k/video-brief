@@ -13,8 +13,8 @@ YouTube URLs only. No uploads. No audio transcription.
 ## TranscriptProvider
 
 - Default impl: `youtubei.js` (Innertube)
-- Interface must allow swap to proxy or external fetch worker later (Vercel IPs may be blocked)
-- MVP strategy: ship without residential proxy; document failure mode; keep interface ready
+- Optional `YOUTUBE_PROXY_URL` (Webshare backbone gateway). When set, Innertube **and** caption fetch share one undici `ProxyAgent` with a sticky session per ingest. Unset locally; set on Vercel.
+- Callers stay on `TranscriptProvider` — they must not import proxy or youtubei.js.
 
 ## English only
 

@@ -13,10 +13,11 @@ export const logger = pino({
 const MAX_ERR_CHARS = 400;
 
 function clip(value: string): string {
-  if (value.length <= MAX_ERR_CHARS) {
-    return value;
+  const redacted = value.replace(/:\/\/[^/@]+@/g, "://***@");
+  if (redacted.length <= MAX_ERR_CHARS) {
+    return redacted;
   }
-  return `${value.slice(0, MAX_ERR_CHARS)}…`;
+  return `${redacted.slice(0, MAX_ERR_CHARS)}…`;
 }
 
 export function errorFields(error: unknown): Record<string, string> {
