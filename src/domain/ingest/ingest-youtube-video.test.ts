@@ -92,11 +92,16 @@ describe("startYoutubeIngest", () => {
   it("stubs a library row as pending without calling YouTube", async () => {
     mocks.returning
       .mockResolvedValueOnce([{ id: "uv-1" }])
-      .mockResolvedValueOnce([{ id: "analysis-1", status: "pending" }]);
+      .mockResolvedValueOnce([{ id: "analysis-1", status: "pending", runId: "run-1" }]);
 
     const provider = mockProvider(vi.fn());
     const result = await startYoutubeIngest(
-      { userId: "user-1", youtubeId: "dQw4w9WgXcQ" },
+      {
+        userId: "user-1",
+        youtubeId: "dQw4w9WgXcQ",
+        familiarity: 40,
+        summaryLength: 75,
+      },
       { transcriptProvider: provider },
     );
 
@@ -105,6 +110,7 @@ describe("startYoutubeIngest", () => {
       userVideoId: "uv-1",
       analysisId: "analysis-1",
       status: "pending",
+      runId: "run-1",
     });
   });
 });
@@ -124,7 +130,7 @@ describe("fetchYoutubeVideo", () => {
     mocks.returning.mockResolvedValueOnce([{ id: "uv-1" }]);
 
     const result = await fetchYoutubeVideo(
-      { userId: "user-1", youtubeId: "dQw4w9WgXcQ", userVideoId: "uv-1" },
+      { userId: "user-1", youtubeId: "dQw4w9WgXcQ", userVideoId: "uv-1", runId: "run-1" },
       { transcriptProvider: provider },
     );
 
@@ -148,6 +154,7 @@ describe("fetchYoutubeVideo", () => {
       userId: "user-1",
       youtubeId: "dQw4w9WgXcQ",
       userVideoId: "uv-1",
+      runId: "run-1",
     };
     await fetchYoutubeVideo(input, { transcriptProvider: provider });
     await fetchYoutubeVideo(input, { transcriptProvider: provider });
@@ -164,7 +171,7 @@ describe("fetchYoutubeVideo", () => {
     mocks.returning.mockResolvedValueOnce([{ id: "uv-1" }]);
 
     await fetchYoutubeVideo(
-      { userId: "user-1", youtubeId: "dQw4w9WgXcQ", userVideoId: "uv-1" },
+      { userId: "user-1", youtubeId: "dQw4w9WgXcQ", userVideoId: "uv-1", runId: "run-1" },
       { transcriptProvider: provider },
     );
 
@@ -173,6 +180,7 @@ describe("fetchYoutubeVideo", () => {
         status: "classifying",
         classification: null,
         sections: [],
+        summary: null,
       }),
     );
     expect(mocks.update).toHaveBeenCalled();
@@ -187,11 +195,11 @@ describe("fetchYoutubeVideo", () => {
       );
     });
 
-    mocks.updateReturning.mockResolvedValueOnce([{ id: "analysis-1" }]);
+    mocks.updateReturning.mockResolvedValueOnce([{ id: "analysis-1", runId: "run-1" }]);
     mocks.returning.mockResolvedValueOnce([{ id: "uv-1" }]);
 
     const result = await fetchYoutubeVideo(
-      { userId: "user-1", youtubeId: "dQw4w9WgXcQ", userVideoId: "uv-1" },
+      { userId: "user-1", youtubeId: "dQw4w9WgXcQ", userVideoId: "uv-1", runId: "run-1" },
       { transcriptProvider: provider },
     );
 
@@ -199,6 +207,7 @@ describe("fetchYoutubeVideo", () => {
       userVideoId: "uv-1",
       analysisId: "analysis-1",
       status: "failed",
+      runId: "run-1",
     });
     expect(mocks.update).toHaveBeenCalled();
   });
@@ -214,7 +223,7 @@ describe("fetchYoutubeVideo", () => {
     mocks.updateReturning.mockResolvedValueOnce([{ id: "analysis-1" }]);
 
     const result = await fetchYoutubeVideo(
-      { userId: "user-1", youtubeId: "dQw4w9WgXcQ", userVideoId: "uv-1" },
+      { userId: "user-1", youtubeId: "dQw4w9WgXcQ", userVideoId: "uv-1", runId: "run-1" },
       { transcriptProvider: provider },
     );
 

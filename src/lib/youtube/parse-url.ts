@@ -57,8 +57,17 @@ export function parseYoutubeId(raw: string): string | null {
   return null;
 }
 
+const prefScoreSchema = z.preprocess((value) => {
+  if (value === "" || value === null || value === undefined) {
+    return undefined;
+  }
+  return value;
+}, z.coerce.number().int().min(0).max(100).optional());
+
 export const addVideoInputSchema = z.object({
   url: z.string().trim().min(1, "Paste a YouTube URL"),
+  familiarity: prefScoreSchema,
+  summaryLength: prefScoreSchema,
 }).transform((data, ctx) => {
   const youtubeId = parseYoutubeId(data.url);
   if (!youtubeId) {
@@ -69,7 +78,12 @@ export const addVideoInputSchema = z.object({
     });
     return z.NEVER;
   }
-  return { url: data.url, youtubeId };
+  return {
+    url: data.url,
+    youtubeId,
+    familiarity: data.familiarity,
+    summaryLength: data.summaryLength,
+  };
 });
 
 export type AddVideoInput = z.infer<typeof addVideoInputSchema>;

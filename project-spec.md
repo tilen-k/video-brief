@@ -1077,11 +1077,14 @@ Browser
    ↓
 Next.js (src/app)
    ├── Server Components
-   ├── Server Actions (thin)
-   ├── TanStack Query (client status / mutations)
+   ├── Server Actions (thin: validate, persist stub, enqueue)
+   ├── TanStack Query (library / workspace status polling)
    └── domain/application logic
           │
           ├── Drizzle → Supabase Postgres (+ RLS)
+          └── enqueue BullMQ analyze job (Redis)
+Worker
+   └── loop continueAnalysis (fetch → classify → generate)
           ├── TranscriptProvider (youtubei.js)
           └── AIProvider (Vercel AI SDK; model from analysisConfig)
 ```
@@ -1091,8 +1094,8 @@ Do not add infrastructure because it is available.
 In particular:
 
 * no tRPC without a concrete API requirement
-* no Redis without a concrete Redis-shaped problem
-* no worker without a background-processing requirement
+* Redis/BullMQ for the analysis queue and per-video lock only (not a transcript cache)
+* Worker owns fetch/classify/generate; Next does not run the pipeline
 * no Prisma (Drizzle is locked)
 * no abstraction without a reason
 * no feature without a product purpose
@@ -1110,8 +1113,8 @@ Build in this order:
 3. Database schema + RLS (typed profile; prefs on analysis)
 4. Basic educational onboarding (YOB, education level, subjects, optional summary style)
 5. Library UI
-6. YouTube stub + immediate workspace redirect
-7. Transcript / metadata fetch in workspace
+6. YouTube stub + stay on library (enqueue analysis)
+7. Transcript / metadata fetch in the analysis worker
 8. Classification (`isEducational` + topic)
 9. Fixed per-video prefs (familiarity + length; skip allowed)
 10. Personalized section **bodies**

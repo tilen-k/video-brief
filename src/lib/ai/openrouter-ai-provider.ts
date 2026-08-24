@@ -28,9 +28,10 @@ If the video might teach or explain something, set isEducational true.
 If confidence is low or the label is ambiguous, still prefer educational.
 Do not invent facts. Do not emit sections, questions, domains, or extra keys.`;
 
-const GENERATE_SYSTEM = `You write personalized section summaries of a YouTube video from its transcript.
-Respond with a JSON object only: {"sections":[{"title":"...","startTime":0,"endTime":12,"body":"..."}]}
-Each section needs a title, startTime and endTime in seconds, and a body.
+const GENERATE_SYSTEM = `You write a personalized overview and timed section notes of a YouTube video from its transcript.
+Respond with a JSON object only: {"summary":"...","sections":[{"title":"...","startTime":0,"endTime":12,"body":"..."}]}
+summary is a standalone overview the viewer can read instead of watching (about 1500–2000 characters).
+Each section needs a title, startTime and endTime in seconds, and a body for seek/highlight.
 Stay faithful to the transcript — do not invent facts that are not in the source.
 Use the viewer's profile and per-video prefs only to change depth, framing, and length — not to add unrelated content.
 Return 1–${maxSections} sections that cover the video. Short videos may have a single section.`;
@@ -49,9 +50,12 @@ Transcript excerpt:
 ${input.transcriptExcerpt}`;
 }
 
-function buildGeneratePrompt(input: GenerateSectionsInput): string {
+export function buildGeneratePrompt(input: GenerateSectionsInput): string {
   const { profile, prefs, classification } = input;
   const subjects = profile.subjects?.join(", ") || "none given";
+  const familiarityLine = classification.isEducational
+    ? `Familiarity with topic (0–100): ${prefs.familiarity}`
+    : null;
 
   return `Title: ${input.title}
 Channel: ${input.channelTitle ?? "unknown"}
@@ -62,8 +66,7 @@ Viewer year of birth: ${profile.yearOfBirth ?? "unknown"}
 Education level: ${profile.educationLevel ?? "unknown"}
 Subjects of interest: ${subjects}
 Summary style default: ${profile.summaryStyle ?? "none"}
-Familiarity with topic: ${prefs.familiarity ?? "not specified"}
-Requested length: ${prefs.summaryLength ?? "not specified"}
+${familiarityLine ? `${familiarityLine}\n` : ""}Requested length (0–100): ${prefs.summaryLength}
 
 Transcript:
 ${input.transcriptSubset}`;
@@ -162,7 +165,7 @@ export class OpenRouterAIProvider implements AIProvider {
         output: Output.object({
           name: "Sections",
           description:
-            "JSON object with a sections array of title, startTime, endTime, body",
+            "JSON object with a summary string and a sections array of title, startTime, endTime, body",
           schema: generateSectionsSchema,
         }),
         system: GENERATE_SYSTEM,

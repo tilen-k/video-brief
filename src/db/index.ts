@@ -35,7 +35,7 @@ function formatDbConnectError(error: unknown): Error {
 }
 
 /**
- * Server-only Drizzle client (module singleton).
+ * Drizzle client for the Next.js app and the analysis worker.
  * Requires DATABASE_URL — prefer Supabase Transaction pooler (IPv4).
  */
 export function createDb(): Db {
@@ -53,7 +53,7 @@ export function createDb(): Db {
       globalForDb.postgresSql ??
       postgres(url, {
         prepare: false,
-        max: 1,
+        max: process.env.npm_lifecycle_event === "worker" ? 4 : 1,
       });
 
     const db = drizzle(client, { schema });

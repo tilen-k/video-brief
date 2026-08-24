@@ -18,7 +18,7 @@ const IN_FLIGHT: AnalysisStatus[] = [
   "generating",
 ];
 
-const STOP_POLL: AnalysisStatus[] = ["complete", "failed", "awaiting"];
+const STOP_POLL: AnalysisStatus[] = ["complete", "failed"];
 
 describe("analysisUiPhase", () => {
   it("maps every analysis status to a user-facing phase", () => {
@@ -27,7 +27,6 @@ describe("analysisUiPhase", () => {
       fetching: "fetching",
       classifying: "understanding",
       generating: "generating",
-      awaiting: "awaiting",
       complete: "complete",
       failed: "failed",
     };
@@ -48,7 +47,6 @@ describe("paneKind", () => {
 
   it("selects terminal panes without leaking machine names", () => {
     expect(paneKind("failed")).toBe("failed");
-    expect(paneKind("awaiting")).toBe("awaiting");
     expect(paneKind("complete")).toBe("complete");
   });
 });

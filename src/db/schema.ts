@@ -10,16 +10,12 @@ import {
   uuid,
 } from "drizzle-orm/pg-core";
 
-import type {
-  FamiliarityLevel,
-  SummaryStyle,
-} from "@/lib/validations/onboarding-options";
+import type { SummaryStyle } from "@/lib/validations/onboarding-options";
 
 export const ANALYSIS_STATUSES = [
   "pending",
   "fetching",
   "classifying",
-  "awaiting",
   "generating",
   "complete",
   "failed",
@@ -27,7 +23,7 @@ export const ANALYSIS_STATUSES = [
 
 export type AnalysisStatus = (typeof ANALYSIS_STATUSES)[number];
 
-export type { FamiliarityLevel, SummaryStyle };
+export type { SummaryStyle };
 
 export type TranscriptSegment = {
   startMs: number;
@@ -122,8 +118,10 @@ export const personalizedAnalyses = pgTable(
     errorCode: text("error_code"),
     errorMessage: text("error_message"),
     classification: jsonb("classification").$type<ClassificationSnapshot | null>(),
-    familiarity: text("familiarity").$type<FamiliarityLevel | null>(),
-    summaryLength: text("summary_length").$type<SummaryStyle | null>(),
+    familiarity: integer("familiarity").notNull().default(50),
+    summaryLength: integer("summary_length").notNull().default(50),
+    summary: text("summary"),
+    runId: uuid("run_id").notNull().defaultRandom(),
     sections: jsonb("sections")
       .$type<GeneratedSection[]>()
       .notNull()

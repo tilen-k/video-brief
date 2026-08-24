@@ -8,19 +8,17 @@ Short overview for agents and humans. Full detail: `project-spec.md`. Agent rule
 
 **Education-first** personalized YouTube summaries, synchronized with the video.
 
-Paste a URL → immediately open the workspace → fetch metadata + English transcript → classify → optional **fixed** per-video prefs → generate **section bodies** from profile + those prefs → watch with synced highlight/seek. Not a chatbot. Not a generic summarizer.
+Paste a URL with familiarity/length sliders → stay on the library → a worker fetches metadata + English transcript → classify → generate an **overview summary** plus **section bodies** from profile + those prefs → open the workspace anytime and watch with synced highlight/seek. Not a chatbot. Not a generic summarizer.
 
-Non-educational videos still get a sectioned summary (soft disclaimer). No familiarity question.
+Non-educational videos still get a sectioned summary (soft disclaimer). Familiarity is omitted from the generate prompt.
 
 ```text
-Landing → Auth → Onboarding → Library → Paste URL
-  → Stub library row + redirect to workspace
-  → Fetch metadata + English transcript (fail in workspace)
+Landing → Auth → Onboarding → Library → Paste URL + sliders
+  → Stub library row (no redirect) + enqueue analyze job
+  → Fetch metadata + English transcript (fail on workspace / library row)
   → Classify (isEducational, topic; YouTube category as hint)
-  → If educational: optional familiarity (3 levels) when a topic is known
-  → Optional summary length (3 levels; default from profile summary_style)
-  → Generate sections { title, startTime, endTime, body }
-  → Workspace: highlight active section from currentTime; click seeks
+  → Generate { summary, sections: { title, startTime, endTime, body } }
+  → Workspace: summary on the right; sections under a smaller player; highlight + seek
 ```
 
 ## Locked stack
@@ -37,7 +35,7 @@ Landing → Auth → Onboarding → Library → Paste URL
 | YouTube | `youtubei.js` (EN captions required), `react-youtube` |
 | Tests | Vitest unit only (no E2E in MVP) |
 
-**Not in MVP:** chat, uploads, Whisper, Redis, workers, tRPC, Prisma, Stripe, PostHog, non-English UI/captions, LLM-invented knowledge questions, topic/video EAV context, shared cross-user transcript/classification cache.
+**Not in MVP:** chat, uploads, Whisper, tRPC, Prisma, Stripe, PostHog, non-English UI/captions, LLM-invented knowledge questions, topic/video EAV context, shared cross-user transcript/classification cache. Redis/BullMQ is the analysis queue only.
 
 ## Onboarding (all optional)
 
@@ -64,19 +62,19 @@ YouTube `categoryId` is a **hint**. Ambiguous → **prefer educational**.
 
 ## Per-video prefs (not global context)
 
-Product-owned selects, skippable. Persist on the **analysis row** (not the profile):
+Paste-time sliders. Persist on the **analysis row** (not the profile) as integers 0–100:
 
-- **Familiarity** (educational + topic known): How familiar with {topic}? `not_familiar` / `somewhat` / `very`
-- **Length** (when appropriate): How detailed? `brief` / `moderate` / `extensive` — default from profile `summary_style` or `moderate`
+- **Familiarity** — default 50. Omitted from the generate prompt when the video is not educational.
+- **Length** — default from profile `summary_style` (brief 25 / moderate 50 / extensive 75) or 50.
 
-User may answer zero, some, or all. Summary still generates.
+Re-paste overwrites both and mints a new `run_id`.
 
 ## Generate (stage 2)
 
-After prefs (or skip). One call returns sections with **bodies**:
+One call returns an overview plus timed sections:
 
 ```text
-{ title, startTime, endTime, body }[]
+{ summary, sections: { title, startTime, endTime, body }[] }
 ```
 
 Uses transcript subset + profile + per-video prefs. Personalization changes depth/framing — does not invent unrelated facts. Non-edu still uses profile when present.
@@ -86,26 +84,24 @@ Uses transcript subset + profile + per-video prefs. Personalization changes dept
 All **per-user**. No shared video/transcript/classification cache.
 
 - `user_videos` — metadata + English transcript (re-paste refreshes)
-- `personalized_analyses` — state machine, classify result, per-video prefs, generated sections
+- `personalized_analyses` — state machine, classify result, 0–100 prefs, `run_id`, overview summary, generated sections
 - Profile / preferences — typed columns: YOB, education level, subjects, summary style
 
 ## Architecture
 
-Thin Server Actions → domain pipeline → Drizzle / TranscriptProvider / AIProvider (`classifyVideo`, `generateSections`). Pipeline must be movable to a worker later. Transcript provider swappable if Vercel IPs get blocked.
+Thin Server Actions enqueue work. Domain `continueAnalysis` still advances **one** stage. A BullMQ worker loops it until complete/failed. Transcript provider swappable if Vercel IPs get blocked.
 
 States (keep simple):
 
-`pending` → `fetching` → `classifying` → `awaiting` → `generating` → `complete` | `failed`
-
-Skip `awaiting` when there is nothing to ask (non-edu, or neither question is appropriate).
+`pending` → `fetching` → `classifying` → `generating` → `complete` | `failed`
 
 ## Workspace
 
-Video + section panel. Active section from `currentTime`; click seeks. No AI during playback.
+Smaller player + sections below; overview summary on the right. Active section from `currentTime`; click seeks. No AI during playback.
 
 ## MVP done when
 
-User can sign up, onboard lightly, paste a YouTube URL with English captions, land on the workspace immediately, see edu vs non-edu behavior, optionally set familiarity/length, and watch **personalized section bodies** with highlight + seek — then reopen from the library.
+User can sign up, onboard lightly, paste a YouTube URL with English captions, stay on the library while analysis runs, open the workspace anytime, see edu vs non-edu behavior, and watch a **personalized overview + section bodies** with highlight + seek.
 
 ## Guiding question
 

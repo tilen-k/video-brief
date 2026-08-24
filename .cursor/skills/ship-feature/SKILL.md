@@ -35,6 +35,8 @@ Show the plan to the user if there are open questions. Do not implement until bl
 
 Main agent implements against the plan (or against the request if architect was skipped).
 
+If this task has a worktree (`.worktrees/<name>`), implement **there** at the worktree’s current HEAD. Do not merge/rebase onto `main` first. Do not create a second worktree for the same work. Every shell command must `cd` to that path.
+
 Prefer existing skills when relevant:
 
 - `add-server-action`

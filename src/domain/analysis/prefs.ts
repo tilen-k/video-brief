@@ -1,17 +1,29 @@
 import {
-  FAMILIARITY_LEVELS,
   SUMMARY_STYLES,
-  type FamiliarityLevel,
   type SummaryStyle,
 } from "@/lib/validations/onboarding-options";
 
-export { FAMILIARITY_LEVELS, SUMMARY_STYLES };
-export type { FamiliarityLevel, SummaryStyle };
+export { SUMMARY_STYLES };
+export type { SummaryStyle };
 
-export const DEFAULT_SUMMARY_LENGTH: SummaryStyle = "moderate";
+export const PREF_SCORE_MIN = 0;
+export const PREF_SCORE_MAX = 100;
+export const DEFAULT_FAMILIARITY_SCORE = 50;
+export const DEFAULT_LENGTH_SCORE = 50;
 
-export function defaultSummaryLength(
+export function defaultLengthScore(
   style: SummaryStyle | null | undefined,
-): SummaryStyle {
-  return style ?? DEFAULT_SUMMARY_LENGTH;
+): number {
+  switch (style) {
+    case "brief":
+      return 25;
+    case "extensive":
+      return 75;
+    default:
+      return DEFAULT_LENGTH_SCORE;
+  }
+}
+
+export function clampPrefScore(value: number): number {
+  return Math.min(PREF_SCORE_MAX, Math.max(PREF_SCORE_MIN, Math.round(value)));
 }

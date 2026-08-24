@@ -10,13 +10,11 @@ import {
 
 export {
   EDUCATION_LEVELS,
-  FAMILIARITY_LEVELS,
   MIN_YEAR_OF_BIRTH,
   SUBJECTS,
   SUMMARY_STYLES,
   maxYearOfBirth,
   type EducationLevel,
-  type FamiliarityLevel,
   type Subject,
   type SummaryStyle,
 } from "./onboarding-options";

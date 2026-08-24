@@ -32,8 +32,10 @@ const ownedRow = {
     confidence: "high",
     topic: "physics",
   },
-  familiarity: null,
-  summaryLength: null,
+  familiarity: 50,
+  summaryLength: 50,
+  summary: null,
+  runId: "11111111-1111-4111-8111-111111111111",
   sections: [],
   summaryStyle: null,
 };
@@ -43,7 +45,7 @@ describe("getWorkspaceVideo", () => {
     vi.clearAllMocks();
   });
 
-  it("returns the owned row with prefs flags", async () => {
+  it("returns the owned row", async () => {
     mocks.limit.mockResolvedValueOnce([ownedRow]);
 
     const result = await getWorkspaceVideo("user-1", "uv-1", { db: mockDb() });
@@ -57,11 +59,10 @@ describe("getWorkspaceVideo", () => {
       errorCode: null,
       errorMessage: null,
       classification: ownedRow.classification,
-      familiarity: null,
-      summaryLength: null,
-      defaultLength: "moderate",
-      askFamiliarity: true,
-      askLength: true,
+      familiarity: 50,
+      summaryLength: 50,
+      summary: null,
+      runId: "11111111-1111-4111-8111-111111111111",
       sections: [],
     });
     expect(mocks.select).toHaveBeenCalled();
@@ -110,6 +111,6 @@ describe("getWorkspaceVideo", () => {
     const result = await getWorkspaceVideo("user-1", "uv-1", { db: mockDb() });
 
     expect(result?.status).toBe("pending");
-    expect(result?.askFamiliarity).toBe(false);
+    expect(result?.summary).toBeNull();
   });
 });

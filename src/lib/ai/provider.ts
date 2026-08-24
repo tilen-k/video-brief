@@ -3,7 +3,6 @@ import type {
   GenerateSectionsOutput,
 } from "@/domain/analysis/schemas";
 import type { UserProfile } from "@/domain/analysis/get-user-profile";
-import type { FamiliarityLevel, SummaryStyle } from "@/lib/validations/onboarding-options";
 
 export type ClassifyVideoInput = {
   title: string;
@@ -25,8 +24,8 @@ export type GenerateSectionsInput = {
   };
   profile: UserProfile;
   prefs: {
-    familiarity: FamiliarityLevel | null;
-    summaryLength: SummaryStyle | null;
+    familiarity: number;
+    summaryLength: number;
   };
 };
 

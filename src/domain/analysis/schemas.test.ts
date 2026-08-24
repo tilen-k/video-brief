@@ -41,6 +41,7 @@ describe("generateSectionsSchema", () => {
     ).toBe(false);
     expect(
       generateSectionsSchema.parse({
+        summary: "A short overview.",
         sections: [
           {
             title: "Intro",
@@ -51,5 +52,20 @@ describe("generateSectionsSchema", () => {
         ],
       }).sections,
     ).toHaveLength(1);
+  });
+
+  it("requires a summary", () => {
+    expect(
+      generateSectionsSchema.safeParse({
+        sections: [
+          {
+            title: "Intro",
+            startTime: 0,
+            endTime: 12,
+            body: "Body",
+          },
+        ],
+      }).success,
+    ).toBe(false);
   });
 });

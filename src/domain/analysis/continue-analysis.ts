@@ -11,8 +11,7 @@ import {
 } from "@/db/schema";
 import { analysisConfig } from "@/domain/analysis/config";
 import { getUserProfile } from "@/domain/analysis/get-user-profile";
-import { defaultSummaryLength } from "@/domain/analysis/prefs";
-import { prefsToAsk } from "@/domain/analysis/prefs-to-ask";
+import { defaultLengthScore } from "@/domain/analysis/prefs";
 import {
   clampSectionTimes,
   preferEducational,
@@ -63,6 +62,7 @@ export type ContinueAnalysisDeps = {
   db?: Db;
   ai?: AIProvider;
   transcriptProvider?: TranscriptProvider;
+  expectedRunId?: string;
 };
 
 type LoadedRow = {
@@ -79,8 +79,9 @@ type LoadedRow = {
   errorMessage: string | null;
   analysisUpdatedAt: Date | string;
   classification: ClassificationSnapshot | null;
-  familiarity: WorkspaceVideo["familiarity"];
-  summaryLength: WorkspaceVideo["summaryLength"];
+  familiarity: number;
+  summaryLength: number;
+  runId: string;
 };
 
 async function persistAnalysis(
@@ -88,6 +89,7 @@ async function persistAnalysis(
   input: {
     analysisId: string;
     userId: string;
+    runId: string;
     loadedUpdatedAt: Date | string;
     fromStatus: AnalysisStatus;
     values: {
@@ -96,6 +98,7 @@ async function persistAnalysis(
       errorMessage?: string | null;
       classification?: ClassificationSnapshot | null;
       sections?: GeneratedSection[];
+      summary?: string | null;
     };
   },
 ) {
@@ -137,6 +140,7 @@ async function persistAnalysis(
         eq(personalizedAnalyses.id, input.analysisId),
         eq(personalizedAnalyses.userId, input.userId),
         eq(personalizedAnalyses.status, input.fromStatus),
+        eq(personalizedAnalyses.runId, input.runId),
         casTime,
       ),
     )
@@ -157,31 +161,15 @@ async function persistAnalysis(
   return written;
 }
 
-const inFlightContinues = new Map<string, Promise<WorkspaceVideo | null>>();
-
 /**
  * Advance one pipeline stage (fetch | classify | generate).
- * Concurrent calls for the same user+video join one in-flight run.
  */
 export async function continueAnalysis(
   userId: string,
   userVideoId: string,
   deps: ContinueAnalysisDeps = {},
 ): Promise<WorkspaceVideo | null> {
-  const key = `${userId}:${userVideoId}`;
-  const existing = inFlightContinues.get(key);
-  if (existing) {
-    logger.debug({ userVideoId }, "continueAnalysis.coalesce");
-    return existing;
-  }
-
-  const run = runContinueAnalysis(userId, userVideoId, deps);
-  inFlightContinues.set(key, run);
-  try {
-    return await run;
-  } finally {
-    inFlightContinues.delete(key);
-  }
+  return runContinueAnalysis(userId, userVideoId, deps);
 }
 
 async function runContinueAnalysis(
@@ -209,6 +197,7 @@ async function runContinueAnalysis(
       classification: personalizedAnalyses.classification,
       familiarity: personalizedAnalyses.familiarity,
       summaryLength: personalizedAnalyses.summaryLength,
+      runId: personalizedAnalyses.runId,
     })
     .from(userVideos)
     .innerJoin(
@@ -232,6 +221,11 @@ async function runContinueAnalysis(
     analysisId: loaded.analysisId,
     youtubeId: loaded.youtubeId,
   });
+
+  if (deps.expectedRunId && loaded.runId !== deps.expectedRunId) {
+    log.debug({ status: loaded.status }, "continueAnalysis.run_mismatch");
+    return getWorkspaceVideo(userId, userVideoId, { db });
+  }
 
   if (!WORK_STATUSES.includes(loaded.status)) {
     log.debug({ status: loaded.status }, "continueAnalysis.skip");
@@ -258,6 +252,29 @@ async function runContinueAnalysis(
   return runGenerate(userId, userVideoId, loaded, db, ai, log);
 }
 
+async function snapshotOrThrowCas(
+  db: Db,
+  userId: string,
+  userVideoId: string,
+  runId: string,
+  written: { id: string }[],
+  logMessage: string,
+): Promise<WorkspaceVideo | null> {
+  const snapshot = await getWorkspaceVideo(userId, userVideoId, { db });
+  if (written.length > 0) {
+    return snapshot;
+  }
+  logger.warn({ userVideoId }, logMessage);
+  if (
+    snapshot &&
+    snapshot.runId === runId &&
+    WORK_STATUSES.includes(snapshot.status)
+  ) {
+    throw new Error("analysis persist lost the race");
+  }
+  return snapshot;
+}
+
 async function failStage(
   db: Db,
   userId: string,
@@ -280,6 +297,7 @@ async function failStage(
   const written = await persistAnalysis(db, {
     analysisId: row.analysisId,
     userId,
+    runId: row.runId,
     loadedUpdatedAt: row.analysisUpdatedAt,
     fromStatus,
     values: {
@@ -289,11 +307,14 @@ async function failStage(
     },
   });
 
-  if (written.length === 0) {
-    logger.warn({ userVideoId }, "continueAnalysis.fail_cas_miss");
-  }
-
-  return getWorkspaceVideo(userId, userVideoId, { db });
+  return snapshotOrThrowCas(
+    db,
+    userId,
+    userVideoId,
+    row.runId,
+    written,
+    "continueAnalysis.fail_cas_miss",
+  );
 }
 
 async function runFetch(
@@ -308,19 +329,26 @@ async function runFetch(
     const claimed = await persistAnalysis(db, {
       analysisId: row.analysisId,
       userId,
+      runId: row.runId,
       loadedUpdatedAt: row.analysisUpdatedAt,
       fromStatus: "pending",
       values: { status: "fetching" },
     });
     if (claimed.length === 0) {
-      log.warn("continueAnalysis.fetch_claim_miss");
-      return getWorkspaceVideo(userId, userVideoId, { db });
+      return snapshotOrThrowCas(
+        db,
+        userId,
+        userVideoId,
+        row.runId,
+        claimed,
+        "continueAnalysis.fetch_claim_miss",
+      );
     }
   }
 
   try {
     await fetchYoutubeVideo(
-      { userId, youtubeId: row.youtubeId, userVideoId },
+      { userId, youtubeId: row.youtubeId, userVideoId, runId: row.runId },
       { db, transcriptProvider: deps.transcriptProvider },
     );
   } catch (error) {
@@ -338,6 +366,7 @@ async function runFetch(
           eq(personalizedAnalyses.id, row.analysisId),
           eq(personalizedAnalyses.userId, userId),
           eq(personalizedAnalyses.status, "fetching"),
+          eq(personalizedAnalyses.runId, row.runId),
         ),
       );
   }
@@ -384,36 +413,38 @@ async function runClassify(
     confidence: preferred.confidence,
     topic: preferred.topic ?? null,
   };
-  const asked = prefsToAsk(classification);
-  const nextStatus =
-    asked.askFamiliarity || asked.askLength ? "awaiting" : "generating";
 
   const written = await persistAnalysis(db, {
     analysisId: row.analysisId,
     userId,
+    runId: row.runId,
     loadedUpdatedAt: row.analysisUpdatedAt,
     fromStatus: "classifying",
     values: {
-      status: nextStatus,
+      status: "generating",
       errorCode: null,
       errorMessage: null,
       classification,
     },
   });
 
-  if (written.length === 0) {
-    log.warn("continueAnalysis.cas_miss");
-  } else {
+  if (written.length > 0) {
     log.info(
       {
         isEducational: classification.isEducational,
-        nextStatus,
       },
       "continueAnalysis.classify_done",
     );
   }
 
-  return getWorkspaceVideo(userId, userVideoId, { db });
+  return snapshotOrThrowCas(
+    db,
+    userId,
+    userVideoId,
+    row.runId,
+    written,
+    "continueAnalysis.cas_miss",
+  );
 }
 
 async function runGenerate(
@@ -442,7 +473,7 @@ async function runGenerate(
   };
   const transcriptSubset = selectTranscriptSubset(segments, row.durationSeconds);
   const effectiveLength =
-    row.summaryLength ?? defaultSummaryLength(profile.summaryStyle);
+    row.summaryLength ?? defaultLengthScore(profile.summaryStyle);
 
   let parsed;
   try {
@@ -468,6 +499,7 @@ async function runGenerate(
   const written = await persistAnalysis(db, {
     analysisId: row.analysisId,
     userId,
+    runId: row.runId,
     loadedUpdatedAt: row.analysisUpdatedAt,
     fromStatus: "generating",
     values: {
@@ -475,14 +507,20 @@ async function runGenerate(
       errorCode: null,
       errorMessage: null,
       sections,
+      summary: parsed.summary,
     },
   });
 
-  if (written.length === 0) {
-    log.warn("continueAnalysis.cas_miss");
-  } else {
+  if (written.length > 0) {
     log.info({ sectionCount: sections.length }, "continueAnalysis.generate_done");
   }
 
-  return getWorkspaceVideo(userId, userVideoId, { db });
+  return snapshotOrThrowCas(
+    db,
+    userId,
+    userVideoId,
+    row.runId,
+    written,
+    "continueAnalysis.cas_miss",
+  );
 }

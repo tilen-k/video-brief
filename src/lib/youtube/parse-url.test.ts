@@ -48,4 +48,26 @@ describe("addVideoInputSchema", () => {
     });
     expect(result.success).toBe(false);
   });
+
+  it("accepts 0–100 pref scores from form strings", () => {
+    const result = addVideoInputSchema.safeParse({
+      url: "https://youtu.be/dQw4w9WgXcQ",
+      familiarity: "12",
+      summaryLength: "80",
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.familiarity).toBe(12);
+      expect(result.data.summaryLength).toBe(80);
+    }
+  });
+
+  it("rejects pref scores outside 0–100", () => {
+    expect(
+      addVideoInputSchema.safeParse({
+        url: "https://youtu.be/dQw4w9WgXcQ",
+        familiarity: "101",
+      }).success,
+    ).toBe(false);
+  });
 });
