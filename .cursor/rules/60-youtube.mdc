@@ -26,7 +26,7 @@ Preserve segment timestamps for section sync.
 
 Fetch title, channel, duration, thumbnail via the same provider boundary. Persist on **`user_videos`** per user; refresh on every ingest/re-paste.
 
-Paste creates a stub and **redirects to the workspace immediately**. Metadata + transcript fetch run there; YouTube failures surface on the workspace failed pane.
+Paste creates a stub and **stays on the library**. Metadata + transcript fetch run from the analysis worker; YouTube failures surface on the workspace failed pane.
 
 ## Player
 

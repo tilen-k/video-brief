@@ -7,12 +7,8 @@ import {
   userVideos,
   type AnalysisStatus,
   type ClassificationSnapshot,
-  type FamiliarityLevel,
   type GeneratedSection,
-  type SummaryStyle,
 } from "@/db/schema";
-import { defaultSummaryLength } from "@/domain/analysis/prefs";
-import { prefsToAsk } from "@/domain/analysis/prefs-to-ask";
 
 export type WorkspaceVideo = {
   userVideoId: string;
@@ -23,11 +19,10 @@ export type WorkspaceVideo = {
   errorCode: string | null;
   errorMessage: string | null;
   classification: ClassificationSnapshot | null;
-  familiarity: FamiliarityLevel | null;
-  summaryLength: SummaryStyle | null;
-  defaultLength: SummaryStyle;
-  askFamiliarity: boolean;
-  askLength: boolean;
+  familiarity: number;
+  summaryLength: number;
+  summary: string | null;
+  runId: string;
   sections: GeneratedSection[];
 };
 
@@ -54,8 +49,9 @@ export async function getWorkspaceVideo(
       classification: personalizedAnalyses.classification,
       familiarity: personalizedAnalyses.familiarity,
       summaryLength: personalizedAnalyses.summaryLength,
+      summary: personalizedAnalyses.summary,
+      runId: personalizedAnalyses.runId,
       sections: personalizedAnalyses.sections,
-      summaryStyle: profiles.summaryStyle,
     })
     .from(userVideos)
     .innerJoin(profiles, eq(profiles.id, userVideos.userId))
@@ -75,9 +71,6 @@ export async function getWorkspaceVideo(
     return null;
   }
 
-  const classification = row.classification ?? null;
-  const asked = prefsToAsk(classification);
-
   return {
     userVideoId: row.userVideoId,
     youtubeId: row.youtubeId,
@@ -86,12 +79,11 @@ export async function getWorkspaceVideo(
     status: (row.status ?? "pending") as AnalysisStatus,
     errorCode: row.errorCode,
     errorMessage: row.errorMessage,
-    classification,
-    familiarity: row.familiarity ?? null,
-    summaryLength: row.summaryLength ?? null,
-    defaultLength: defaultSummaryLength(row.summaryStyle),
-    askFamiliarity: asked.askFamiliarity,
-    askLength: asked.askLength,
+    classification: row.classification ?? null,
+    familiarity: row.familiarity ?? 50,
+    summaryLength: row.summaryLength ?? 50,
+    summary: row.summary ?? null,
+    runId: row.runId ?? "00000000-0000-0000-0000-000000000000",
     sections: asSections(row.sections),
   };
 }

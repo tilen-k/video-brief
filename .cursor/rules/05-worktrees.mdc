@@ -22,14 +22,18 @@ Use **in-repo** worktrees under `.worktrees/` via the repo scripts. Do **not** h
 .cursor/worktree-delete.sh <name>               # remove worktree + branch
 ```
 
-After `worktree-create.sh`, do all reads/edits/shell for that task in `WORKTREE_PATH` until apply or delete.
+After `worktree-create.sh`, do **all** reads, edits, and shell for that task in `WORKTREE_PATH` until apply or delete. Cursor’s default cwd is the **primary checkout** — every shell command must `cd` to the worktree (or set `working_directory` to that absolute path). Run `pwd` if unsure. Do not edit the primary tree for a worktree task.
 
-Before creating, check for an existing worktree: `git worktree list`. Reuse `.worktrees/<name>` when present.
+Before creating, check for an existing worktree: `git worktree list`. If the user points at a current worktree, or one already exists for this work, **keep using it** — do not open a second worktree. Reuse `.worktrees/<name>` **as-is** when present (even if `main` is ahead).
 
-Do **not** merge, rebase, or fast-forward the worktree onto primary/`main` before implementing. Other worktrees and later commits on main are usually isolated. Work on the worktree at the ref it was created from. Integrate later with `worktree-apply.sh` — fix conflicts then, not up front.
+**Do not catch up the worktree onto primary/`main` before implementing.** No `git merge main`, `git rebase main`, `git pull`, or `git reset --hard` onto main. Other worktrees and later main commits are usually isolated. Stay on the worktree’s current HEAD. Integrate later with `worktree-apply.sh` — fix conflicts then, not up front.
+
+`.worktrees/` is typically gitignored / tool-ignored. Grep and Glob from the primary root will miss worktree files. Read, write, and search with absolute paths under `WORKTREE_PATH`.
 
 Setup runs automatically from inside the new worktree (`.cursor/setup-worktree-unix.sh` / `worktrees.json`): copy `.env.local`, then `pnpm install --trust-lockfile --prefer-offline` from the default pnpm store (no registry metadata pass; sandbox-safe). If an existing worktree is missing env, run: `cp .env.local .worktrees/<name>/.env.local` from repo root.
 
 Do **not** run `db:migrate` from a worktree against shared Supabase unless that is the task.
 
 Land one worktree at a time: apply → type-check, lint, test in primary checkout → delete.
+
+`/ship-feature` follows this policy: pick `CHECKOUT` (primary or `.worktrees/<name>`), pass that absolute path into every specialist Task prompt, implement/check there, then land with apply → primary checks → delete. See `.cursor/skills/ship-feature/SKILL.md`.

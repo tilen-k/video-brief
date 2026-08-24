@@ -52,7 +52,7 @@
     "subjects": "Subjects you want to learn about",
     "subjectsHint": "Pick any that apply. Other is fine if nothing fits.",
     "summaryStyle": "Usual summary length",
-    "summaryStyleHint": "Used as the default when we ask how detailed a video summary should be.",
+    "summaryStyleHint": "Used as the default length when you add a video.",
     "summaryStyles": {
       "brief": "Brief",
       "moderate": "Moderate",
@@ -90,14 +90,20 @@
     "addTitle": "Add a video",
     "pasteLabel": "YouTube URL",
     "pastePlaceholder": "Paste a YouTube link…",
-    "pasteHint": "English captions required. You'll open the workspace while captions load.",
+    "pasteHint": "English captions required. Analysis starts here — open a video whenever you’re ready.",
     "add": "Add video",
     "adding": "Adding…",
     "addErrorTitle": "Couldn't add video",
     "quotaExceeded": "You've used all videos for this month. Check Account → Usage for your limit and reset date.",
     "usageUnavailable": "Couldn't check your usage limit. Try again in a moment.",
     "yourVideos": "Your videos",
-    "openVideo": "Open {title}"
+    "openVideo": "Open {title}",
+    "familiarityLabel": "How familiar are you with this video’s topic?",
+    "familiarityLow": "Not familiar",
+    "familiarityHigh": "Very familiar",
+    "lengthLabel": "How detailed should the summary be?",
+    "lengthLow": "Brief",
+    "lengthHigh": "Extensive"
   },
   "Account": {
     "title": "Account",
@@ -127,8 +133,7 @@
   "AnalysisStatus": {
     "fetching": "Loading captions",
     "understanding": "Understanding",
-    "generating": "Writing sections",
-    "awaiting": "Almost ready",
+    "generating": "Writing summary",
     "complete": "Ready",
     "failed": "Failed"
   },
@@ -140,28 +145,11 @@
       "found": "Video found",
       "transcript": "Captions loaded",
       "understanding": "Understanding the video",
-      "summary": "Writing your sections"
+      "summary": "Writing your summary"
     },
-    "awaitingPlaceholder": "We'll write your sections next.",
     "completePlaceholder": "Sections will appear here.",
-    "prefsTitle": "Before we write your sections",
-    "prefsHint": "Optional — skip anything you don't want to answer.",
-    "prefsFamiliarity": "How familiar are you with {topic}?",
-    "prefsTopicFallback": "this topic",
-    "prefsLength": "How detailed should the summary be?",
-    "prefsSkip": "Skip for now",
-    "prefsContinue": "Continue",
-    "prefsSkipOption": "—",
-    "familiarityLevels": {
-      "not_familiar": "Not familiar",
-      "somewhat": "Somewhat",
-      "very": "Very"
-    },
-    "lengthLevels": {
-      "brief": "Brief",
-      "moderate": "Moderate",
-      "extensive": "Extensive"
-    },
+    "summaryLabel": "Summary",
+    "summaryEmpty": "The overview will appear here.",
     "nonEduDisclaimer": "This doesn't look like a learning video. The sections still follow the transcript, with less educational framing.",
     "sectionsLabel": "Sections",
     "failedTitle": "Couldn't analyze this video",

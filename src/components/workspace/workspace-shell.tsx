@@ -7,13 +7,14 @@ import { useTranslations } from "next-intl";
 
 import { AnalysisStatusBadge } from "@/components/shared/status/analysis-status-badge";
 import { ThemeToggle } from "@/components/shared/layout/theme-toggle";
-import { analysisUiPhase } from "@/domain/workspace/analysis-ui";
+import { analysisUiPhase, paneKind } from "@/domain/workspace/analysis-ui";
 import type { WorkspaceVideo } from "@/domain/workspace/get-workspace-video";
-import { useContinueAnalysis } from "@/hooks/use-continue-analysis";
 import { usePlayerSync } from "@/hooks/use-player-sync";
 import { useWorkspaceStatus } from "@/hooks/use-workspace-status";
 
 import { WorkspacePane } from "./workspace-pane";
+import { WorkspaceSections } from "./workspace-sections";
+import { WorkspaceSummary } from "./workspace-summary";
 
 const WorkspacePlayer = dynamic(
   () => import("./workspace-player").then((mod) => mod.WorkspacePlayer),
@@ -29,11 +30,11 @@ type WorkspaceShellProps = {
 
 export function WorkspaceShell({ initial }: WorkspaceShellProps) {
   const video = useWorkspaceStatus(initial);
-  useContinueAnalysis(video);
   const { currentTime, onReady, seekTo } = usePlayerSync();
   const t = useTranslations("Workspace");
   const statusT = useTranslations("AnalysisStatus");
   const phase = analysisUiPhase(video.status);
+  const kind = paneKind(video.status);
 
   return (
     <main className="flex min-h-full flex-1 flex-col">
@@ -68,17 +69,37 @@ export function WorkspaceShell({ initial }: WorkspaceShellProps) {
         </div>
       </header>
 
-      <div className="grid min-h-0 flex-1 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)]">
-        <section className="border-b border-border lg:border-r lg:border-b-0">
+      <div className="flex min-h-0 flex-1 flex-col lg:grid lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)] lg:grid-rows-[auto_minmax(0,1fr)]">
+        <div className="order-1 mx-auto w-full max-w-3xl lg:col-start-1 lg:row-start-1 lg:border-r lg:border-border">
           <WorkspacePlayer youtubeId={video.youtubeId} onReady={onReady} />
-        </section>
-        <aside className="min-h-0 overflow-y-auto p-4 sm:p-6">
-          <WorkspacePane
-            video={video}
-            currentTime={currentTime}
-            onSeek={seekTo}
-          />
+        </div>
+        <aside className="order-2 min-h-0 overflow-y-auto border-b border-border p-4 sm:p-6 lg:order-none lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:border-b-0">
+          {kind === "complete" ? (
+            <WorkspaceSummary
+              title={t("summaryLabel")}
+              body={video.summary}
+              emptyLabel={t("summaryEmpty")}
+            />
+          ) : (
+            <WorkspacePane video={video} />
+          )}
         </aside>
+        {kind === "complete" ? (
+          <div className="order-3 min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-6 lg:col-start-1 lg:row-start-2 lg:border-r lg:border-border">
+            {video.classification && !video.classification.isEducational ? (
+              <p className="mb-4 text-sm text-muted-foreground">
+                {t("nonEduDisclaimer")}
+              </p>
+            ) : null}
+            <WorkspaceSections
+              sections={video.sections}
+              emptyLabel={t("completePlaceholder")}
+              listLabel={t("sectionsLabel")}
+              currentTime={currentTime}
+              onSeek={seekTo}
+            />
+          </div>
+        ) : null}
       </div>
     </main>
   );

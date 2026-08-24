@@ -53,6 +53,7 @@ export const analysisConfig = {
     maxSections: 20,
     maxSectionTitleChars: 120,
     maxBodyChars: 2000,
+    maxSummaryChars: 2000,
   },
 } as const;
 

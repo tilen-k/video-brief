@@ -33,12 +33,14 @@ alwaysApply: true
 
 ## Explicitly not used
 
-Prisma, tRPC, Redis, PostHog, Jest (use Vitest), Playwright (post-MVP)
+Prisma, tRPC, PostHog, Jest (use Vitest), Playwright (post-MVP)
+
+Redis + BullMQ are used for the **analysis queue and per-video lock only**. Do not cache transcripts or classification in Redis.
 
 ## Commands
 
 ```bash
-pnpm dev | build | start | lint | format | test | type-check
+pnpm dev | worker | build | start | lint | format | test | type-check
 pnpm drizzle-kit generate | migrate | studio
 ```
 

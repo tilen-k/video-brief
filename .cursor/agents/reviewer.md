@@ -59,7 +59,7 @@ Omit empty severity sections. Do not report pure style preferences unless they h
 4. Business logic in Server Actions or React instead of `src/domain/`
 5. Wrong data scope (everything per-user; prefs on the analysis row, not the profile; no EAV / shared video cache)
 6. Unvalidated LLM output persisted
-7. MVP creep (chat, Whisper, Redis, workers, Prisma, tRPC, Playwright, non-EN)
+7. MVP creep (chat, Whisper, shared transcript cache, Prisma, tRPC, Playwright, non-EN). Redis/BullMQ is in scope as the analysis queue only.
 8. Duplicated logic vs existing helpers/skills patterns
 9. Missing or weak error handling for user-visible failures
 10. React/Next anti-patterns for this App Router codebase

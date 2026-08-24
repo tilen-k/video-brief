@@ -8,22 +8,30 @@ function redisUrl(): string {
   return url;
 }
 
-let shared: IORedis | null = null;
+/**
+ * Shared Redis helpers for usage counters and the BullMQ analysis queue.
+ * Worker connections must set maxRetriesPerRequest: null.
+ */
+export function createRedisConnection(kind: "queue" | "worker"): IORedis {
+  return new IORedis(redisUrl(), {
+    maxRetriesPerRequest: kind === "worker" ? null : 20,
+    enableReadyCheck: true,
+  });
+}
+
+let sharedProducer: IORedis | null = null;
 let readyPromise: Promise<IORedis> | null = null;
 
-/**
- * Shared Redis client for usage counters (and later the analysis queue).
- * Producer-style options: maxRetriesPerRequest is finite.
- */
+/** Producer-style singleton (usage counters, queue producers). */
 export function getRedis(): IORedis {
-  if (!shared) {
-    shared = new IORedis(redisUrl(), {
+  if (!sharedProducer) {
+    sharedProducer = new IORedis(redisUrl(), {
       maxRetriesPerRequest: 20,
       enableReadyCheck: true,
       lazyConnect: true,
     });
   }
-  return shared;
+  return sharedProducer;
 }
 
 async function ensureConnected(redis: IORedis): Promise<void> {
@@ -34,7 +42,6 @@ async function ensureConnected(redis: IORedis): Promise<void> {
     await redis.connect();
     return;
   }
-  // connecting / reconnecting / connect — wait for ready once
   await new Promise<void>((resolve, reject) => {
     if (redis.status === "ready") {
       resolve();
@@ -75,11 +82,15 @@ export async function assertRedisReady(): Promise<IORedis> {
   return readyPromise;
 }
 
-/** Test helper — reset the singleton between Vitest cases. */
+export async function pingRedis(): Promise<void> {
+  await assertRedisReady();
+}
+
+/** Test helper — reset the producer singleton between Vitest cases. */
 export function resetRedisForTests(): void {
-  if (shared) {
-    shared.disconnect();
-    shared = null;
+  if (sharedProducer) {
+    sharedProducer.disconnect();
+    sharedProducer = null;
   }
   readyPromise = null;
 }

@@ -25,10 +25,11 @@ Education-first personalized YouTube summaries synced with the video. Not a chat
 For non-trivial work, prefer `/ship-feature` (or say “ship this feature”):
 
 1. `architect` (readonly) — plan boundaries **before** coding when domain/data/pipeline/authz change
-2. Main agent implements (use existing skills)
-3. `reviewer` + `verifier` (readonly) — critique and prove it works (Vitest; no Playwright). The human tests UI in the browser.
+2. Main agent implements (use existing skills) — on primary, or in an in-repo worktree when parallel/isolated (see skill + `.cursor/rules/05-worktrees.mdc`)
+3. `reviewer` + `verifier` (readonly) — critique and prove it works (Vitest; no Playwright). Pass absolute `CHECKOUT` so they inspect the worktree when used. The human tests UI in the browser.
 4. `security` when auth/RLS/AI trust boundaries change
 5. Main agent fixes Critical/High; specialists do not rewrite production code
+6. If a worktree was used: `worktree-apply.sh` → type-check/lint/test on primary → `worktree-delete.sh` (unless keeping it)
 
 Skip the full loop for copy/CSS/one-field tweaks. Explicit `/architect`, `/reviewer`, `/verifier`, or `/security` is fine mid-feature.
 
@@ -46,9 +47,9 @@ Subagents in this chat share the same checkout. Independent writing tasks (CSS, 
 .cursor/worktree-delete.sh <name>
 ```
 
-Do **not** create worktrees under `~/.cursor/worktrees/` for this repo. Reuse an existing entry from `git worktree list` before creating another.
+Do **not** create worktrees under `~/.cursor/worktrees/` for this repo. If the user says to use the current worktree, or `git worktree list` already has one for this work, use that path **as-is** — do not create another.
 
-Do **not** merge/rebase/fast-forward a worktree onto primary/`main` before implementing. Work at the worktree’s current HEAD. Integrate with `worktree-apply.sh` later.
+Every shell command for that task must `cd` to `WORKTREE_PATH` (Cursor’s default cwd is the primary checkout). Do **not** merge/rebase/pull/`reset --hard` a worktree onto primary/`main` before implementing — stay on the worktree’s HEAD even if main is ahead. Integrate with `worktree-apply.sh` later.
 
 `.cursor/worktrees.json` bootstrap: copy `.env.local`, then `pnpm install --trust-lockfile --prefer-offline` from the default pnpm store (do not request extra network permissions). Do **not** run `db:migrate` from a worktree against shared Supabase unless that *is* the task. Land one result at a time, then type-check, lint, and test in the primary checkout.
 
@@ -59,10 +60,11 @@ See `.cursor/rules/05-worktrees.mdc`.
 - Stack: Next.js App Router (`src/`), Drizzle (not Prisma), Vitest unit tests only (no Playwright/E2E)
 - AI: Vercel AI SDK behind `AIProvider` (`classifyVideo`, `generateSections`); Zod-validate all structured LLM output before persist; model in `analysisConfig`
 - YouTube English captions only; domain pipeline in `src/domain/` (not in Server Actions or UI)
-- Per-user `user_videos` — paste stubs then redirects; re-paste refreshes; no shared transcript/classification cache
-- Typed profile (not EAV); per-video prefs on the analysis row
+- Per-user `user_videos` — paste stubs stay on the library; worker runs fetch/classify/generate; re-paste refreshes; no shared transcript/classification cache
+- Typed profile (not EAV); per-video 0–100 prefs on the analysis row
 - No lint/type suppressions without justification — see `.cursor/rules/15-code-quality.mdc`
-- No chat, uploads, Whisper, Redis, workers, tRPC, Stripe, analytics, or LLM-invented knowledge questions in MVP
+- No chat, uploads, Whisper, tRPC, Stripe, analytics, or LLM-invented knowledge questions in MVP
+- Redis + BullMQ: analysis queue and per-video lock only (not a transcript cache)
 
 ## UI verification
 

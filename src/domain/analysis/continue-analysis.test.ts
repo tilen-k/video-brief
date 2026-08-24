@@ -16,8 +16,11 @@ vi.mock("@/domain/ingest/ingest-youtube-video", () => ({
     userVideoId: "uv-1",
     analysisId: "an-1",
     status: "classifying",
+    runId: "run-1",
   })),
 }));
+
+const RUN_ID = "11111111-1111-4111-8111-111111111111";
 
 const classifyOutput: ClassifyVideoOutput = {
   isEducational: true,
@@ -26,6 +29,7 @@ const classifyOutput: ClassifyVideoOutput = {
 };
 
 const generateOutput: GenerateSectionsOutput = {
+  summary: "A short overview of the lecture.",
   sections: [
     {
       title: "Intro",
@@ -50,8 +54,9 @@ const classifyingRow = {
   errorMessage: null,
   analysisUpdatedAt: new Date("2026-01-01T00:00:00.000Z"),
   classification: null,
-  familiarity: null,
-  summaryLength: null,
+  familiarity: 50,
+  summaryLength: 50,
+  runId: RUN_ID,
 };
 
 const workspaceSnapshot: WorkspaceVideo = {
@@ -59,7 +64,7 @@ const workspaceSnapshot: WorkspaceVideo = {
   youtubeId: "dQw4w9WgXcQ",
   title: "Sample",
   channelTitle: "Channel",
-  status: "awaiting",
+  status: "generating",
   errorCode: null,
   errorMessage: null,
   classification: {
@@ -67,11 +72,10 @@ const workspaceSnapshot: WorkspaceVideo = {
     confidence: "high",
     topic: "physics",
   },
-  familiarity: null,
-  summaryLength: null,
-  defaultLength: "moderate" as const,
-  askFamiliarity: true,
-  askLength: true,
+  familiarity: 50,
+  summaryLength: 50,
+  summary: null,
+  runId: RUN_ID,
   sections: [],
 };
 
@@ -145,18 +149,18 @@ describe("continueAnalysis", () => {
     vi.clearAllMocks();
   });
 
-  it("moves classifying to awaiting and persists classification", async () => {
+  it("moves classifying to generating and persists classification", async () => {
     const { db, set } = mockDb({ load: classifyingRow });
     const ai = mockAi();
 
     const result = await continueAnalysis("user-1", "uv-1", { db, ai });
 
-    expect(result?.status).toBe("awaiting");
+    expect(result?.status).toBe("generating");
     expect(ai.classifyVideo).toHaveBeenCalledTimes(1);
     expect(ai.generateSections).not.toHaveBeenCalled();
     expect(set).toHaveBeenCalledWith(
       expect.objectContaining({
-        status: "awaiting",
+        status: "generating",
         errorCode: null,
         classification: expect.objectContaining({
           isEducational: true,
@@ -166,15 +170,30 @@ describe("continueAnalysis", () => {
     );
   });
 
-  it("does not call the model when status is awaiting", async () => {
+  it("does not call the model when status is complete", async () => {
     const { db, update } = mockDb({
-      load: { ...classifyingRow, status: "awaiting" },
+      load: { ...classifyingRow, status: "complete" },
+      snapshot: { ...workspaceSnapshot, status: "complete" },
     });
     const ai = mockAi();
 
     const result = await continueAnalysis("user-1", "uv-1", { db, ai });
 
-    expect(result?.status).toBe("awaiting");
+    expect(result?.status).toBe("complete");
+    expect(ai.classifyVideo).not.toHaveBeenCalled();
+    expect(update).not.toHaveBeenCalled();
+  });
+
+  it("skips work when expectedRunId does not match", async () => {
+    const { db, update } = mockDb({ load: classifyingRow });
+    const ai = mockAi();
+
+    await continueAnalysis("user-1", "uv-1", {
+      db,
+      ai,
+      expectedRunId: "22222222-2222-4222-8222-222222222222",
+    });
+
     expect(ai.classifyVideo).not.toHaveBeenCalled();
     expect(update).not.toHaveBeenCalled();
   });
@@ -217,41 +236,17 @@ describe("continueAnalysis", () => {
     );
   });
 
-  it("skips the write when updatedAt no longer matches", async () => {
-    const { db, update } = mockDb({
+  it("throws when persist misses and the same run is still in flight", async () => {
+    const { db } = mockDb({
       load: classifyingRow,
       updateRows: [],
-      snapshot: { ...workspaceSnapshot, status: "fetching" },
+      snapshot: { ...workspaceSnapshot, status: "classifying" },
     });
     const ai = mockAi();
 
-    const result = await continueAnalysis("user-1", "uv-1", { db, ai });
-
-    expect(ai.classifyVideo).toHaveBeenCalledTimes(1);
-    expect(update).toHaveBeenCalled();
-    expect(result?.status).toBe("fetching");
-  });
-
-  it("coalesces concurrent continues for the same video into one LLM call", async () => {
-    let release!: (value: ClassifyVideoOutput) => void;
-    const ai = mockAi({
-      classify: () =>
-        new Promise((resolve) => {
-          release = resolve;
-        }),
-    });
-    const { db } = mockDb({ load: classifyingRow });
-
-    const first = continueAnalysis("user-1", "uv-1", { db, ai });
-    const second = continueAnalysis("user-1", "uv-1", { db, ai });
-
-    await vi.waitFor(() => {
-      expect(ai.classifyVideo).toHaveBeenCalledTimes(1);
-    });
-
-    release(classifyOutput);
-    await expect(first).resolves.toMatchObject({ status: "awaiting" });
-    await expect(second).resolves.toMatchObject({ status: "awaiting" });
+    await expect(continueAnalysis("user-1", "uv-1", { db, ai })).rejects.toThrow(
+      "analysis persist lost the race",
+    );
     expect(ai.classifyVideo).toHaveBeenCalledTimes(1);
   });
 
@@ -286,7 +281,7 @@ describe("continueAnalysis", () => {
     );
   });
 
-  it("keeps a high-confidence non-educational label and still awaits prefs", async () => {
+  it("keeps a high-confidence non-educational label and still generates", async () => {
     const { db, set } = mockDb({
       load: classifyingRow,
       snapshot: {
@@ -296,7 +291,6 @@ describe("continueAnalysis", () => {
           confidence: "high",
           topic: null,
         },
-        askFamiliarity: false,
       },
     });
     const ai = mockAi({
@@ -308,16 +302,16 @@ describe("continueAnalysis", () => {
 
     const result = await continueAnalysis("user-1", "uv-1", { db, ai });
 
-    expect(result?.askFamiliarity).toBe(false);
+    expect(result?.classification?.isEducational).toBe(false);
     expect(set).toHaveBeenCalledWith(
       expect.objectContaining({
-        status: "awaiting",
+        status: "generating",
         classification: expect.objectContaining({ isEducational: false }),
       }),
     );
   });
 
-  it("generates section bodies from generating", async () => {
+  it("generates overview and section bodies from generating", async () => {
     const { db, set } = mockDb({
       load: {
         ...classifyingRow,
@@ -331,6 +325,7 @@ describe("continueAnalysis", () => {
       snapshot: {
         ...workspaceSnapshot,
         status: "complete",
+        summary: generateOutput.summary,
         sections: generateOutput.sections,
       },
     });
@@ -345,6 +340,7 @@ describe("continueAnalysis", () => {
       expect.objectContaining({
         status: "complete",
         sections: generateOutput.sections,
+        summary: generateOutput.summary,
       }),
     );
   });

@@ -24,28 +24,32 @@ cp .env.example .env.local
    - Soft confirm: turn **off** “Confirm email” (or allow unconfirmed sign-in)
    - Optional: enable Google provider + add redirect `http://localhost:3000/auth/callback`
 
-4. Run SQL in the Supabase SQL editor (in order):
+4. Run SQL in the Supabase SQL editor (in order): `drizzle/0000_*.sql` through `drizzle/0007_*.sql`.
 
-```text
-drizzle/0000_profiles.sql
-drizzle/0001_user_context.sql
-drizzle/0002_user_context_revoke_client_writes.sql
+5. Redis (analysis queue). From the repo root:
+
+```bash
+docker compose up -d redis
 ```
 
-5. Install & run:
+Set `REDIS_URL=redis://127.0.0.1:6379` in `.env.local` (see `.env.example`).
+
+6. Install & run (two processes):
 
 ```bash
 pnpm install
 pnpm dev
+pnpm worker
 ```
 
-Open [http://localhost:3000](http://localhost:3000).
+Open [http://localhost:3000](http://localhost:3000). Paste stays on the library; the worker fetches, classifies, and generates.
 
 ## Scripts
 
 | Command | Description |
 |---------|-------------|
-| `pnpm dev` | Dev server |
+| `pnpm dev` | Next.js dev server |
+| `pnpm worker` | BullMQ analysis worker (needs Redis) |
 | `pnpm build` / `pnpm start` | Production |
 | `pnpm lint` | ESLint |
 | `pnpm test` | Vitest |

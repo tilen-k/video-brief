@@ -5,6 +5,8 @@ import { AddVideoForm } from "@/components/library/add-video-form";
 import { LibraryList } from "@/components/library/library-list";
 import { AppShell } from "@/components/shared/layout/app-shell";
 import { Panel } from "@/components/shared/list/panel";
+import { getUserProfile } from "@/domain/analysis/get-user-profile";
+import { defaultLengthScore } from "@/domain/analysis/prefs";
 import { listLibraryForUser } from "@/domain/ingest/ingest-youtube-video";
 import { getOnboardingCompleted } from "@/domain/onboarding";
 import { createClient } from "@/lib/supabase/server";
@@ -24,20 +26,25 @@ export default async function LibraryPage() {
     redirect("/onboarding");
   }
 
-  const items = await listLibraryForUser(user.id);
+  const [items, profile] = await Promise.all([
+    listLibraryForUser(user.id),
+    getUserProfile(user.id),
+  ]);
 
   return (
     <AppShell userEmail={user.email} userEmailHref="/account">
       <div className="flex flex-col gap-8">
         <Panel>
-          <AddVideoForm />
+          <AddVideoForm
+            defaultLength={defaultLengthScore(profile?.summaryStyle)}
+          />
         </Panel>
 
         <section className="space-y-3">
           <h2 className="text-sm font-medium text-foreground">
             {t("yourVideos")}
           </h2>
-          <LibraryList items={items} />
+          <LibraryList initialItems={items} />
         </section>
       </div>
     </AppShell>
