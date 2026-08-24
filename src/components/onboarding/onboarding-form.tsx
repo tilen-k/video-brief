@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/native-select";
 import { Spinner } from "@/components/ui/spinner";
 import { SubjectChip } from "@/components/shared/form/subject-chip";
+import { useTopLoaderOnPending } from "@/components/shared/layout/use-top-loader-on-pending";
 import {
   EDUCATION_LEVELS,
   SUBJECTS,
@@ -37,6 +38,7 @@ const initial: OnboardingActionState = {};
 export function OnboardingForm() {
   const t = useTranslations("Onboarding");
   const [state, action, pending] = useActionState(completeOnboarding, initial);
+  useTopLoaderOnPending(pending);
   const maxYear = maxYearOfBirth();
 
   return (

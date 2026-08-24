@@ -8,6 +8,7 @@ import {
   addVideo,
   type AddVideoActionState,
 } from "@/lib/actions/library";
+import { useTopLoaderOnPending } from "@/components/shared/layout/use-top-loader-on-pending";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,6 +19,7 @@ const initial: AddVideoActionState = {};
 export function AddVideoForm() {
   const t = useTranslations("Library");
   const [state, action, pending] = useActionState(addVideo, initial);
+  useTopLoaderOnPending(pending);
 
   return (
     <form action={action} className="flex w-full flex-col gap-3">

@@ -143,6 +143,17 @@
   }
 }
 
+@media (prefers-reduced-motion: reduce) {
+  #nprogress .bar {
+    animation: none !important;
+    transition: none !important;
+  }
+
+  #nprogress .peg {
+    display: none;
+  }
+}
+
 @media (prefers-reduced-motion: no-preference) {
   @keyframes landing-preview-enter {
     from {

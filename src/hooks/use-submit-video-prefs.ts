@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useRouter } from "next/navigation";
+import { useRouter } from "nextjs-toploader/app";
 
 import type { FamiliarityLevel, SummaryStyle } from "@/lib/validations/onboarding-options";
 import type { WorkspaceVideo } from "@/domain/workspace/get-workspace-video";

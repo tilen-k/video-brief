@@ -8,6 +8,7 @@ import {
   signInWithGoogle,
   type AuthActionState,
 } from "@/lib/actions/auth";
+import { useTopLoaderOnPending } from "@/components/shared/layout/use-top-loader-on-pending";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -28,6 +29,7 @@ export function LoginForm({
   };
 }) {
   const [state, action, pending] = useActionState(signIn, initial);
+  useTopLoaderOnPending(pending);
 
   return (
     <div className="flex w-full max-w-sm flex-col gap-6">
