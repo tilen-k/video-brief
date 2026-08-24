@@ -13,4 +13,6 @@ Run from repo root **in the default sandbox** (do not request `full_network` or 
 
 Before creating, run `git worktree list` and reuse an existing worktree when possible.
 
+Do **not** merge, rebase, or fast-forward that worktree onto primary/`main` before implementing. Other agents’ work is usually isolated. Stay on the worktree’s current HEAD; integrate with `worktree-apply.sh` later.
+
 Skip worktree for isolated copy/CSS/one-field i18n when no parallel agent is active.
