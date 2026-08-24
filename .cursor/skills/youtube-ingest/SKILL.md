@@ -23,7 +23,7 @@ Re-pasting the same URL refreshes **that user's** row (refetch + touch updated_a
 
 - English captions only; if unavailable → `failed` + clear user error
 - No Whisper / uploads / other sites
-- Use `youtubei.js` behind `TranscriptProvider` (swappable for proxy later)
+- Use `youtubei.js` behind `TranscriptProvider`. Optional `YOUTUBE_PROXY_URL` is transport-only (same provider).
 - **Always** call provider on ingest/re-paste — no cross-user or global transcript cache
 - One row per `(user_id, youtube_id)`
 - Do not block the library paste action on YouTube fetch; workspace owns fetch + errors

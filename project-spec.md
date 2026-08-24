@@ -147,7 +147,7 @@ Do not substitute these without an explicit product decision.
 | Transcript / metadata | `youtubei.js` behind `TranscriptProvider` |
 | Captions | **English only**; missing English transcript → clear error |
 | Player | `react-youtube` (IFrame API for seek/time sync) |
-| Prod fetch risk | Vercel IPs may be blocked; ship without proxy first; keep provider swappable for proxy/worker later |
+| Prod fetch risk | Optional `YOUTUBE_PROXY_URL` (Webshare gateway + sticky session) for Innertube and captions when Vercel IPs are blocked |
 
 ### Testing
 
@@ -295,7 +295,7 @@ Timestamped transcript
 
 If an accessible **English** timestamped transcript cannot be obtained, show a clear error state. Do not fall back to other languages, Whisper, or uploaded audio.
 
-Transcript acquisition uses `youtubei.js` behind a `TranscriptProvider` interface so a residential proxy or small fetch worker can be added later if Vercel datacenter IPs are blocked.
+Transcript acquisition uses `youtubei.js` behind a `TranscriptProvider` interface. When `YOUTUBE_PROXY_URL` is set, Innertube and caption HTTP use a sticky residential proxy session (Webshare backbone gateway).
 
 ---
 

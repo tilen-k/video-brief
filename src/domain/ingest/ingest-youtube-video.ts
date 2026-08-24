@@ -11,6 +11,7 @@ import {
   TranscriptProviderError,
   type TranscriptProvider,
 } from "@/lib/youtube/transcript-provider";
+import { errorFields, logger } from "@/lib/logger";
 import { getDefaultTranscriptProvider } from "@/lib/youtube/youtubei-transcript-provider";
 
 function sanitizeThumbnailUrl(url: string | null | undefined): string | null {
@@ -242,6 +243,15 @@ export async function fetchYoutubeVideo(
             "Could not fetch the video transcript from YouTube",
             { cause: error },
           );
+
+    logger.warn(
+      {
+        userVideoId,
+        youtubeId,
+        ...errorFields(providerError),
+      },
+      "ingest.fetch_err",
+    );
 
     if (providerError.metadata) {
       return db.transaction(async (tx) => {
