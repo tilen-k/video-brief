@@ -4,6 +4,8 @@
 set -euo pipefail
 
 export PATH="${HOME}/.local/share/pnpm/bin:${HOME}/.local/bin:${PATH}"
+# Skip interactive pnpm prompts (supply-chain confirmations, etc.).
+export CI=true
 
 root="${ROOT_WORKTREE_PATH:-}"
 
@@ -38,10 +40,23 @@ if [[ ! -f .env.local ]]; then
   exit 1
 fi
 
+if [[ -d node_modules/.pnpm && -d node_modules/next && -f node_modules/.modules.yaml ]]; then
+  echo "node_modules already present."
+  exit 0
+fi
+
 if ! command -v pnpm >/dev/null 2>&1; then
   echo "pnpm is not on PATH. Install pnpm (see packageManager in package.json)." >&2
   exit 1
 fi
 
-# Own node_modules per worktree — do not symlink from the primary checkout.
-pnpm install
+# Own node_modules per worktree, hardlinked from the default pnpm store.
+# --trust-lockfile skips the supply-chain metadata fetch that hangs in a sandbox.
+# --prefer-offline + fetch-retries=0 fail fast if the store is incomplete.
+if ! pnpm install --frozen-lockfile --trust-lockfile --prefer-offline \
+  --config.fetch-retries=0 \
+  --config.fetch-timeout=10000; then
+  echo "ERROR: pnpm install failed." >&2
+  echo "Run 'pnpm install' in the primary checkout (${root}), then re-run setup." >&2
+  exit 1
+fi

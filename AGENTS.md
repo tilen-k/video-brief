@@ -48,7 +48,7 @@ Subagents in this chat share the same checkout. Independent writing tasks (CSS, 
 
 Do **not** create worktrees under `~/.cursor/worktrees/` for this repo. Reuse an existing entry from `git worktree list` before creating another.
 
-`.cursor/worktrees.json` bootstrap: `pnpm install`, copy `.env.local`. Do **not** run `db:migrate` from a worktree against shared Supabase unless that *is* the task. Land one result at a time, then type-check, lint, and test in the primary checkout.
+`.cursor/worktrees.json` bootstrap: copy `.env.local`, then `pnpm install --trust-lockfile --prefer-offline` from the default pnpm store (do not request extra network permissions). Do **not** run `db:migrate` from a worktree against shared Supabase unless that *is* the task. Land one result at a time, then type-check, lint, and test in the primary checkout.
 
 See `.cursor/rules/05-worktrees.mdc`.
 

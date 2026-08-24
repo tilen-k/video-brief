@@ -21,17 +21,21 @@ BRANCH="wt/${SAFE_NAME}"
 WORKTREE_DIR="${REPO_ROOT}/.worktrees/${SAFE_NAME}"
 
 if [[ -d "$WORKTREE_DIR" ]]; then
-  echo "ERROR: worktree already exists: $WORKTREE_DIR" >&2
-  echo "Reuse it, or run: .cursor/worktree-delete.sh ${SAFE_NAME}" >&2
-  exit 1
-fi
-
-mkdir -p "${REPO_ROOT}/.worktrees"
-
-if git show-ref --verify --quiet "refs/heads/${BRANCH}"; then
-  git worktree add "$WORKTREE_DIR" "$BRANCH"
+  if git -C "$WORKTREE_DIR" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    echo "Reusing existing worktree: $WORKTREE_DIR"
+  else
+    echo "ERROR: $WORKTREE_DIR exists but is not a git worktree." >&2
+    echo "Remove it, or run: .cursor/worktree-delete.sh ${SAFE_NAME}" >&2
+    exit 1
+  fi
 else
-  git worktree add -b "$BRANCH" "$WORKTREE_DIR" "$START_REF"
+  mkdir -p "${REPO_ROOT}/.worktrees"
+
+  if git show-ref --verify --quiet "refs/heads/${BRANCH}"; then
+    git worktree add "$WORKTREE_DIR" "$BRANCH"
+  else
+    git worktree add -b "$BRANCH" "$WORKTREE_DIR" "$START_REF"
+  fi
 fi
 
 export ROOT_WORKTREE_PATH="$REPO_ROOT"

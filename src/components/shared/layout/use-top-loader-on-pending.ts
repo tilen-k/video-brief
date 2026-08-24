@@ -7,7 +7,10 @@ import { useEffect, useRef } from "react";
 export function useTopLoaderOnPending(pending: boolean) {
   const loader = useTopLoader();
   const loaderRef = useRef(loader);
-  loaderRef.current = loader;
+
+  useEffect(() => {
+    loaderRef.current = loader;
+  });
 
   useEffect(() => {
     if (!pending) {
