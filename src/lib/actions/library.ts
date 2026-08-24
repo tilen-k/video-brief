@@ -5,6 +5,12 @@ import { redirect } from "next/navigation";
 
 import { startYoutubeIngest } from "@/domain/ingest/ingest-youtube-video";
 import { getOnboardingCompleted } from "@/domain/onboarding";
+import {
+  consumeMonthlyPasteSlot,
+  refundMonthlyPasteSlot,
+  UsageError,
+} from "@/domain/usage";
+import { errorFields, logger } from "@/lib/logger";
 import { createClient } from "@/lib/supabase/server";
 import { addVideoInputSchema } from "@/lib/validations/library";
 
@@ -43,15 +49,41 @@ export async function addVideo(
     };
   }
 
+  let slot;
+  try {
+    slot = await consumeMonthlyPasteSlot(user.id);
+  } catch (error) {
+    if (error instanceof UsageError) {
+      return {
+        error: error.message,
+        errorCode: error.code,
+      };
+    }
+    logger.error({ ...errorFields(error) }, "addVideo.usage_err");
+    return {
+      error: "Couldn't check your usage limit. Try again in a moment.",
+      errorCode: "usage_unavailable",
+    };
+  }
+
   let result;
   try {
     result = await startYoutubeIngest({
       userId: user.id,
       youtubeId: parsed.data.youtubeId,
+      usageQuotaKey: slot.redisKey,
     });
   } catch (error) {
+    try {
+      await refundMonthlyPasteSlot(user.id, { redisKey: slot.redisKey });
+    } catch (refundError) {
+      logger.error(
+        { ...errorFields(refundError) },
+        "addVideo.refund_after_ingest_err",
+      );
+    }
     revalidatePath("/library");
-    console.error("startYoutubeIngest failed", error);
+    logger.error({ ...errorFields(error) }, "startYoutubeIngest failed");
     return {
       error: "Could not add this video. Try again.",
       errorCode: "provider_error",

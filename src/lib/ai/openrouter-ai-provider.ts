@@ -77,25 +77,31 @@ function requireApiKey(): string {
   return apiKey;
 }
 
-function createModel(apiKey: string) {
+function createModel(apiKey: string, modelId: string) {
   const openrouter = createOpenRouter({
     apiKey,
     compatibility: "strict",
     appName: "VideoBrief",
     appUrl: process.env.NEXT_PUBLIC_SITE_URL ?? "https://videobrief.app",
   });
-  return openrouter(analysisConfig.model.defaultId, {
+  return openrouter(modelId, {
     plugins: [{ id: "response-healing" }],
   });
 }
 
 export class OpenRouterAIProvider implements AIProvider {
+  private readonly modelId: string;
+
+  constructor(modelId: string = analysisConfig.models.basicId) {
+    this.modelId = modelId;
+  }
+
   async classifyVideo(input: ClassifyVideoInput) {
-    const model = createModel(requireApiKey());
+    const model = createModel(requireApiKey(), this.modelId);
     const started = Date.now();
     const log = logger.child({
       stage: "classify",
-      modelId: analysisConfig.model.defaultId,
+      modelId: this.modelId,
       excerptChars: input.transcriptExcerpt.length,
     });
 
@@ -148,11 +154,11 @@ export class OpenRouterAIProvider implements AIProvider {
   }
 
   async generateSections(input: GenerateSectionsInput) {
-    const model = createModel(requireApiKey());
+    const model = createModel(requireApiKey(), this.modelId);
     const started = Date.now();
     const log = logger.child({
       stage: "generate",
-      modelId: analysisConfig.model.defaultId,
+      modelId: this.modelId,
       transcriptChars: input.transcriptSubset.length,
     });
 

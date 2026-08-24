@@ -94,6 +94,8 @@
     "add": "Add video",
     "adding": "Adding…",
     "addErrorTitle": "Couldn't add video",
+    "quotaExceeded": "You've used all videos for this month. Check Account → Usage for your limit and reset date.",
+    "usageUnavailable": "Couldn't check your usage limit. Try again in a moment.",
     "yourVideos": "Your videos",
     "openVideo": "Open {title}"
   },
@@ -113,7 +115,14 @@
     "saving": "Saving…",
     "passwordUpdated": "Password updated.",
     "usageTitle": "Usage",
-    "usageBody": "Usage tracking isn't live yet. There's no limit on videos for now."
+    "usageUnavailable": "Couldn't load usage right now.",
+    "planFree": "Free",
+    "planPro": "Pro",
+    "usagePlan": "Plan: {plan}",
+    "usageUsedOfLimit": "{used} / {limit} videos this month",
+    "usageResetsOn": "Resets {date} (UTC)",
+    "usageDurationMinutes": "Videos up to {minutes} minutes on your plan.",
+    "usageDurationUnlimited": "No video length limit on your plan."
   },
   "AnalysisStatus": {
     "fetching": "Loading captions",

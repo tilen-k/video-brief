@@ -23,11 +23,12 @@ import {
 } from "@/domain/analysis/schemas";
 import { selectTranscriptSubset } from "@/domain/analysis/select-transcript-subset";
 import { fetchYoutubeVideo } from "@/domain/ingest/ingest-youtube-video";
+import { getPlanForUser } from "@/domain/usage/plan";
 import {
   getWorkspaceVideo,
   type WorkspaceVideo,
 } from "@/domain/workspace/get-workspace-video";
-import { getDefaultAIProvider } from "@/lib/ai/get-default-ai-provider";
+import { getAIProviderForPlan } from "@/lib/ai/get-default-ai-provider";
 import type { AIProvider } from "@/lib/ai/provider";
 import { errorFields, logger } from "@/lib/logger";
 import type { TranscriptProvider } from "@/lib/youtube/transcript-provider";
@@ -190,7 +191,9 @@ async function runContinueAnalysis(
   deps: ContinueAnalysisDeps,
 ): Promise<WorkspaceVideo | null> {
   const db = deps.db ?? createDb();
-  const ai = deps.ai ?? getDefaultAIProvider();
+  const ai =
+    deps.ai ??
+    getAIProviderForPlan(await getPlanForUser(userId, { db }));
 
   const [row] = await db
     .select({

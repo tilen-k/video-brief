@@ -11,6 +11,13 @@ import {
   TranscriptProviderError,
   type TranscriptProvider,
 } from "@/lib/youtube/transcript-provider";
+import { getPlanForUser } from "@/domain/usage/plan";
+import {
+  assertDurationAllowed,
+  isRefundableErrorCode,
+  refundMonthlyPasteSlot,
+} from "@/domain/usage";
+import { UsageError } from "@/domain/usage/errors";
 import { errorFields, logger } from "@/lib/logger";
 import { getDefaultTranscriptProvider } from "@/lib/youtube/youtubei-transcript-provider";
 
@@ -35,6 +42,8 @@ function sanitizeThumbnailUrl(url: string | null | undefined): string | null {
 export type IngestYoutubeVideoInput = {
   userId: string;
   youtubeId: string;
+  /** Redis key from consumeMonthlyPasteSlot — persisted for refunds. */
+  usageQuotaKey?: string | null;
 };
 
 export type IngestYoutubeVideoResult = {
@@ -46,6 +55,8 @@ export type IngestYoutubeVideoResult = {
 export type IngestYoutubeVideoDeps = {
   db?: Db;
   transcriptProvider?: TranscriptProvider;
+  getPlan?: typeof getPlanForUser;
+  refundSlot?: typeof refundMonthlyPasteSlot;
 };
 
 type MetadataFields = {
@@ -113,6 +124,8 @@ async function markFetchOutcome(
       errorMessage: outcome.status === "failed" ? outcome.message : null,
       classification: null,
       sections: [],
+      // Clear quota key on terminal fetch failure so refunds are one-shot.
+      ...(outcome.status === "failed" ? { usageQuotaKey: null } : {}),
       updatedAt: new Date(),
     })
     .where(
@@ -122,9 +135,44 @@ async function markFetchOutcome(
         eq(personalizedAnalyses.status, "fetching"),
       ),
     )
-    .returning();
+    .returning({
+      id: personalizedAnalyses.id,
+      status: personalizedAnalyses.status,
+      // returning after nulling loses the key — read via separate select first
+    });
 
   return row ?? null;
+}
+
+async function loadUsageQuotaKey(
+  tx: TransactionClient,
+  userId: string,
+  userVideoId: string,
+): Promise<string | null> {
+  const [row] = await tx
+    .select({ usageQuotaKey: personalizedAnalyses.usageQuotaKey })
+    .from(personalizedAnalyses)
+    .where(
+      and(
+        eq(personalizedAnalyses.userVideoId, userVideoId),
+        eq(personalizedAnalyses.userId, userId),
+      ),
+    )
+    .limit(1);
+  return row?.usageQuotaKey ?? null;
+}
+
+async function maybeRefundPasteSlot(
+  userId: string,
+  errorCode: string,
+  refundedViaCas: boolean,
+  refundSlot: typeof refundMonthlyPasteSlot,
+  redisKey: string | null,
+): Promise<void> {
+  if (!refundedViaCas || !isRefundableErrorCode(errorCode) || !redisKey) {
+    return;
+  }
+  await refundSlot(userId, { redisKey });
 }
 
 async function currentIngestResult(
@@ -166,7 +214,7 @@ export async function startYoutubeIngest(
   deps: IngestYoutubeVideoDeps = {},
 ): Promise<IngestYoutubeVideoResult> {
   const db = deps.db ?? createDb();
-  const { userId, youtubeId } = input;
+  const { userId, youtubeId, usageQuotaKey = null } = input;
 
   return db.transaction(async (tx) => {
     const [userVideo] = await tx
@@ -194,6 +242,7 @@ export async function startYoutubeIngest(
         errorMessage: null,
         classification: null,
         sections: [],
+        usageQuotaKey,
       })
       .onConflictDoUpdate({
         target: personalizedAnalyses.userVideoId,
@@ -203,6 +252,7 @@ export async function startYoutubeIngest(
           errorMessage: null,
           classification: null,
           sections: [],
+          usageQuotaKey,
           updatedAt: new Date(),
         },
       })
@@ -226,6 +276,8 @@ export async function fetchYoutubeVideo(
 ): Promise<IngestYoutubeVideoResult> {
   const db = deps.db ?? createDb();
   const provider = deps.transcriptProvider ?? getDefaultTranscriptProvider();
+  const getPlan = deps.getPlan ?? getPlanForUser;
+  const refundSlot = deps.refundSlot ?? refundMonthlyPasteSlot;
   const { userId, youtubeId, userVideoId } = input;
 
   let fetchResult: Awaited<
@@ -254,7 +306,8 @@ export async function fetchYoutubeVideo(
     );
 
     if (providerError.metadata) {
-      return db.transaction(async (tx) => {
+      const result = await db.transaction(async (tx) => {
+        const redisKey = await loadUsageQuotaKey(tx, userId, userVideoId);
         const analysis = await markFetchOutcome(tx, userId, userVideoId, {
           status: "failed",
           code: providerError.code,
@@ -263,7 +316,7 @@ export async function fetchYoutubeVideo(
         if (!analysis) {
           const current = await currentIngestResult(tx, userId, userVideoId);
           if (current) {
-            return current;
+            return { ...current, _refunded: false as const, redisKey: null };
           }
           throw providerError;
         }
@@ -287,9 +340,28 @@ export async function fetchYoutubeVideo(
           userVideoId,
           analysisId: analysis.id,
           status: "failed" as const,
+          _refunded: true as const,
+          redisKey,
         };
       });
+
+      await maybeRefundPasteSlot(
+        userId,
+        providerError.code,
+        result._refunded,
+        refundSlot,
+        result.redisKey,
+      );
+      return {
+        userVideoId: result.userVideoId,
+        analysisId: result.analysisId,
+        status: result.status,
+      };
     }
+
+    const redisKey = await db.transaction(async (tx) =>
+      loadUsageQuotaKey(tx, userId, userVideoId),
+    );
 
     const [failed] = await db
       .update(personalizedAnalyses)
@@ -299,6 +371,7 @@ export async function fetchYoutubeVideo(
         errorMessage: providerError.message,
         classification: null,
         sections: [],
+        usageQuotaKey: null,
         updatedAt: new Date(),
       })
       .where(
@@ -311,6 +384,13 @@ export async function fetchYoutubeVideo(
       .returning();
 
     if (failed) {
+      await maybeRefundPasteSlot(
+        userId,
+        providerError.code,
+        true,
+        refundSlot,
+        redisKey,
+      );
       return {
         userVideoId,
         analysisId: failed.id,
@@ -319,6 +399,70 @@ export async function fetchYoutubeVideo(
     }
 
     throw providerError;
+  }
+
+  let plan;
+  try {
+    plan = await getPlan(userId);
+    assertDurationAllowed(plan, fetchResult.metadata.durationSeconds);
+  } catch (error) {
+    const usageError =
+      error instanceof UsageError
+        ? error
+        : new UsageError(
+            "usage_unavailable",
+            "Couldn't check plan limits for this video.",
+            { cause: error },
+          );
+
+    const result = await db.transaction(async (tx) => {
+      const redisKey = await loadUsageQuotaKey(tx, userId, userVideoId);
+      const analysis = await markFetchOutcome(tx, userId, userVideoId, {
+        status: "failed",
+        code: usageError.code,
+        message: usageError.message,
+      });
+      if (!analysis) {
+        const current = await currentIngestResult(tx, userId, userVideoId);
+        if (current) {
+          return { ...current, _refunded: false as const, redisKey: null };
+        }
+        throw usageError;
+      }
+
+      await upsertUserVideoMetadata(
+        tx,
+        userId,
+        youtubeId,
+        {
+          title: fetchResult.metadata.title,
+          channelTitle: fetchResult.metadata.channelTitle,
+          thumbnailUrl: fetchResult.metadata.thumbnailUrl,
+          durationSeconds: fetchResult.metadata.durationSeconds,
+          youtubeCategoryId: fetchResult.metadata.youtubeCategoryId,
+        },
+        fetchResult.segments,
+        fetchResult.language,
+      );
+
+      return {
+        userVideoId,
+        analysisId: analysis.id,
+        status: "failed" as const,
+        _refunded: true as const,
+        redisKey,
+      };
+    });
+
+    // Pre-LLM gate (duration / plan) — always refund when CAS succeeded.
+    if (result._refunded && result.redisKey) {
+      await refundSlot(userId, { redisKey: result.redisKey });
+    }
+    return {
+      userVideoId: result.userVideoId,
+      analysisId: result.analysisId,
+      status: result.status,
+    };
   }
 
   return db.transaction(async (tx) => {

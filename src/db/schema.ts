@@ -50,6 +50,9 @@ export type GeneratedSection = {
   body: string;
 };
 
+export const PLAN_IDS = ["free", "pro"] as const;
+export type PlanId = (typeof PLAN_IDS)[number];
+
 export const profiles = pgTable("profiles", {
   id: uuid("id").primaryKey(),
   email: text("email"),
@@ -59,6 +62,7 @@ export const profiles = pgTable("profiles", {
   educationLevel: text("education_level"),
   subjects: jsonb("subjects").$type<string[] | null>(),
   summaryStyle: text("summary_style").$type<SummaryStyle | null>(),
+  plan: text("plan").$type<PlanId>().notNull().default("free"),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
@@ -124,6 +128,8 @@ export const personalizedAnalyses = pgTable(
     classification: jsonb("classification").$type<ClassificationSnapshot | null>(),
     familiarity: text("familiarity").$type<FamiliarityLevel | null>(),
     summaryLength: text("summary_length").$type<SummaryStyle | null>(),
+    /** Redis monthly counter key consumed at paste; used for pre-LLM refunds. */
+    usageQuotaKey: text("usage_quota_key"),
     sections: jsonb("sections")
       .$type<GeneratedSection[]>()
       .notNull()

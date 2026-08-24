@@ -37,6 +37,7 @@ const mocks = vi.hoisted(() => {
     updateReturning,
     onConflictDoUpdate,
     select,
+    limit,
   };
 });
 
@@ -58,6 +59,10 @@ vi.mock("@/lib/youtube/youtubei-transcript-provider", () => ({
   getDefaultTranscriptProvider: () => ({
     getEnglishTranscript: vi.fn(),
   }),
+}));
+
+vi.mock("@/domain/usage/plan", () => ({
+  getPlanForUser: vi.fn(async () => "free"),
 }));
 
 import {
@@ -112,6 +117,7 @@ describe("startYoutubeIngest", () => {
 describe("fetchYoutubeVideo", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.limit.mockResolvedValue([{ usageQuotaKey: "vb:usage:videos:user-1:202608" }]);
   });
 
   it("always fetches from provider and lands on classifying", async () => {
@@ -186,13 +192,14 @@ describe("fetchYoutubeVideo", () => {
         { metadata: sampleTranscript.metadata },
       );
     });
+    const refundSlot = vi.fn(async () => undefined);
 
     mocks.updateReturning.mockResolvedValueOnce([{ id: "analysis-1" }]);
     mocks.returning.mockResolvedValueOnce([{ id: "uv-1" }]);
 
     const result = await fetchYoutubeVideo(
       { userId: "user-1", youtubeId: "dQw4w9WgXcQ", userVideoId: "uv-1" },
-      { transcriptProvider: provider },
+      { transcriptProvider: provider, refundSlot },
     );
 
     expect(result).toEqual({
@@ -201,6 +208,9 @@ describe("fetchYoutubeVideo", () => {
       status: "failed",
     });
     expect(mocks.update).toHaveBeenCalled();
+    expect(refundSlot).toHaveBeenCalledWith("user-1", {
+      redisKey: "vb:usage:videos:user-1:202608",
+    });
   });
 
   it("marks the stub failed when metadata is unavailable", async () => {
@@ -210,15 +220,75 @@ describe("fetchYoutubeVideo", () => {
         "This video has no English captions",
       );
     });
+    const refundSlot = vi.fn(async () => undefined);
 
     mocks.updateReturning.mockResolvedValueOnce([{ id: "analysis-1" }]);
 
     const result = await fetchYoutubeVideo(
       { userId: "user-1", youtubeId: "dQw4w9WgXcQ", userVideoId: "uv-1" },
-      { transcriptProvider: provider },
+      { transcriptProvider: provider, refundSlot },
     );
 
     expect(result.status).toBe("failed");
     expect(mocks.update).toHaveBeenCalled();
+    expect(refundSlot).toHaveBeenCalledWith("user-1", {
+      redisKey: "vb:usage:videos:user-1:202608",
+    });
+  });
+
+  it("fails too_long and refunds when free duration is exceeded", async () => {
+    const longTranscript = {
+      ...sampleTranscript,
+      metadata: {
+        ...sampleTranscript.metadata,
+        durationSeconds: 21 * 60,
+      },
+    };
+    const provider = mockProvider(async () => longTranscript);
+    const refundSlot = vi.fn(async () => undefined);
+
+    mocks.updateReturning.mockResolvedValueOnce([{ id: "analysis-1" }]);
+    mocks.returning.mockResolvedValueOnce([{ id: "uv-1" }]);
+
+    const result = await fetchYoutubeVideo(
+      { userId: "user-1", youtubeId: "dQw4w9WgXcQ", userVideoId: "uv-1" },
+      {
+        transcriptProvider: provider,
+        refundSlot,
+        getPlan: async () => "free",
+      },
+    );
+
+    expect(result.status).toBe("failed");
+    expect(mocks.set).toHaveBeenCalledWith(
+      expect.objectContaining({
+        status: "failed",
+        errorCode: "too_long",
+      }),
+    );
+    expect(refundSlot).toHaveBeenCalledWith("user-1", {
+      redisKey: "vb:usage:videos:user-1:202608",
+    });
+  });
+
+  it("does not refund provider_error failures", async () => {
+    const provider = mockProvider(async () => {
+      throw new TranscriptProviderError(
+        "provider_error",
+        "YouTube is unavailable",
+        { metadata: sampleTranscript.metadata },
+      );
+    });
+    const refundSlot = vi.fn(async () => undefined);
+
+    mocks.updateReturning.mockResolvedValueOnce([{ id: "analysis-1" }]);
+    mocks.returning.mockResolvedValueOnce([{ id: "uv-1" }]);
+
+    await fetchYoutubeVideo(
+      { userId: "user-1", youtubeId: "dQw4w9WgXcQ", userVideoId: "uv-1" },
+      { transcriptProvider: provider, refundSlot },
+    );
+
+    expect(refundSlot).not.toHaveBeenCalled();
   });
 });

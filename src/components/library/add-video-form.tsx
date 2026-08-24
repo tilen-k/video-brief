@@ -58,7 +58,13 @@ export function AddVideoForm() {
         <Alert variant="destructive">
           <AlertCircleIcon />
           <AlertTitle>{t("addErrorTitle")}</AlertTitle>
-          <AlertDescription>{state.error}</AlertDescription>
+          <AlertDescription>
+            {state.errorCode === "quota_exceeded"
+              ? t("quotaExceeded")
+              : state.errorCode === "usage_unavailable"
+                ? t("usageUnavailable")
+                : state.error}
+          </AlertDescription>
         </Alert>
       ) : null}
     </form>

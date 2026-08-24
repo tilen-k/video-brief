@@ -37,7 +37,7 @@ Landing → Auth → Onboarding → Library → Paste URL
 | YouTube | `youtubei.js` (EN captions required), `react-youtube` |
 | Tests | Vitest unit only (no E2E in MVP) |
 
-**Not in MVP:** chat, uploads, Whisper, Redis, workers, tRPC, Prisma, Stripe, PostHog, non-English UI/captions, LLM-invented knowledge questions, topic/video EAV context, shared cross-user transcript/classification cache.
+**Not in MVP:** chat, uploads, Whisper, workers, tRPC, Prisma, Stripe, PostHog, non-English UI/captions, LLM-invented knowledge questions, topic/video EAV context, shared cross-user transcript/classification cache. Redis is used for **monthly usage counters** (and the analysis queue when that lands).
 
 ## Onboarding (all optional)
 
@@ -87,7 +87,8 @@ All **per-user**. No shared video/transcript/classification cache.
 
 - `user_videos` — metadata + English transcript (re-paste refreshes)
 - `personalized_analyses` — state machine, classify result, per-video prefs, generated sections
-- Profile / preferences — typed columns: YOB, education level, subjects, summary style
+- Profile / preferences — typed columns: YOB, education level, subjects, summary style, **plan** (`free` | `pro`)
+- Usage — Redis monthly paste counter per user (free: 10/month, max 20 min); Pro scaffolded
 
 ## Architecture
 
