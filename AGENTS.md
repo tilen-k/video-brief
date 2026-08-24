@@ -25,10 +25,11 @@ Education-first personalized YouTube summaries synced with the video. Not a chat
 For non-trivial work, prefer `/ship-feature` (or say “ship this feature”):
 
 1. `architect` (readonly) — plan boundaries **before** coding when domain/data/pipeline/authz change
-2. Main agent implements (use existing skills)
-3. `reviewer` + `verifier` (readonly) — critique and prove it works (Vitest; no Playwright). The human tests UI in the browser.
+2. Main agent implements (use existing skills) — on primary, or in an in-repo worktree when parallel/isolated (see skill + `.cursor/rules/05-worktrees.mdc`)
+3. `reviewer` + `verifier` (readonly) — critique and prove it works (Vitest; no Playwright). Pass absolute `CHECKOUT` so they inspect the worktree when used. The human tests UI in the browser.
 4. `security` when auth/RLS/AI trust boundaries change
 5. Main agent fixes Critical/High; specialists do not rewrite production code
+6. If a worktree was used: `worktree-apply.sh` → type-check/lint/test on primary → `worktree-delete.sh` (unless keeping it)
 
 Skip the full loop for copy/CSS/one-field tweaks. Explicit `/architect`, `/reviewer`, `/verifier`, or `/security` is fine mid-feature.
 

@@ -3,7 +3,11 @@
 # Usage: worktree-apply.sh <name>
 set -euo pipefail
 
-REPO_ROOT="$(git rev-parse --show-toplevel)"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=worktree-lib.sh
+source "${SCRIPT_DIR}/worktree-lib.sh"
+
+REPO_ROOT="$(worktree_primary_root)"
 cd "$REPO_ROOT"
 
 NAME="${1:-}"
