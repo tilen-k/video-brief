@@ -7,7 +7,7 @@ import {
   classifyVideoSchema,
   generateSectionsSchema,
 } from "@/domain/analysis/schemas";
-import { errorFields, logger } from "@/lib/logger";
+import { llmErrorFields, logger } from "@/lib/logger";
 
 import {
   AIProviderError,
@@ -144,7 +144,7 @@ export class OpenRouterAIProvider implements AIProvider {
       }
 
       log.warn(
-        { llmMs: Date.now() - started, ...errorFields(error) },
+        { llmMs: Date.now() - started, ...llmErrorFields(error) },
         "llm.err",
       );
       if (error instanceof AIProviderError) {
@@ -190,7 +190,7 @@ export class OpenRouterAIProvider implements AIProvider {
       return parsed;
     } catch (error) {
       log.warn(
-        { llmMs: Date.now() - started, ...errorFields(error) },
+        { llmMs: Date.now() - started, ...llmErrorFields(error) },
         "llm.err",
       );
       if (error instanceof AIProviderError) {

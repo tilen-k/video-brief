@@ -29,7 +29,7 @@ import {
 } from "@/domain/workspace/get-workspace-video";
 import { getAIProviderForPlan } from "@/lib/ai/get-default-ai-provider";
 import type { AIProvider } from "@/lib/ai/provider";
-import { errorFields, logger } from "@/lib/logger";
+import { errorFields, llmErrorFields, logger } from "@/lib/logger";
 import type { TranscriptProvider } from "@/lib/youtube/transcript-provider";
 
 export const ANALYSIS_FAILED_CODE = "analysis_failed";
@@ -292,7 +292,7 @@ async function failStage(
       userVideoId,
       analysisId: row.analysisId,
       reason,
-      ...(error === undefined ? {} : errorFields(error)),
+      ...(error === undefined ? {} : llmErrorFields(error)),
     },
     "continueAnalysis.fail",
   );

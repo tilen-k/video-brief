@@ -10,11 +10,12 @@ description: Add or change Drizzle schema tables with migrations and Supabase RL
 1. Edit `src/db/schema.ts` (UUID PKs, `createdAt`/`updatedAt`, FKs, indexes).
 2. Per-user video model: `user_videos` (metadata + transcript) + `personalized_analyses` (1:1: status, classify result, per-video prefs, section bodies). Typed profile columns — not EAV.
 3. Export `$inferSelect` / `$inferInsert` types.
-4. `pnpm drizzle-kit generate` then `pnpm drizzle-kit migrate`.
-5. Add RLS policies in the same change for every user-owned table:
+4. `pnpm db:generate` then `pnpm db:migrate` (Drizzle Kit is the migrator; journal lives in `drizzle/meta/`).
+5. Do **not** dual-apply the same migration via Supabase MCP `apply_migration` or the SQL editor — Kit owns apply after generate.
+6. Add RLS policies in the same change for every user-owned table:
    - `USING (user_id = auth.uid())` (or equivalent join) for select/update/delete
    - matching `WITH CHECK` for inserts
-6. **REVOKE ALL** from `anon`, `authenticated` on user tables — writes via Drizzle `DATABASE_URL` only.
+7. **REVOKE ALL** from `anon`, `authenticated` on user tables — writes via Drizzle `DATABASE_URL` only.
 
 ## Checklist
 

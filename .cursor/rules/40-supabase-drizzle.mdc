@@ -26,10 +26,14 @@ alwaysApply: false
 
 ## Migrations
 
+Drizzle Kit is the source of truth (`drizzle/meta/_journal.json` + `pnpm db:migrate` → `drizzle.__drizzle_migrations`).
+
 1. Edit `src/db/schema.ts`
-2. `pnpm drizzle-kit generate`
-3. `pnpm drizzle-kit migrate`
+2. `pnpm db:generate`
+3. `pnpm db:migrate`
 4. Ship **RLS policies in the same change** as new user-owned tables
+
+Do **not** also apply the same DDL with Supabase MCP `apply_migration` or the SQL editor (causes drift / double-apply).
 
 Never disable RLS to “make dev easier.” Never trust browser `user_id`.
 

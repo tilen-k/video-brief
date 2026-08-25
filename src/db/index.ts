@@ -34,6 +34,14 @@ function formatDbConnectError(error: unknown): Error {
   return error instanceof Error ? error : new Error(message);
 }
 
+function isAnalysisWorkerProcess(): boolean {
+  return (
+    process.env.ANALYSIS_WORKER === "1" ||
+    process.env.npm_lifecycle_event === "worker" ||
+    process.env.npm_lifecycle_event === "worker:prod"
+  );
+}
+
 /**
  * Drizzle client for the Next.js app and the analysis worker.
  * Requires DATABASE_URL — prefer Supabase Transaction pooler (IPv4).
@@ -53,7 +61,7 @@ export function createDb(): Db {
       globalForDb.postgresSql ??
       postgres(url, {
         prepare: false,
-        max: process.env.npm_lifecycle_event === "worker" ? 4 : 1,
+        max: isAnalysisWorkerProcess() ? 4 : 1,
       });
 
     const db = drizzle(client, { schema });
