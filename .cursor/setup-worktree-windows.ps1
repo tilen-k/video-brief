@@ -13,6 +13,12 @@ function Copy-FromRoot([string]$name) {
   }
 }
 
+function Test-ModulesReady([string]$base = ".") {
+  return (Test-Path (Join-Path $base "node_modules\.pnpm")) `
+    -and (Test-Path (Join-Path $base "node_modules\next")) `
+    -and (Test-Path (Join-Path $base "node_modules\.modules.yaml"))
+}
+
 Copy-FromRoot ".env.local"
 Copy-FromRoot ".env"
 
@@ -24,13 +30,35 @@ if (-not $root) {
   throw "ROOT_WORKTREE_PATH must point at the primary checkout."
 }
 
-$modulesReady = (Test-Path "node_modules\.pnpm") -and (Test-Path "node_modules\next") -and (Test-Path "node_modules\.modules.yaml")
-if ($modulesReady) {
+if (Test-ModulesReady ".") {
   Write-Host "node_modules already present."
   exit 0
 }
 
-pnpm install --frozen-lockfile --trust-lockfile --prefer-offline --config.fetch-retries=0 --config.fetch-timeout=10000
+if (Test-Path "node_modules") {
+  Write-Host "Removing incomplete node_modules before setup..."
+  Remove-Item -Recurse -Force "node_modules"
+}
+
+# Fast path: copy primary node_modules (avoids sandbox/store hangs).
+if (Test-ModulesReady $root) {
+  Write-Host "Copying node_modules from primary checkout..."
+  Copy-Item -Recurse -Force (Join-Path $root "node_modules") "node_modules"
+  Write-Host "node_modules ready (copied from primary)."
+  exit 0
+}
+
+$storeDir = Join-Path $env:LOCALAPPDATA "pnpm\store\v11"
+$modulesYaml = Join-Path $root "node_modules\.modules.yaml"
+if (Test-Path $modulesYaml) {
+  $match = Select-String -Path $modulesYaml -Pattern '"storeDir":\s*"([^"]+)"' | Select-Object -First 1
+  if ($match) {
+    $storeDir = $match.Matches[0].Groups[1].Value
+  }
+}
+
+Write-Host "Running offline pnpm install from store: $storeDir"
+pnpm install --frozen-lockfile --trust-lockfile --offline --frozen-store --store-dir $storeDir --config.fetch-retries=0 --config.fetch-timeout=5000
 if ($LASTEXITCODE -ne 0) {
   Write-Error "pnpm install failed. Run 'pnpm install' in the primary checkout, then re-run setup."
   exit 1

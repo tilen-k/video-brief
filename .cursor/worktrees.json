@@ -2,7 +2,7 @@
   "setup-worktree-unix": "setup-worktree-unix.sh",
   "setup-worktree-windows": "setup-worktree-windows.ps1",
   "setup-worktree": [
-    "pnpm install --frozen-lockfile --trust-lockfile --prefer-offline --config.fetch-retries=0 --config.fetch-timeout=10000",
-    "if [ -f \"$ROOT_WORKTREE_PATH/.env.local\" ]; then cp \"$ROOT_WORKTREE_PATH/.env.local\" .env.local; elif [ -f .env.example ]; then cp .env.example .env.local; fi"
+    "if [ -f \"$ROOT_WORKTREE_PATH/.env.local\" ]; then cp \"$ROOT_WORKTREE_PATH/.env.local\" .env.local; elif [ -f .env.example ]; then cp .env.example .env.local; fi",
+    "bash \"$ROOT_WORKTREE_PATH/.cursor/setup-worktree-unix.sh\""
   ]
 }

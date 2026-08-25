@@ -3,9 +3,10 @@ name: ship-feature
 description: >-
   Orchestrate shipping a substantial VideoBrief feature: optional architect
   plan, implement (primary or in-repo worktree), mechanical checks, then
-  reviewer / verifier / security subagents, then land worktree if used. Use
-  when the user says ship-feature, /ship-feature, or asks to
-  design-implement-review a non-trivial feature end-to-end.
+  reviewer / verifier / security subagents. Do not worktree-apply until the
+  user explicitly asks after their UI/test pass. Use when the user says
+  ship-feature, /ship-feature, or asks to design-implement-review a
+  non-trivial feature end-to-end.
 ---
 
 # Ship feature
@@ -58,9 +59,9 @@ Otherwise, when isolation is needed:
 
 Reuse an existing `.worktrees/<name>` when `git worktree list` already shows it.
 
-Set `CHECKOUT` to `WORKTREE_PATH` or `PRIMARY`. **Every** read, edit, and shell for this feature uses `CHECKOUT` until land (or until done on primary).
+Set `CHECKOUT` to `WORKTREE_PATH` or `PRIMARY`. **Every** read, edit, and shell for this feature uses `CHECKOUT` until the user asks to apply (or until done on primary).
 
-Do **not** merge/rebase/fast-forward the worktree onto primary before implementing. Work at the worktree HEAD; land with apply later.
+Do **not** merge/rebase/fast-forward the worktree onto primary before implementing. Work at the worktree HEAD; apply only when the user says so (after their improve/test pass).
 
 Do **not** run `db:migrate` from a worktree against shared Supabase unless that is the task.
 
@@ -138,9 +139,19 @@ Re-run verifier (and security if it had Critical/High) after substantive fixes.
 
 Do not expand scope into unrelated refactors.
 
-### 8. Land worktree (when CHECKOUT is a worktree)
+### 8. Pause for human (default — do **not** auto-apply)
 
-Skip this step if work stayed on primary.
+After step 7, **stop**. Do **not** run `worktree-apply.sh` / `worktree-delete.sh` unless the user explicitly asks (e.g. `/worktree-apply`, “apply the worktree”, “land it”).
+
+The human improves and tests in the browser on the worktree (or primary if that was `CHECKOUT`). Agents do not drive the browser (see `.cursor/rules/90-ui-verification.mdc`).
+
+Report **READY** (below) with `WORKTREE_PATH`, what to click through, and that apply is waiting on them.
+
+If they request more fixes, stay in `CHECKOUT` and re-run checks / specialists as needed — still no apply until they ask.
+
+### 9. Land worktree (only when the user explicitly asks)
+
+Skip if work stayed on primary, or if the user has not asked to apply yet.
 
 From **primary** (scripts resolve primary if cwd is linked):
 
@@ -166,15 +177,17 @@ Then delete unless the user asked to keep the worktree:
 .cursor/worktree-delete.sh <WORKTREE_NAME>
 ```
 
-Land **one** worktree at a time.
+Land **one** worktree at a time. Run `db:migrate` on **primary** only when the landed change includes a migration and the user wants shared DB updated (not from the worktree).
 
-### 9. Final report
+### 10. Final report
+
+After step 7 (waiting on human):
 
 ```text
-SHIPPED — <feature>
+READY — <feature> (not applied)
 
 Checkout
-- primary | worktree <name> → applied | kept open
+- worktree <name> at WORKTREE_PATH=… | primary
 
 Done
 - …
@@ -190,8 +203,32 @@ Deferred / residual
 
 Verified
 - type-check / lint / test (CHECKOUT): …
-- type-check / lint / test (primary after apply): … (or N/A)
-- UI for human: … (or N/A)
+- UI for human: … (click-through list)
+- Next: human tests/improves; say /worktree-apply <name> when ready to land
+```
+
+After step 9 (user asked to apply):
+
+```text
+SHIPPED — <feature>
+
+Checkout
+- worktree <name> → applied | kept open
+
+Done
+- …
+
+Findings fixed
+- …
+
+Deferred / residual
+- …
+
+Verified
+- type-check / lint / test (CHECKOUT): …
+- type-check / lint / test (primary after apply): …
+- UI for human: … (or already signed off)
+- db:migrate: done | still needed on primary | N/A
 ```
 
 ## Trust boundary

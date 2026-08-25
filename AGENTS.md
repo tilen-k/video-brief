@@ -29,7 +29,8 @@ For non-trivial work, prefer `/ship-feature` (or say “ship this feature”):
 3. `reviewer` + `verifier` (readonly) — critique and prove it works (Vitest; no Playwright). Pass absolute `CHECKOUT` so they inspect the worktree when used. The human tests UI in the browser.
 4. `security` when auth/RLS/AI trust boundaries change
 5. Main agent fixes Critical/High; specialists do not rewrite production code
-6. If a worktree was used: `worktree-apply.sh` → type-check/lint/test on primary → `worktree-delete.sh` (unless keeping it)
+6. **Pause** — human improves / click-tests. Do **not** auto-apply.
+7. Only when the user asks (`/worktree-apply` or “land it”): `worktree-apply.sh` → type-check/lint/test on primary → `worktree-delete.sh` (unless keeping it)
 
 Skip the full loop for copy/CSS/one-field tweaks. Explicit `/architect`, `/reviewer`, `/verifier`, or `/security` is fine mid-feature.
 
@@ -51,7 +52,7 @@ Do **not** create worktrees under `~/.cursor/worktrees/` for this repo. If the u
 
 Every shell command for that task must `cd` to `WORKTREE_PATH` (Cursor’s default cwd is the primary checkout). Do **not** merge/rebase/pull/`reset --hard` a worktree onto primary/`main` before implementing — stay on the worktree’s HEAD even if main is ahead. Integrate with `worktree-apply.sh` later.
 
-`.cursor/worktrees.json` bootstrap: copy `.env.local`, then `pnpm install --trust-lockfile --prefer-offline` from the default pnpm store (do not request extra network permissions). Do **not** run `db:migrate` from a worktree against shared Supabase unless that *is* the task. Land one result at a time, then type-check, lint, and test in the primary checkout.
+`.cursor/worktrees.json` / `setup-worktree-unix.sh` bootstrap: copy `.env.local`, then hardlink-clone `node_modules` from primary (do not bare-`pnpm install` in the sandbox — store remap hangs). Do **not** run `db:migrate` from a worktree against shared Supabase unless that *is* the task. Apply one worktree at a time **after the human asks**, then type-check, lint, and test in the primary checkout.
 
 See `.cursor/rules/05-worktrees.mdc`.
 
