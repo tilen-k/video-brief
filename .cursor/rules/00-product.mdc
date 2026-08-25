@@ -7,23 +7,25 @@ alwaysApply: true
 
 Brand: **VideoBrief** · **Domain:** videobrief.app
 
-**Education-first** personalized YouTube summaries synced with the video. Not a generic AI summarizer. Not a chatbot. Non-educational videos still get a sectioned summary (soft disclaimer, no familiarity question).
+**Contextual YouTube summarizer** — personalized section summaries synced with the video. Not a chatbot. Not education-first tooling.
 
 ## Core loop
 
-Paste URL + familiarity/length sliders (0–100) → stub on library (no redirect) → enqueue analysis job → fetch metadata + EN transcript → classify (`isEducational` + topic) → generate overview + sections **with bodies** → open workspace anytime; watch with sync highlight/seek.
+Paste URL → **Preview** (metadata only; no DB row, no usage) → summary settings under the input (length + tone always; familiarity when YouTube category qualifies) → **Generate** → create library row + count usage + enqueue → **redirect to workspace** (job continues if user leaves) → worker fetches transcript → generate overview + sections **with bodies** → watch with sync highlight/seek.
 
 ## Guiding question
 
-Does this help turn a YouTube video into a better personalized understanding for this user — especially for learning? If not, keep it out of MVP.
+Does this help turn a YouTube video into a better personalized understanding for this user? If not, keep it out of MVP.
 
 ## MVP includes
 
-Landing, auth (email/password + Google), soft email confirm, lightweight **educational** onboarding (YOB, education level, subject chips, optional summary style — all optional), library, YouTube ingest (per-user `user_videos`, re-paste refreshes; fetch **from the analysis worker**), English timestamped captions, AI classify + generate (via `AIProvider`), paste-time familiarity + length sliders (0–100), typed profile prefs, video workspace with overview **summary** + section **bodies** + highlight/seek, soft non-edu disclaimer, dark-default UI, EN-only i18n scaffolding, unit tests, BullMQ analysis worker (Redis queue-only).
+Landing, auth (email/password + Google), soft email confirm, lightweight onboarding (optional default **tone** + **length** only), library with ephemeral preview → Generate, YouTube ingest (per-user `user_videos`; fetch transcript **from the analysis worker** on Generate), English timestamped captions, AI **generate only** (via `AIProvider`; **no classify stage**), per-video length/tone/familiarity (0–100) on the analysis row, video workspace with overview **summary** + section **bodies** + highlight/seek, dark-default UI, EN-only i18n scaffolding, unit tests, BullMQ analysis worker (Redis queue + usage counters).
 
 ## MVP excludes
 
-Chat, uploads, Whisper/audio transcription, non-YouTube, recommendations, knowledge graph, cross-video search, quizzes, social/sharing, Stripe, tRPC, PostHog/analytics, E2E tests, non-English UI or captions, **LLM-invented knowledge questions**, topic/video EAV context, shared cross-user transcript/classification cache. Redis is **queue + per-video lock only** (not a transcript cache).
+Chat, uploads, Whisper/audio transcription, non-YouTube, recommendations, knowledge graph, cross-video search, quizzes, social/sharing, Stripe, tRPC, PostHog/analytics, E2E tests, non-English UI or captions (app DE + summary-language + non-EN transcripts = **post-MVP**), **LLM-invented knowledge questions**, topic/video EAV context, shared cross-user transcript cache, AI classify / `isEducational` / non-edu disclaimer, educational profile fields (YOB, education level, subjects).
+
+Redis is **queue + per-video lock + usage counters** (not a transcript cache).
 
 ## UX
 
@@ -31,9 +33,10 @@ Editorial, premium, content-first, typography-led. AI stays invisible in the wor
 
 ## Context rules
 
-- Onboarding stays lightweight; every field optional.
-- Profile fields (typed, not open key/value): year of birth (`yyyy`, framing), education-level enum, subject chips (fixed list + `other`), optional `summary_style` (`brief` / `moderate` / `extensive`).
-- Per-video prefs live on the **analysis row**, not the profile: familiarity and summary length as integers 0–100 (defaults: familiarity 50; length from `summary_style`). Collected at paste. Re-paste overwrites.
-- Non-edu summaries still use profile + length; omit familiarity from the generate prompt; soft disclaimer.
-- Ambiguous classification → prefer educational.
-- Classify does **not** emit section skeleton or dynamic questions. Generate emits `{ summary, sections: { title, startTime, endTime, body }[] }`.
+- Onboarding stays lightweight; every field optional. Skip → defaults **tone 50**, **length 50**.
+- Profile defaults (typed): `summary_tone` (0–100), `summary_length` (0–100). No YOB / education / subjects / `summary_style` enum.
+- Per-video prefs on the **analysis row**: `summary_length`, `summary_tone`, `familiarity` (nullable). Slider ends: length Short←→Long; tone **Formal←→Casual**; familiarity Novice←→Expert (copy TBD). Defaults from profile (or 50/50).
+- Familiarity shown only when YouTube category is one of: Education, Howto & Style, Science & Technology, News & Politics (fixed category-id map; may extend later). Otherwise omit from UI and generate prompt.
+- Preview is ephemeral (client + read-only preview action). **No** `user_videos` / analysis row until Generate. Abandon = nothing to delete.
+- Re-Generate / same URL again → **reset** (new `run_id`, clear prior summary/sections).
+- Generate emits `{ summary, sections: { title, startTime, endTime, body }[] }`. No classify stage.

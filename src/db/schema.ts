@@ -10,12 +10,9 @@ import {
   uuid,
 } from "drizzle-orm/pg-core";
 
-import type { SummaryStyle } from "@/lib/validations/onboarding-options";
-
 export const ANALYSIS_STATUSES = [
   "pending",
   "fetching",
-  "classifying",
   "generating",
   "complete",
   "failed",
@@ -23,20 +20,10 @@ export const ANALYSIS_STATUSES = [
 
 export type AnalysisStatus = (typeof ANALYSIS_STATUSES)[number];
 
-export type { SummaryStyle };
-
 export type TranscriptSegment = {
   startMs: number;
   endMs?: number;
   text: string;
-};
-
-export type ClassificationConfidence = "high" | "medium" | "low";
-
-export type ClassificationSnapshot = {
-  isEducational: boolean;
-  confidence: ClassificationConfidence;
-  topic: string | null;
 };
 
 export type GeneratedSection = {
@@ -54,10 +41,8 @@ export const profiles = pgTable("profiles", {
   email: text("email"),
   displayName: text("display_name"),
   onboardingCompleted: boolean("onboarding_completed").notNull().default(false),
-  yearOfBirth: integer("year_of_birth"),
-  educationLevel: text("education_level"),
-  subjects: jsonb("subjects").$type<string[] | null>(),
-  summaryStyle: text("summary_style").$type<SummaryStyle | null>(),
+  summaryTone: integer("summary_tone").notNull().default(50),
+  summaryLength: integer("summary_length").notNull().default(50),
   plan: text("plan").$type<PlanId>().notNull().default("free"),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
@@ -70,7 +55,7 @@ export const profiles = pgTable("profiles", {
 
 /**
  * Per-user library entry: metadata + English transcript snapshot.
- * Re-pasting the same URL refreshes this row (no shared cache).
+ * Re-running Generate on the same URL refreshes this row (no shared cache).
  */
 export const userVideos = pgTable(
   "user_videos",
@@ -121,12 +106,13 @@ export const personalizedAnalyses = pgTable(
     status: text("status").$type<AnalysisStatus>().notNull().default("pending"),
     errorCode: text("error_code"),
     errorMessage: text("error_message"),
-    classification: jsonb("classification").$type<ClassificationSnapshot | null>(),
-    familiarity: integer("familiarity").notNull().default(50),
+    /** Topic familiarity 0–100 when category qualifies; otherwise null. */
+    familiarity: integer("familiarity"),
     summaryLength: integer("summary_length").notNull().default(50),
+    summaryTone: integer("summary_tone").notNull().default(50),
     summary: text("summary"),
     runId: uuid("run_id").notNull().defaultRandom(),
-    /** Redis monthly counter key consumed at paste; used for pre-LLM refunds. */
+    /** Redis monthly counter key consumed at Generate; used for pre-LLM refunds. */
     usageQuotaKey: text("usage_quota_key"),
     sections: jsonb("sections")
       .$type<GeneratedSection[]>()

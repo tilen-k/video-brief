@@ -24,20 +24,15 @@ const ownedRow = {
   youtubeId: "dQw4w9WgXcQ",
   title: "Sample",
   channelTitle: "Channel",
-  status: "classifying",
+  status: "generating",
   errorCode: null,
   errorMessage: null,
-  classification: {
-    isEducational: true,
-    confidence: "high",
-    topic: "physics",
-  },
   familiarity: 50,
   summaryLength: 50,
+  summaryTone: 40,
   summary: null,
   runId: "11111111-1111-4111-8111-111111111111",
   sections: [],
-  summaryStyle: null,
 };
 
 describe("getWorkspaceVideo", () => {
@@ -55,12 +50,12 @@ describe("getWorkspaceVideo", () => {
       youtubeId: "dQw4w9WgXcQ",
       title: "Sample",
       channelTitle: "Channel",
-      status: "classifying",
+      status: "generating",
       errorCode: null,
       errorMessage: null,
-      classification: ownedRow.classification,
       familiarity: 50,
       summaryLength: 50,
+      summaryTone: 40,
       summary: null,
       runId: "11111111-1111-4111-8111-111111111111",
       sections: [],
@@ -103,7 +98,6 @@ describe("getWorkspaceVideo", () => {
       {
         ...ownedRow,
         status: null,
-        classification: null,
         sections: null,
       },
     ]);

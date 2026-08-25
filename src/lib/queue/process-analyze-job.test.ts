@@ -26,9 +26,9 @@ function video(
     status,
     errorCode: null,
     errorMessage: null,
-    classification: null,
     familiarity: 50,
     summaryLength: 50,
+    summaryTone: 50,
     summary: null,
     runId,
     sections: [],
@@ -48,7 +48,6 @@ describe("processAnalyzeJob", () => {
     const continueFn = vi
       .fn()
       .mockResolvedValueOnce(video("fetching"))
-      .mockResolvedValueOnce(video("classifying"))
       .mockResolvedValueOnce(video("generating"))
       .mockResolvedValueOnce(video("complete"));
     const store = locks(true);
@@ -58,7 +57,7 @@ describe("processAnalyzeJob", () => {
       continueAnalysis: continueFn,
     });
 
-    expect(continueFn).toHaveBeenCalledTimes(4);
+    expect(continueFn).toHaveBeenCalledTimes(3);
     expect(continueFn).toHaveBeenCalledWith(job.userId, job.userVideoId, {
       expectedRunId: job.runId,
     });

@@ -1,6 +1,6 @@
 # VideoBrief
 
-Education-first personalized YouTube summaries synchronized with the video. Non-educational videos still get a sectioned summary with a soft disclaimer.
+Contextual YouTube summarizer — personalized section summaries synchronized with the video.
 
 ## Stack
 
@@ -50,15 +50,15 @@ pnpm dev
 pnpm worker
 ```
 
-Open [http://localhost:3000](http://localhost:3000). Paste stays on the library; the worker fetches, classifies, and generates.
+Open [http://localhost:3000](http://localhost:3000). Preview a URL on the library, then Generate — the worker fetches the transcript and generates.
 
 ## Deploy (Vercel + Railway + Supabase)
 
 | Piece | Host | Role |
 |-------|------|------|
 | Next.js app | Vercel | UI, auth cookies, enqueue jobs, usage counters |
-| Redis | Railway plugin | BullMQ queue + locks + monthly paste counters |
-| Analysis worker | Railway service | `pnpm worker:prod` — fetch / classify / generate |
+| Redis | Railway plugin | BullMQ queue + locks + monthly Generate counters |
+| Analysis worker | Railway service | `pnpm worker:prod` — fetch / generate |
 | Auth + Postgres | Supabase | Same project as local |
 
 ### Railway

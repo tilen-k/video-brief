@@ -1,6 +1,6 @@
 ---
 name: youtube-ingest
-description: Ingest a YouTube URL into VideoBrief — validate URL, fetch metadata and English transcript via TranscriptProvider, upsert per-user user_videos row, set analysis state. Use when adding videos or changing transcript/metadata fetch.
+description: Ingest a YouTube URL into VideoBrief — Preview metadata, then Generate (upsert per-user user_videos, enqueue analysis). Use when adding videos or changing transcript/metadata fetch.
 ---
 
 # YouTube ingest
@@ -9,23 +9,23 @@ description: Ingest a YouTube URL into VideoBrief — validate URL, fetch metada
 
 ```text
 URL → parse youtubeId
-  → upsert stub + prefs + new runId (pending)
-  → enqueue analyze job (stay on library)
-  → worker: TranscriptProvider.getEnglishTranscript(youtubeId)  (always — no shared cache skip)
-  → upsert metadata + transcript segments
-  → classify → generate
+  → Preview: TranscriptProvider.getVideoMetadata (no DB, no usage)
+  → Generate: upsert stub + prefs + new runId (pending) + usage + enqueue
+  → redirect /library/[userVideoId]
+  → worker: TranscriptProvider.getEnglishTranscript(youtubeId)
+  → upsert metadata + transcript segments → generating → generate
 ```
 
-Re-pasting the same URL refreshes **that user's** row (refetch + touch updated_at).
+Re-Generate on the same URL refreshes **that user's** row (refetch + new run_id).
 
 ## Rules
 
-- English captions only; if unavailable → `failed` + clear user error
+- Preview is metadata only; English captions are required at Generate/worker fetch
 - No Whisper / uploads / other sites
-- Use `youtubei.js` behind `TranscriptProvider`. Optional `YOUTUBE_PROXY_URL` is transport-only (same provider).
-- **Always** call provider on ingest/re-paste — no cross-user or global transcript cache
+- Use `youtubei.js` behind `TranscriptProvider`. Optional `YOUTUBE_PROXY_URL` is transport-only
+- **Always** call provider on Generate/re-run — no cross-user or global transcript cache
 - One row per `(user_id, youtube_id)`
-- Do not block the library paste action on YouTube fetch; the worker owns fetch + errors
+- Do not block Generate on transcript fetch; the worker owns fetch + errors
 
 ## Player (workspace)
 
@@ -34,7 +34,8 @@ Re-pasting the same URL refreshes **that user's** row (refetch + touch updated_a
 ## Checklist
 
 - [ ] URL validation
-- [ ] Re-paste refreshes existing user_videos row
+- [ ] Preview has no DB/usage side effects
+- [ ] Re-Generate refreshes existing user_videos row
 - [ ] EN transcript missing → error state (+ metadata row when provider returns it)
 - [ ] Provider interface not hardcoded to one transport in callers
 - [ ] Unit tests mock `TranscriptProvider`

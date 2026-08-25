@@ -26,11 +26,7 @@ function badgeVariantForPhase(
 }
 
 function shouldPulse(phase: AnalysisUiPhase): boolean {
-  return (
-    phase === "fetching" ||
-    phase === "understanding" ||
-    phase === "generating"
-  );
+  return phase === "fetching" || phase === "generating";
 }
 
 export function AnalysisStatusBadge({

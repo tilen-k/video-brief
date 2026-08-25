@@ -1,13 +1,11 @@
 import { eq } from "drizzle-orm";
 
 import { createDb, type Db } from "@/db";
-import { profiles, type SummaryStyle } from "@/db/schema";
+import { profiles } from "@/db/schema";
 
 export type UserProfile = {
-  yearOfBirth: number | null;
-  educationLevel: string | null;
-  subjects: string[] | null;
-  summaryStyle: SummaryStyle | null;
+  summaryTone: number;
+  summaryLength: number;
 };
 
 export async function getUserProfile(
@@ -17,10 +15,8 @@ export async function getUserProfile(
   const db = deps.db ?? createDb();
   const [row] = await db
     .select({
-      yearOfBirth: profiles.yearOfBirth,
-      educationLevel: profiles.educationLevel,
-      subjects: profiles.subjects,
-      summaryStyle: profiles.summaryStyle,
+      summaryTone: profiles.summaryTone,
+      summaryLength: profiles.summaryLength,
     })
     .from(profiles)
     .where(eq(profiles.id, userId))
@@ -31,9 +27,7 @@ export async function getUserProfile(
   }
 
   return {
-    yearOfBirth: row.yearOfBirth,
-    educationLevel: row.educationLevel,
-    subjects: row.subjects,
-    summaryStyle: row.summaryStyle,
+    summaryTone: row.summaryTone,
+    summaryLength: row.summaryLength,
   };
 }

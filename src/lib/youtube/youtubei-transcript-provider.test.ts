@@ -144,4 +144,23 @@ describe("YoutubeiTranscriptProvider", () => {
       new YoutubeiTranscriptProvider().getEnglishTranscript("dQw4w9WgXcQ"),
     ).rejects.toBeInstanceOf(TranscriptProviderError);
   });
+
+  it("loads metadata without fetching captions", async () => {
+    stubPlayerInfo();
+
+    const result = await new YoutubeiTranscriptProvider().getVideoMetadata(
+      "dQw4w9WgXcQ",
+    );
+
+    expect(result).toEqual({
+      youtubeId: "dQw4w9WgXcQ",
+      title: "A video",
+      channelTitle: "Channel",
+      thumbnailUrl: null,
+      durationSeconds: 12,
+      youtubeCategoryId: null,
+    });
+    expect(shimFetch).not.toHaveBeenCalled();
+    expect(undiciFetchMock).not.toHaveBeenCalled();
+  });
 });

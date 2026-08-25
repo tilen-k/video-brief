@@ -1,77 +1,84 @@
 import { describe, expect, it } from "vitest";
 
+import { onboardingInputSchema } from "./onboarding";
 import {
-  onboardingInputSchema,
-} from "./onboarding";
+  generateVideoInputSchema,
+  previewYoutubeInputSchema,
+} from "./library";
 
 describe("onboardingInputSchema", () => {
-  it("accepts empty onboarding (skip)", () => {
+  it("accepts tone and length", () => {
+    const result = onboardingInputSchema.safeParse({
+      summaryTone: 25,
+      summaryLength: 75,
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.summaryTone).toBe(25);
+      expect(result.data.summaryLength).toBe(75);
+    }
+  });
+
+  it("treats empty skip payload as valid", () => {
     const result = onboardingInputSchema.safeParse({});
     expect(result.success).toBe(true);
   });
 
-  it("accepts filled educational fields", () => {
+  it("coerces form strings", () => {
     const result = onboardingInputSchema.safeParse({
-      yearOfBirth: 2003,
-      educationLevel: "undergrad",
-      subjects: ["math", "computer_science"],
-      summaryStyle: "brief",
-    });
-    expect(result.success).toBe(true);
-  });
-
-  it("coerces year of birth from string", () => {
-    const result = onboardingInputSchema.safeParse({
-      yearOfBirth: "1998",
+      summaryTone: "40",
+      summaryLength: "60",
     });
     expect(result.success).toBe(true);
     if (result.success) {
-      expect(result.data.yearOfBirth).toBe(1998);
+      expect(result.data.summaryTone).toBe(40);
+      expect(result.data.summaryLength).toBe(60);
     }
   });
 
-  it("treats empty strings as omitted", () => {
-    const result = onboardingInputSchema.safeParse({
-      yearOfBirth: "",
-      educationLevel: "",
-      subjects: [],
-      summaryStyle: "",
+  it("rejects out-of-range scores", () => {
+    expect(
+      onboardingInputSchema.safeParse({ summaryTone: 101 }).success,
+    ).toBe(false);
+  });
+});
+
+describe("previewYoutubeInputSchema", () => {
+  it("returns youtubeId for valid URLs", () => {
+    const result = previewYoutubeInputSchema.safeParse({
+      url: "https://youtu.be/dQw4w9WgXcQ",
     });
     expect(result.success).toBe(true);
     if (result.success) {
-      expect(result.data.yearOfBirth).toBeUndefined();
-      expect(result.data.educationLevel).toBeUndefined();
-      expect(result.data.subjects).toBeUndefined();
-      expect(result.data.summaryStyle).toBeUndefined();
+      expect(result.data.youtubeId).toBe("dQw4w9WgXcQ");
+    }
+  });
+});
+
+describe("generateVideoInputSchema", () => {
+  it("keeps familiarity for the action to gate via server metadata", () => {
+    const result = generateVideoInputSchema.safeParse({
+      youtubeId: "dQw4w9WgXcQ",
+      summaryLength: "50",
+      summaryTone: "50",
+      familiarity: "80",
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.familiarity).toBe(80);
     }
   });
 
-  it("rejects invalid education level", () => {
-    const result = onboardingInputSchema.safeParse({
-      educationLevel: "phd_candidate",
+  it("allows null familiarity", () => {
+    const result = generateVideoInputSchema.safeParse({
+      youtubeId: "dQw4w9WgXcQ",
+      summaryLength: "50",
+      summaryTone: "40",
+      familiarity: "",
     });
-    expect(result.success).toBe(false);
-  });
-
-  it("rejects year of birth out of range", () => {
-    expect(
-      onboardingInputSchema.safeParse({ yearOfBirth: 1899 }).success,
-    ).toBe(false);
-    expect(
-      onboardingInputSchema.safeParse({ yearOfBirth: 3000 }).success,
-    ).toBe(false);
-  });
-
-  it("rejects unknown subjects", () => {
-    const result = onboardingInputSchema.safeParse({
-      subjects: ["astrology"],
-    });
-    expect(result.success).toBe(false);
-  });
-
-  it("rejects unknown summary style", () => {
-    expect(
-      onboardingInputSchema.safeParse({ summaryStyle: "novel" }).success,
-    ).toBe(false);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.familiarity).toBeNull();
+    }
   });
 });

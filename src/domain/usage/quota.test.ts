@@ -3,12 +3,12 @@ import { describe, expect, it } from "vitest";
 import { assertDurationAllowed } from "@/domain/usage/duration";
 import { UsageError } from "@/domain/usage/errors";
 import {
-  consumeMonthlyPasteSlot,
+  consumeMonthlyGenerateSlot,
   createRedisUsageCounterStore,
   getUsageSnapshot,
   monthlyKeyTtlSeconds,
   monthlyUsageKey,
-  refundMonthlyPasteSlot,
+  refundMonthlyGenerateSlot,
   utcMonthPeriodKey,
   utcPeriodEndsAt,
   type UsageCounterStore,
@@ -76,14 +76,14 @@ describe("assertDurationAllowed", () => {
   });
 });
 
-describe("consumeMonthlyPasteSlot", () => {
+describe("consumeMonthlyGenerateSlot", () => {
   it("increments under the free limit and denies at limit", async () => {
     const counters = memoryCounters();
     const getPlan = async () => "free" as const;
     const now = () => new Date(Date.UTC(2026, 7, 1));
 
     for (let i = 1; i <= 10; i++) {
-      const result = await consumeMonthlyPasteSlot("user-1", {
+      const result = await consumeMonthlyGenerateSlot("user-1", {
         counters,
         getPlan,
         now,
@@ -93,7 +93,7 @@ describe("consumeMonthlyPasteSlot", () => {
     }
 
     await expect(
-      consumeMonthlyPasteSlot("user-1", { counters, getPlan, now }),
+      consumeMonthlyGenerateSlot("user-1", { counters, getPlan, now }),
     ).rejects.toMatchObject({ code: "quota_exceeded" });
 
     expect(await counters.get(monthlyUsageKey("user-1", now()))).toBe(10);
@@ -104,9 +104,9 @@ describe("consumeMonthlyPasteSlot", () => {
     const getPlan = async () => "free" as const;
     const now = () => new Date(Date.UTC(2026, 7, 1));
 
-    await consumeMonthlyPasteSlot("user-1", { counters, getPlan, now });
-    await refundMonthlyPasteSlot("user-1", { counters, now });
-    await refundMonthlyPasteSlot("user-1", { counters, now });
+    await consumeMonthlyGenerateSlot("user-1", { counters, getPlan, now });
+    await refundMonthlyGenerateSlot("user-1", { counters, now });
+    await refundMonthlyGenerateSlot("user-1", { counters, now });
     expect(await counters.get(monthlyUsageKey("user-1", now()))).toBe(0);
   });
 
@@ -116,14 +116,14 @@ describe("consumeMonthlyPasteSlot", () => {
     const endOfMonth = new Date(Date.UTC(2026, 7, 31, 23, 0, 0));
     const nextMonth = new Date(Date.UTC(2026, 8, 1, 1, 0, 0));
 
-    const slot = await consumeMonthlyPasteSlot("user-1", {
+    const slot = await consumeMonthlyGenerateSlot("user-1", {
       counters,
       getPlan,
       now: () => endOfMonth,
     });
     expect(slot.redisKey).toContain("202608");
 
-    await refundMonthlyPasteSlot("user-1", {
+    await refundMonthlyGenerateSlot("user-1", {
       counters,
       redisKey: slot.redisKey,
       now: () => nextMonth,
@@ -145,7 +145,7 @@ describe("consumeMonthlyPasteSlot", () => {
         return 0;
       },
     };
-    await consumeMonthlyPasteSlot("u", {
+    await consumeMonthlyGenerateSlot("u", {
       counters,
       getPlan: async () => "free",
       now: () => new Date(Date.UTC(2026, 0, 15)),

@@ -8,7 +8,6 @@ import type { AnalyzeJobData } from "./types";
 const WORK_STATUSES: AnalysisStatus[] = [
   "pending",
   "fetching",
-  "classifying",
   "generating",
 ];
 

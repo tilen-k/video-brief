@@ -90,6 +90,61 @@ async function fetchCaptionSegments(
   return segments;
 }
 
+async function loadBasicMetadata(
+  youtubeId: string,
+  youtubei: YoutubeiModule,
+  youtubeFetch: YoutubeFetchSession,
+): Promise<{ metadata: VideoMetadata; captionTracks: CaptionTrack[] }> {
+  const yt = await youtubei.Innertube.create({ fetch: youtubeFetch.fetch });
+  const info = await yt.getBasicInfo(youtubeId, { client: CAPTION_CLIENT });
+
+  const basic = info.basic_info;
+  const title = basic.title?.toString()?.trim();
+  if (!title) {
+    throw new TranscriptProviderError(
+      "provider_error",
+      "Could not load video metadata from YouTube",
+    );
+  }
+
+  return {
+    metadata: {
+      youtubeId,
+      title,
+      channelTitle: basic.author ?? basic.channel?.name ?? null,
+      thumbnailUrl: pickThumbnail(basic.thumbnail),
+      durationSeconds:
+        typeof basic.duration === "number" ? basic.duration : null,
+      youtubeCategoryId: basic.category ?? null,
+    },
+    captionTracks: info.captions?.caption_tracks ?? [],
+  };
+}
+
+async function fetchVideoMetadataOnce(
+  youtubeId: string,
+  youtubei: YoutubeiModule,
+  youtubeFetch: YoutubeFetchSession,
+): Promise<VideoMetadata> {
+  try {
+    const { metadata } = await loadBasicMetadata(
+      youtubeId,
+      youtubei,
+      youtubeFetch,
+    );
+    return metadata;
+  } catch (error) {
+    if (error instanceof TranscriptProviderError) {
+      throw error;
+    }
+    throw new TranscriptProviderError(
+      "provider_error",
+      "Could not load video metadata from YouTube",
+      { cause: error },
+    );
+  }
+}
+
 async function fetchEnglishTranscriptOnce(
   youtubeId: string,
   youtubei: YoutubeiModule,
@@ -98,30 +153,10 @@ async function fetchEnglishTranscriptOnce(
   let metadata: VideoMetadata | undefined;
 
   try {
-    const yt = await youtubei.Innertube.create({ fetch: youtubeFetch.fetch });
-    const info = await yt.getBasicInfo(youtubeId, { client: CAPTION_CLIENT });
+    const loaded = await loadBasicMetadata(youtubeId, youtubei, youtubeFetch);
+    metadata = loaded.metadata;
 
-    const basic = info.basic_info;
-    const title = basic.title?.toString()?.trim();
-    if (!title) {
-      throw new TranscriptProviderError(
-        "provider_error",
-        "Could not load video metadata from YouTube",
-      );
-    }
-
-    metadata = {
-      youtubeId,
-      title,
-      channelTitle: basic.author ?? basic.channel?.name ?? null,
-      thumbnailUrl: pickThumbnail(basic.thumbnail),
-      durationSeconds:
-        typeof basic.duration === "number" ? basic.duration : null,
-      youtubeCategoryId: basic.category ?? null,
-    };
-
-    const captionTracks = info.captions?.caption_tracks ?? [];
-    const englishTrack = pickEnglishCaptionTrack(captionTracks);
+    const englishTrack = pickEnglishCaptionTrack(loaded.captionTracks);
     if (!englishTrack?.base_url) {
       throw new TranscriptProviderError(
         "missing_english_captions",
@@ -152,6 +187,45 @@ async function fetchEnglishTranscriptOnce(
   }
 }
 
+async function withYoutubeSession<T>(
+  run: (
+    youtubei: YoutubeiModule,
+    youtubeFetch: YoutubeFetchSession,
+  ) => Promise<T>,
+  errorMessage: string,
+): Promise<T> {
+  const youtubei = await import("youtubei.js");
+  const baseFetch: typeof fetch = (input, init) =>
+    youtubei.Platform.shim.fetch(input, init);
+
+  let proxyConfigured = false;
+  try {
+    proxyConfigured = getYoutubeProxyConfig() !== null;
+  } catch (error) {
+    throw new TranscriptProviderError("provider_error", errorMessage, {
+      cause: error,
+    });
+  }
+
+  const attempt = async () => {
+    const youtubeFetch = createYoutubeFetch(baseFetch);
+    try {
+      return await run(youtubei, youtubeFetch);
+    } finally {
+      await youtubeFetch.close();
+    }
+  };
+
+  try {
+    return await attempt();
+  } catch (error) {
+    if (!shouldRetryTranscriptFetch(error, proxyConfigured)) {
+      throw error;
+    }
+    return attempt();
+  }
+}
+
 /**
  * Default TranscriptProvider backed by youtubei.js (Innertube).
  * Uses IOS player caption tracks + timedtext json3 (WEB getTranscript is unreliable).
@@ -159,45 +233,22 @@ async function fetchEnglishTranscriptOnce(
  * Optional YOUTUBE_PROXY_URL: same proxied fetch for Innertube + captions, one sticky session.
  */
 export class YoutubeiTranscriptProvider implements TranscriptProvider {
+  async getVideoMetadata(youtubeId: string): Promise<VideoMetadata> {
+    return withYoutubeSession(
+      (youtubei, youtubeFetch) =>
+        fetchVideoMetadataOnce(youtubeId, youtubei, youtubeFetch),
+      "Could not load video metadata from YouTube",
+    );
+  }
+
   async getEnglishTranscript(
     youtubeId: string,
   ): Promise<EnglishTranscriptResult> {
-    const youtubei = await import("youtubei.js");
-    const baseFetch: typeof fetch = (input, init) =>
-      youtubei.Platform.shim.fetch(input, init);
-
-    let proxyConfigured = false;
-    try {
-      proxyConfigured = getYoutubeProxyConfig() !== null;
-    } catch (error) {
-      throw new TranscriptProviderError(
-        "provider_error",
-        "Could not fetch the video transcript from YouTube",
-        { cause: error },
-      );
-    }
-
-    const attempt = async () => {
-      const youtubeFetch = createYoutubeFetch(baseFetch);
-      try {
-        return await fetchEnglishTranscriptOnce(
-          youtubeId,
-          youtubei,
-          youtubeFetch,
-        );
-      } finally {
-        await youtubeFetch.close();
-      }
-    };
-
-    try {
-      return await attempt();
-    } catch (error) {
-      if (!shouldRetryTranscriptFetch(error, proxyConfigured)) {
-        throw error;
-      }
-      return attempt();
-    }
+    return withYoutubeSession(
+      (youtubei, youtubeFetch) =>
+        fetchEnglishTranscriptOnce(youtubeId, youtubei, youtubeFetch),
+      "Could not fetch the video transcript from YouTube",
+    );
   }
 }
 

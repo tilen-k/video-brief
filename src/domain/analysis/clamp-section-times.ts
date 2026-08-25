@@ -1,18 +1,4 @@
 import type { GeneratedSection } from "@/db/schema";
-import type { ClassifyVideoOutput } from "./schemas";
-
-/**
- * Ambiguous classification prefers educational.
- * Low confidence always counts as educational.
- */
-export function preferEducational(
-  output: ClassifyVideoOutput,
-): ClassifyVideoOutput {
-  if (output.confidence === "low") {
-    return { ...output, isEducational: true };
-  }
-  return output;
-}
 
 export function clampSectionTimes(
   sections: GeneratedSection[],

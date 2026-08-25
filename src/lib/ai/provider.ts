@@ -1,31 +1,14 @@
-import type {
-  ClassifyVideoOutput,
-  GenerateSectionsOutput,
-} from "@/domain/analysis/schemas";
-import type { UserProfile } from "@/domain/analysis/get-user-profile";
-
-export type ClassifyVideoInput = {
-  title: string;
-  channelTitle: string | null;
-  durationSeconds: number | null;
-  youtubeCategoryId: string | null;
-  transcriptExcerpt: string;
-};
+import type { GenerateSectionsOutput } from "@/domain/analysis/schemas";
 
 export type GenerateSectionsInput = {
   title: string;
   channelTitle: string | null;
   durationSeconds: number | null;
   transcriptSubset: string;
-  classification: {
-    isEducational: boolean;
-    confidence: string;
-    topic: string | null;
-  };
-  profile: UserProfile;
   prefs: {
-    familiarity: number;
     summaryLength: number;
+    summaryTone: number;
+    familiarity: number | null;
   };
 };
 
@@ -44,6 +27,5 @@ export class AIProviderError extends Error {
  * Swappable LLM backend. Callers must not import a concrete SDK/transport.
  */
 export interface AIProvider {
-  classifyVideo(input: ClassifyVideoInput): Promise<ClassifyVideoOutput>;
   generateSections(input: GenerateSectionsInput): Promise<GenerateSectionsOutput>;
 }

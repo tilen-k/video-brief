@@ -86,7 +86,10 @@ const sampleTranscript: EnglishTranscriptResult = {
 function mockProvider(
   impl: TranscriptProvider["getEnglishTranscript"],
 ): TranscriptProvider {
-  return { getEnglishTranscript: impl };
+  return {
+    getVideoMetadata: vi.fn(),
+    getEnglishTranscript: impl,
+  };
 }
 
 describe("startYoutubeIngest", () => {
@@ -95,6 +98,7 @@ describe("startYoutubeIngest", () => {
   });
 
   it("stubs a library row as pending without calling YouTube", async () => {
+    mocks.limit.mockResolvedValueOnce([]);
     mocks.returning
       .mockResolvedValueOnce([{ id: "uv-1" }])
       .mockResolvedValueOnce([{ id: "analysis-1", status: "pending", runId: "run-1" }]);
@@ -106,6 +110,15 @@ describe("startYoutubeIngest", () => {
         youtubeId: "dQw4w9WgXcQ",
         familiarity: 40,
         summaryLength: 75,
+        summaryTone: 50,
+        usageQuotaKey: "vb:usage:videos:user-1:202608",
+        metadata: {
+          title: "Sample video",
+          channelTitle: "Channel",
+          thumbnailUrl: "https://i.ytimg.com/vi/dQw4w9WgXcQ/hqdefault.jpg",
+          durationSeconds: 120,
+          youtubeCategoryId: "27",
+        },
       },
       { transcriptProvider: provider },
     );
@@ -116,6 +129,7 @@ describe("startYoutubeIngest", () => {
       analysisId: "analysis-1",
       status: "pending",
       runId: "run-1",
+      priorUsageQuotaKey: null,
     });
   });
 });
@@ -128,12 +142,12 @@ describe("fetchYoutubeVideo", () => {
     ]);
   });
 
-  it("always fetches from provider and lands on classifying", async () => {
+  it("always fetches from provider and lands on generating", async () => {
     const getEnglishTranscript = vi.fn(async () => sampleTranscript);
     const provider = mockProvider(getEnglishTranscript);
 
     mocks.updateReturning.mockResolvedValueOnce([
-      { id: "analysis-1", status: "classifying" },
+      { id: "analysis-1", status: "generating" },
     ]);
     mocks.returning.mockResolvedValueOnce([{ id: "uv-1" }]);
 
@@ -143,7 +157,7 @@ describe("fetchYoutubeVideo", () => {
     );
 
     expect(getEnglishTranscript).toHaveBeenCalledTimes(1);
-    expect(result.status).toBe("classifying");
+    expect(result.status).toBe("generating");
     expect(result.userVideoId).toBe("uv-1");
   });
 
@@ -152,8 +166,8 @@ describe("fetchYoutubeVideo", () => {
     const provider = mockProvider(getEnglishTranscript);
 
     mocks.updateReturning
-      .mockResolvedValueOnce([{ id: "analysis-1", status: "classifying" }])
-      .mockResolvedValueOnce([{ id: "analysis-1", status: "classifying" }]);
+      .mockResolvedValueOnce([{ id: "analysis-1", status: "generating" }])
+      .mockResolvedValueOnce([{ id: "analysis-1", status: "generating" }]);
     mocks.returning
       .mockResolvedValueOnce([{ id: "uv-1" }])
       .mockResolvedValueOnce([{ id: "uv-1" }]);
@@ -170,11 +184,11 @@ describe("fetchYoutubeVideo", () => {
     expect(getEnglishTranscript).toHaveBeenCalledTimes(2);
   });
 
-  it("only promotes fetching analyses and clears classification", async () => {
+  it("only promotes fetching analyses and clears summary/sections", async () => {
     const provider = mockProvider(async () => sampleTranscript);
 
     mocks.updateReturning.mockResolvedValueOnce([
-      { id: "analysis-1", status: "classifying" },
+      { id: "analysis-1", status: "generating" },
     ]);
     mocks.returning.mockResolvedValueOnce([{ id: "uv-1" }]);
 
@@ -185,8 +199,7 @@ describe("fetchYoutubeVideo", () => {
 
     expect(mocks.set).toHaveBeenCalledWith(
       expect.objectContaining({
-        status: "classifying",
-        classification: null,
+        status: "generating",
         sections: [],
         summary: null,
       }),

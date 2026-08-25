@@ -8,40 +8,31 @@ const base: GenerateSectionsInput = {
   channelTitle: "Channel",
   durationSeconds: 60,
   transcriptSubset: "hello",
-  classification: {
-    isEducational: true,
-    confidence: "high",
-    topic: "physics",
-  },
-  profile: {
-    yearOfBirth: 2000,
-    educationLevel: "undergrad",
-    subjects: ["physics"],
-    summaryStyle: "moderate",
-  },
   prefs: {
     familiarity: 20,
     summaryLength: 80,
+    summaryTone: 30,
   },
 };
 
 describe("buildGeneratePrompt", () => {
-  it("includes familiarity for educational videos", () => {
+  it("includes familiarity, length, and tone when familiarity is set", () => {
     const prompt = buildGeneratePrompt(base);
-    expect(prompt).toContain("Familiarity with topic (0–100): 20");
-    expect(prompt).toContain("Requested length (0–100): 80");
+    expect(prompt).toContain("Familiarity with topic (0–100, Novice←→Expert): 20");
+    expect(prompt).toContain("Requested length (0–100, Short←→Long): 80");
+    expect(prompt).toContain("Requested tone (0–100, Formal←→Casual): 30");
   });
 
-  it("omits familiarity for non-educational videos", () => {
+  it("omits familiarity when null", () => {
     const prompt = buildGeneratePrompt({
       ...base,
-      classification: {
-        isEducational: false,
-        confidence: "high",
-        topic: null,
+      prefs: {
+        ...base.prefs,
+        familiarity: null,
       },
     });
     expect(prompt).not.toContain("Familiarity with topic");
-    expect(prompt).toContain("Requested length (0–100): 80");
+    expect(prompt).toContain("Requested length (0–100, Short←→Long): 80");
+    expect(prompt).toContain("Requested tone (0–100, Formal←→Casual): 30");
   });
 });

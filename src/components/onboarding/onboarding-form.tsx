@@ -15,31 +15,55 @@ import {
   FieldDescription,
   FieldGroup,
   FieldLabel,
-  FieldLegend,
-  FieldSet,
 } from "@/components/ui/field";
-import { Input } from "@/components/ui/input";
-import {
-  NativeSelect,
-  NativeSelectOption,
-} from "@/components/ui/native-select";
 import { Spinner } from "@/components/ui/spinner";
-import { SubjectChip } from "@/components/shared/form/subject-chip";
 import { useTopLoaderOnPending } from "@/components/shared/layout/use-top-loader-on-pending";
-import {
-  EDUCATION_LEVELS,
-  SUBJECTS,
-  SUMMARY_STYLES,
-  maxYearOfBirth,
-} from "@/lib/validations/onboarding-options";
 
 const initial: OnboardingActionState = {};
+
+function PrefSlider({
+  id,
+  name,
+  label,
+  minLabel,
+  maxLabel,
+  defaultValue,
+  disabled,
+}: {
+  id: string;
+  name: string;
+  label: string;
+  minLabel: string;
+  maxLabel: string;
+  defaultValue: number;
+  disabled: boolean;
+}) {
+  return (
+    <Field>
+      <FieldLabel htmlFor={id}>{label}</FieldLabel>
+      <input
+        id={id}
+        name={name}
+        type="range"
+        min={0}
+        max={100}
+        step={1}
+        defaultValue={defaultValue}
+        disabled={disabled}
+        className="h-2 w-full cursor-pointer appearance-none rounded-full bg-muted accent-foreground disabled:cursor-not-allowed"
+      />
+      <div className="flex justify-between text-xs text-muted-foreground">
+        <span>{minLabel}</span>
+        <span>{maxLabel}</span>
+      </div>
+    </Field>
+  );
+}
 
 export function OnboardingForm() {
   const t = useTranslations("Onboarding");
   const [state, action, pending] = useActionState(completeOnboarding, initial);
   useTopLoaderOnPending(pending);
-  const maxYear = maxYearOfBirth();
 
   return (
     <div className="flex w-full max-w-lg flex-col gap-8">
@@ -50,74 +74,24 @@ export function OnboardingForm() {
 
       <form action={action} className="flex flex-col gap-6">
         <FieldGroup>
-          <Field>
-            <FieldLabel htmlFor="yearOfBirth">{t("yearOfBirth")}</FieldLabel>
-            <Input
-              id="yearOfBirth"
-              name="yearOfBirth"
-              type="number"
-              inputMode="numeric"
-              min={1900}
-              max={maxYear}
-              placeholder={t("yearOfBirthPlaceholder")}
-              disabled={pending}
-              className="max-w-40"
-            />
-            <FieldDescription>{t("yearOfBirthHint")}</FieldDescription>
-          </Field>
-
-          <Field>
-            <FieldLabel htmlFor="educationLevel">{t("educationLevel")}</FieldLabel>
-            <NativeSelect
-              id="educationLevel"
-              name="educationLevel"
-              defaultValue=""
-              disabled={pending}
-              className="w-full"
-            >
-              <NativeSelectOption value="">—</NativeSelectOption>
-              {EDUCATION_LEVELS.map((level) => (
-                <NativeSelectOption key={level} value={level}>
-                  {t(`educationLevels.${level}`)}
-                </NativeSelectOption>
-              ))}
-            </NativeSelect>
-          </Field>
-
-          <FieldSet>
-            <FieldLegend>{t("subjects")}</FieldLegend>
-            <FieldDescription>{t("subjectsHint")}</FieldDescription>
-            <div className="flex flex-wrap gap-2 pt-1">
-              {SUBJECTS.map((subject) => (
-                <SubjectChip
-                  key={subject}
-                  value={subject}
-                  label={t(`subjectLabels.${subject}`)}
-                  disabled={pending}
-                />
-              ))}
-            </div>
-          </FieldSet>
-
-          <Field>
-            <FieldLabel htmlFor="summaryStyle">{t("summaryStyle")}</FieldLabel>
-            <NativeSelect
-              id="summaryStyle"
-              name="summaryStyle"
-              defaultValue=""
-              disabled={pending}
-              className="w-full"
-            >
-              <NativeSelectOption value="">—</NativeSelectOption>
-              {SUMMARY_STYLES.map((style) => (
-                <NativeSelectOption key={style} value={style}>
-                  {t(`summaryStyles.${style}`)}
-                </NativeSelectOption>
-              ))}
-            </NativeSelect>
-            <FieldDescription>{t("summaryStyleHint")}</FieldDescription>
-          </Field>
-
+          <PrefSlider
+            id="summaryTone"
+            name="summaryTone"
+            label={t("toneLabel")}
+            minLabel={t("toneLow")}
+            maxLabel={t("toneHigh")}
+            defaultValue={50}
+            disabled={pending}
+          />
+          <PrefSlider
+            id="summaryLength"
+            name="summaryLength"
+            label={t("lengthLabel")}
+            minLabel={t("lengthLow")}
+            maxLabel={t("lengthHigh")}
+            defaultValue={50}
+            disabled={pending}
+          />
           <FieldDescription>{t("optionalHint")}</FieldDescription>
         </FieldGroup>
 

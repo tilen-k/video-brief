@@ -6,7 +6,6 @@ import {
   profiles,
   userVideos,
   type AnalysisStatus,
-  type ClassificationSnapshot,
   type GeneratedSection,
 } from "@/db/schema";
 
@@ -18,9 +17,9 @@ export type WorkspaceVideo = {
   status: AnalysisStatus;
   errorCode: string | null;
   errorMessage: string | null;
-  classification: ClassificationSnapshot | null;
-  familiarity: number;
+  familiarity: number | null;
   summaryLength: number;
+  summaryTone: number;
   summary: string | null;
   runId: string;
   sections: GeneratedSection[];
@@ -46,9 +45,9 @@ export async function getWorkspaceVideo(
       status: personalizedAnalyses.status,
       errorCode: personalizedAnalyses.errorCode,
       errorMessage: personalizedAnalyses.errorMessage,
-      classification: personalizedAnalyses.classification,
       familiarity: personalizedAnalyses.familiarity,
       summaryLength: personalizedAnalyses.summaryLength,
+      summaryTone: personalizedAnalyses.summaryTone,
       summary: personalizedAnalyses.summary,
       runId: personalizedAnalyses.runId,
       sections: personalizedAnalyses.sections,
@@ -79,9 +78,9 @@ export async function getWorkspaceVideo(
     status: (row.status ?? "pending") as AnalysisStatus,
     errorCode: row.errorCode,
     errorMessage: row.errorMessage,
-    classification: row.classification ?? null,
-    familiarity: row.familiarity ?? 50,
+    familiarity: row.familiarity ?? null,
     summaryLength: row.summaryLength ?? 50,
+    summaryTone: row.summaryTone ?? 50,
     summary: row.summary ?? null,
     runId: row.runId ?? "00000000-0000-0000-0000-000000000000",
     sections: asSections(row.sections),

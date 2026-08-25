@@ -5,21 +5,12 @@ import {
   personalizedAnalyses,
   userVideos,
   type AnalysisStatus,
-  type ClassificationSnapshot,
   type GeneratedSection,
   type TranscriptSegment,
 } from "@/db/schema";
-import { analysisConfig } from "@/domain/analysis/config";
-import { getUserProfile } from "@/domain/analysis/get-user-profile";
-import { defaultLengthScore } from "@/domain/analysis/prefs";
-import {
-  clampSectionTimes,
-  preferEducational,
-} from "@/domain/analysis/prefer-educational";
-import {
-  classifyVideoSchema,
-  generateSectionsSchema,
-} from "@/domain/analysis/schemas";
+import { clampSectionTimes } from "@/domain/analysis/clamp-section-times";
+import { DEFAULT_LENGTH_SCORE, DEFAULT_TONE_SCORE } from "@/domain/analysis/prefs";
+import { generateSectionsSchema } from "@/domain/analysis/schemas";
 import { selectTranscriptSubset } from "@/domain/analysis/select-transcript-subset";
 import { fetchYoutubeVideo } from "@/domain/ingest/ingest-youtube-video";
 import { getPlanForUser } from "@/domain/usage/plan";
@@ -34,12 +25,11 @@ import type { TranscriptProvider } from "@/lib/youtube/transcript-provider";
 
 export const ANALYSIS_FAILED_CODE = "analysis_failed";
 export const ANALYSIS_FAILED_MESSAGE =
-  "Couldn't understand this video. Paste the link again to retry.";
+  "Couldn't understand this video. Generate again from the library to retry.";
 
 const WORK_STATUSES: AnalysisStatus[] = [
   "pending",
   "fetching",
-  "classifying",
   "generating",
 ];
 
@@ -79,9 +69,9 @@ type LoadedRow = {
   errorCode: string | null;
   errorMessage: string | null;
   analysisUpdatedAt: Date | string;
-  classification: ClassificationSnapshot | null;
-  familiarity: number;
+  familiarity: number | null;
   summaryLength: number;
+  summaryTone: number;
   runId: string;
 };
 
@@ -97,7 +87,6 @@ async function persistAnalysis(
       status: AnalysisStatus;
       errorCode?: string | null;
       errorMessage?: string | null;
-      classification?: ClassificationSnapshot | null;
       sections?: GeneratedSection[];
       summary?: string | null;
     };
@@ -163,7 +152,7 @@ async function persistAnalysis(
 }
 
 /**
- * Advance one pipeline stage (fetch | classify | generate).
+ * Advance one pipeline stage (fetch | generate).
  */
 export async function continueAnalysis(
   userId: string,
@@ -197,9 +186,9 @@ async function runContinueAnalysis(
       errorCode: personalizedAnalyses.errorCode,
       errorMessage: personalizedAnalyses.errorMessage,
       analysisUpdatedAt: personalizedAnalyses.updatedAt,
-      classification: personalizedAnalyses.classification,
       familiarity: personalizedAnalyses.familiarity,
       summaryLength: personalizedAnalyses.summaryLength,
+      summaryTone: personalizedAnalyses.summaryTone,
       runId: personalizedAnalyses.runId,
     })
     .from(userVideos)
@@ -246,10 +235,6 @@ async function runContinueAnalysis(
 
   if (loaded.status === "pending" || loaded.status === "fetching") {
     return runFetch(userId, userVideoId, loaded, db, deps, log);
-  }
-
-  if (loaded.status === "classifying") {
-    return runClassify(userId, userVideoId, loaded, db, ai, log);
   }
 
   return runGenerate(userId, userVideoId, loaded, db, ai, log);
@@ -377,79 +362,6 @@ async function runFetch(
   return getWorkspaceVideo(userId, userVideoId, { db });
 }
 
-async function runClassify(
-  userId: string,
-  userVideoId: string,
-  row: LoadedRow,
-  db: Db,
-  ai: AIProvider,
-  log: typeof logger,
-): Promise<WorkspaceVideo | null> {
-  const segments = (row.transcriptSegments ?? []) as TranscriptSegment[];
-  if (segments.length === 0) {
-    return failStage(db, userId, userVideoId, row, "classifying", "empty_transcript");
-  }
-
-  const excerpt = selectTranscriptSubset(
-    segments,
-    row.durationSeconds,
-    analysisConfig.transcript.classifyCharBudget,
-  );
-
-  let parsed;
-  try {
-    const raw = await ai.classifyVideo({
-      title: row.title,
-      channelTitle: row.channelTitle,
-      durationSeconds: row.durationSeconds,
-      youtubeCategoryId: row.youtubeCategoryId,
-      transcriptExcerpt: excerpt,
-    });
-    parsed = classifyVideoSchema.parse(raw);
-  } catch (error) {
-    return failStage(db, userId, userVideoId, row, "classifying", "llm_or_zod", error);
-  }
-
-  const preferred = preferEducational(parsed);
-  const classification: ClassificationSnapshot = {
-    isEducational: preferred.isEducational,
-    confidence: preferred.confidence,
-    topic: preferred.topic ?? null,
-  };
-
-  const written = await persistAnalysis(db, {
-    analysisId: row.analysisId,
-    userId,
-    runId: row.runId,
-    loadedUpdatedAt: row.analysisUpdatedAt,
-    fromStatus: "classifying",
-    values: {
-      status: "generating",
-      errorCode: null,
-      errorMessage: null,
-      classification,
-    },
-  });
-
-  if (written.length > 0) {
-    log.info(
-      {
-        isEducational: classification.isEducational,
-      },
-      "continueAnalysis.classify_done",
-    );
-  }
-
-  return snapshotOrThrowCas(
-    db,
-    userId,
-    userVideoId,
-    row.runId,
-    written,
-    "continueAnalysis.cas_miss",
-  );
-}
-
 async function runGenerate(
   userId: string,
   userVideoId: string,
@@ -463,20 +375,9 @@ async function runGenerate(
     return failStage(db, userId, userVideoId, row, "generating", "empty_transcript");
   }
 
-  const classification = row.classification;
-  if (!classification) {
-    return failStage(db, userId, userVideoId, row, "generating", "missing_classification");
-  }
-
-  const profile = (await getUserProfile(userId, { db })) ?? {
-    yearOfBirth: null,
-    educationLevel: null,
-    subjects: null,
-    summaryStyle: null,
-  };
   const transcriptSubset = selectTranscriptSubset(segments, row.durationSeconds);
-  const effectiveLength =
-    row.summaryLength ?? defaultLengthScore(profile.summaryStyle);
+  const summaryLength = row.summaryLength ?? DEFAULT_LENGTH_SCORE;
+  const summaryTone = row.summaryTone ?? DEFAULT_TONE_SCORE;
 
   let parsed;
   try {
@@ -485,11 +386,10 @@ async function runGenerate(
       channelTitle: row.channelTitle,
       durationSeconds: row.durationSeconds,
       transcriptSubset,
-      classification,
-      profile,
       prefs: {
         familiarity: row.familiarity,
-        summaryLength: effectiveLength,
+        summaryLength,
+        summaryTone,
       },
     });
     parsed = generateSectionsSchema.parse(raw);

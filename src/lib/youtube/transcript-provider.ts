@@ -42,5 +42,7 @@ export class TranscriptProviderError extends Error {
  * Callers must not import a concrete transport (youtubei, etc.).
  */
 export interface TranscriptProvider {
+  /** Metadata only — no captions. Used for library Preview. */
+  getVideoMetadata(youtubeId: string): Promise<VideoMetadata>;
   getEnglishTranscript(youtubeId: string): Promise<EnglishTranscriptResult>;
 }

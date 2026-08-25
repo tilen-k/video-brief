@@ -2,17 +2,14 @@ import { describe, expect, it } from "vitest";
 
 import {
   DEFAULT_LENGTH_SCORE,
+  DEFAULT_TONE_SCORE,
   clampPrefScore,
-  defaultLengthScore,
 } from "./prefs";
 
-describe("defaultLengthScore", () => {
-  it("maps profile summary style to a 0–100 length default", () => {
-    expect(defaultLengthScore("brief")).toBe(25);
-    expect(defaultLengthScore("moderate")).toBe(50);
-    expect(defaultLengthScore("extensive")).toBe(75);
-    expect(defaultLengthScore(null)).toBe(DEFAULT_LENGTH_SCORE);
-    expect(defaultLengthScore(undefined)).toBe(DEFAULT_LENGTH_SCORE);
+describe("pref defaults", () => {
+  it("exposes 50 as the default length and tone", () => {
+    expect(DEFAULT_LENGTH_SCORE).toBe(50);
+    expect(DEFAULT_TONE_SCORE).toBe(50);
   });
 });
 

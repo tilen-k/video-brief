@@ -10,7 +10,7 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 # VideoBrief
 
-Education-first personalized YouTube summaries synced with the video. Not a chatbot. Not a generic AI summarizer. Non-educational videos still get a sectioned summary with a soft disclaimer.
+Contextual YouTube summarizer — personalized section summaries synced with the video. Not a chatbot. Not education-first tooling.
 
 ## Context
 
@@ -58,10 +58,10 @@ See `.cursor/rules/05-worktrees.mdc`.
 ## Hard constraints (MVP)
 
 - Stack: Next.js App Router (`src/`), Drizzle (not Prisma), Vitest unit tests only (no Playwright/E2E)
-- AI: Vercel AI SDK behind `AIProvider` (`classifyVideo`, `generateSections`); Zod-validate all structured LLM output before persist; model in `analysisConfig`
+- AI: Vercel AI SDK behind `AIProvider` (`generateSections` only); Zod-validate structured LLM output before persist; model in `analysisConfig`
 - YouTube English captions only; domain pipeline in `src/domain/` (not in Server Actions or UI)
-- Per-user `user_videos` — paste stubs stay on the library; worker runs fetch/classify/generate; re-paste refreshes; no shared transcript/classification cache
-- Typed profile (not EAV); per-video 0–100 prefs on the analysis row
+- Per-user `user_videos` — Preview is ephemeral; Generate creates the row + usage; worker runs fetch→generate; re-Generate resets; no shared transcript cache
+- Typed profile defaults (tone/length); per-video 0–100 prefs (length, tone, optional familiarity) on the analysis row
 - No lint/type suppressions without justification — see `.cursor/rules/15-code-quality.mdc`
 - No chat, uploads, Whisper, tRPC, Stripe, analytics, or LLM-invented knowledge questions in MVP
 - Redis + BullMQ: analysis queue and per-video lock only (not a transcript cache)

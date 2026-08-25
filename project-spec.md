@@ -6,54 +6,41 @@ Canonical agent rules live in `.cursor/rules/`. Short overview: `project-context
 
 ## 1. Project Overview
 
-We are building an **education-first** web application that turns YouTube videos into **personalized, interactive section summaries** synchronized with playback.
+We are building a **contextual YouTube summarizer**: personalized, interactive section summaries synchronized with playback.
 
 The core product idea is:
 
-> **Paste a YouTube video. The application classifies whether it is educational, optionally collects a couple of per-video summary prefs, and generates personalized section explanations synchronized with the video.**
+> **Paste a YouTube URL. Preview metadata and set summary prefs in the library. Generate a personalized sectioned summary and watch it synced with the video.**
 
-The application is intentionally **not** a generic "AI YouTube summarizer."
-
-The differentiating feature is **personalization through a stable educational profile plus per-video familiarity and length prefs**.
+Not a chatbot. Not education-first tooling. Personalization comes from **per-video length, tone, and (when category qualifies) familiarity** — plus optional profile defaults.
 
 A user should be able to use the application with almost no configuration:
 
 1. Sign up.
-2. Complete lightweight educational onboarding (all fields optional).
-3. Paste a YouTube URL and land on the workspace immediately.
-4. The application fetches metadata + English transcript and **classifies** the video (`isEducational` + topic).
-5. If educational and a topic is known: optional familiarity select (3 levels).
-6. Optional summary length select (3 levels; default from profile `summary_style` or moderate). Skip always allowed.
-7. If not educational: soft disclaimer; **no** familiarity question; still produce a sectioned summary using profile when present.
-8. Per-video answers persist on the analysis row (not the profile).
-9. The application generates personalized **section bodies** `{ title, startTime, endTime, body }`.
-10. The user watches with synchronized section highlight and seek.
+2. Optional onboarding: default summary **tone** and **length** (skip → 50 / 50).
+3. On the library: paste a YouTube URL and **Preview** (metadata only — title, thumb, channel, duration, category). **No** library row, **no** usage yet.
+4. Under the input: summary settings — length and tone always; familiarity only for qualifying YouTube categories.
+5. **Generate** → create `user_videos` + analysis, count usage, enqueue worker, **redirect to workspace** (job continues if they leave).
+6. Worker fetches English transcript → generates `{ summary, sections[] }`.
+7. User watches with synchronized section highlight and seek.
 
-**Primary fit:** educational content (lectures, course chapters, explainers, technical tutorials intended for learning).
+**Familiarity categories** (YouTube category id map; may extend later): Education, Howto & Style, Science & Technology, News & Politics.
 
-**Also allowed:** any other YouTube video with English captions — summarized into sections with a soft disclaimer that learning personalization may not apply the same way.
-
-Classification is an LLM structured stage (Zod-validated). YouTube `categoryId` may be passed as a **hint**, not the sole decision. If classification confidence is ambiguous, **prefer educational**.
+There is **no** AI classify stage and **no** non-edu disclaimer.
 
 ---
 
 # 2. Product Philosophy
 
-The application should feel like a **personalized video knowledge tool**, not an AI chatbot.
+The application should feel like a **personalized video understanding tool**, not an AI chatbot.
 
-The primary interaction is:
+Primary interaction: **Watch → understand → remember**
 
-> **Watch → understand → remember**
+AI stays largely invisible in the workspace. Prefer useful sections and summaries over chat.
 
-The AI should be largely invisible in the final interface. The user should primarily see useful information, **sections**, summaries, and context-aware explanations rather than a chat interface.
+MVP does one thing well:
 
-The product should be simple enough that the main workflow is immediately understandable.
-
-Avoid feature creep.
-
-The MVP should do one thing exceptionally well:
-
-> **Turn an educational YouTube video into a level-aware, synchronized section summary — and still summarize everything else with a soft caveat.**
+> **Turn a YouTube video into a contextual, synchronized section summary shaped by length, tone, and optional familiarity.**
 
 ---
 
@@ -61,46 +48,15 @@ The MVP should do one thing exceptionally well:
 
 ## 3.1 Landing Page
 
-The landing page explains the product and has a clear CTA to sign up.
-
-The visual direction is:
-
-* editorial
-* premium
-* content-first
-* restrained
-* typography-focused
-* clean
-* modern
-* not overly "AI-looking"
-
-The video workspace should be the visual centerpiece of the product.
-
-Do not make the landing page overly complex.
-
----
+Explains the product; clear CTA to sign up. Editorial, premium, content-first, typography-focused — not overly "AI-looking."
 
 ## 3.2 Authentication
 
-Users must authenticate before adding videos.
-
-Expected flow:
-
 ```text
-Landing
-  ↓
-Sign up / Log in
-  ↓
-Onboarding
-  ↓
-Library
+Landing → Sign up / Log in → Onboarding → Library
 ```
 
-Authentication is handled with Supabase Auth:
-
-* email / password
-* Google OAuth (personal Google Cloud project)
-* soft email confirmation (users can use the app before verifying; nudge later)
+Supabase Auth: email/password, Google OAuth, soft email confirmation.
 
 ---
 
@@ -119,7 +75,7 @@ Do not substitute these without an explicit product decision.
 | Forms | React Hook Form + Zod |
 | Client data | TanStack Query (mutations + analysis-status polling; RSC for primary reads) |
 | Theme | next-themes, **dark default** |
-| i18n | next-intl, **English only** for MVP |
+| i18n | next-intl, **English only** for this ship (German app UI later) |
 | Fonts | **Nunito** (display/brand and UI/body) |
 
 ### Data & auth
@@ -145,9 +101,16 @@ Do not substitute these without an explicit product decision.
 | Layer | Choice |
 |-------|--------|
 | Transcript / metadata | `youtubei.js` behind `TranscriptProvider` |
-| Captions | **English only**; missing English transcript → clear error |
+| Captions | **English only** for this ship; missing English transcript → clear error |
 | Player | `react-youtube` (IFrame API for seek/time sync) |
-| Prod fetch risk | Optional `YOUTUBE_PROXY_URL` (Webshare gateway + sticky session) for Innertube and captions when Vercel IPs are blocked |
+| Prod fetch risk | Optional `YOUTUBE_PROXY_URL` for Innertube/captions when Vercel IPs are blocked |
+
+### Queue & usage
+
+| Layer | Choice |
+|-------|--------|
+| Redis | BullMQ analysis queue + per-video lock + monthly Generate counters |
+| Worker | BullMQ analysis runner (separate process) |
 
 ### Testing
 
@@ -156,88 +119,76 @@ Do not substitute these without an explicit product decision.
 | Unit | Vitest (+ Testing Library as needed) |
 | E2E | Out of scope for MVP |
 
-### Explicitly not in MVP
+### Explicitly not in this ship
 
-Prisma, tRPC, Redis, background workers, PostHog/analytics, Stripe, Jest, Playwright, Whisper/audio transcription.
+Prisma, tRPC, PostHog/analytics, Stripe, Jest, Playwright, Whisper/audio transcription, app DE / summary-language picker / non-EN transcripts, AI classify.
 
 ### Recommended MCP (Cursor)
 
 * Supabase MCP (prefer read-only) for schema/RLS inspection
-* Do not rely on Prisma MCP. Humans test UI in the browser; agents do not use cursor-ide-browser unless asked.
+* Humans test UI in the browser; agents do not use cursor-ide-browser unless asked.
 
 ---
 
 # 4. Onboarding
 
-Onboarding should collect a **lightweight educational baseline**. All fields are optional; skip is allowed.
-
-Do not make onboarding a long questionnaire.
+Lightweight. All fields optional; skip allowed → defaults **tone 50**, **length 50**.
 
 | Field | Storage / behavior |
 |-------|--------------------|
-| Year of birth | User enters a number; store as `yyyy`. Used for **framing** only (not gating or age gates). |
-| Education level | Enum (single select): `middle_school`, `high_school`, `undergrad`, `grad`, `bootcamp`, `self_taught`, `other` |
-| Subjects of interest | Multi-select chips from a fixed list; **`other` is the last chip** (no free-text for Other in MVP) |
-| Summary style | Optional global default for length: `brief` / `moderate` / `extensive`. Settings later if not collected here. |
+| Default summary tone | Integer 0–100 (Formal ←→ Casual) |
+| Default summary length | Integer 0–100 (Short ←→ Long) |
 
-Suggested subject chips (define as a shared const/enum in code):
+Persist as typed profile columns: `summary_tone`, `summary_length`.
 
-`math`, `physics`, `chemistry`, `biology`, `computer_science`, `engineering`, `economics`, `history`, `languages`, `other`
-
-Persist these as **typed profile fields** (not open key/value): `year_of_birth`, `education_level`, `subjects`. Optional `summary_style` (`brief` / `moderate` / `extensive`) is the global default for the per-video length question; collect in settings later if not on onboarding.
-
-Do not collect occupation/role as the primary onboarding surface.
+**Removed from product:** year of birth, education level, subjects, `summary_style` enum.
 
 ---
 
 # 5. Two kinds of context
 
-## 5.1 Profile (stable)
-
-Collected at onboarding (and later settings). Typed columns:
+## 5.1 Profile (stable defaults)
 
 ```text
-year_of_birth
-education_level
-subjects
-summary_style    # optional default for per-video length
+summary_tone      # 0–100, default 50
+summary_length    # 0–100, default 50
+plan              # free | pro
 ```
-
-Reused across videos, including non-educational summaries.
 
 ## 5.2 Per-video prefs
 
-Asked after classify, stored on the **analysis row**, not the profile:
+Collected in the **library preview panel** before Generate; stored on the analysis row:
 
 ```text
-familiarity      # not_familiar | somewhat | very   (educational + topic known)
-summary_length   # brief | moderate | extensive     (default from summary_style or moderate)
+summary_length    # 0–100 — always
+summary_tone      # 0–100 — always
+familiarity       # 0–100 or null — only when category qualifies
 ```
 
-These shape **this** summary only. They do not become topic-level knowledge graph entries.
+Slider labels: length Short←→Long; tone Formal←→Casual; familiarity topic familiarity (Novice←→Expert or equivalent).
+
+These shape **this** summary only.
 
 ---
 
-# 6. Context questions
+# 6. Familiarity gating (YouTube category)
 
-Product-owned selects. **Not** LLM-invented keys.
+Show familiarity only when `youtube_category_id` maps to:
 
-Rules:
+* Education
+* Howto & Style
+* Science & Technology
+* News & Politics
 
-* **Familiarity** — educational videos only, and only when classify returned a topic to fill “How familiar are you with {topic}?” Three levels.
-* **Length** — when appropriate (typically yes). Three levels. Prefill default from profile `summary_style` or `moderate`.
-* Select-only; always skippable; zero / some / all still produce a summary.
-* Non-edu: no familiarity question; length still allowed; soft disclaimer.
-
-Do not generate dynamic “missing knowledge” questions. Do not persist paste-time answers into the profile.
+Use a frozen id→label map in code (extend later). Otherwise hide the slider and omit familiarity from the generate prompt.
 
 ---
 
 # 7. Context persistence
 
-Profile fields persist as typed columns and may be edited in settings later.
+Profile defaults may be edited in settings later.
 
-Per-video prefs persist on `personalized_analyses` so a library reopen shows the same summary and a re-paste can prefill. They are not copied into the profile.
+Per-video prefs persist on `personalized_analyses`. Re-Generate / same URL again **resets** analysis (`run_id`, clears summary/sections) and may overwrite prefs.
 
 ---
 
@@ -249,132 +200,57 @@ Topic-scoped EAV and video-specific free-text prefs are **out of MVP**.
 
 # 9. YouTube Input
 
-For the MVP, users can add YouTube videos using a YouTube URL.
-
-Do not support uploaded videos in the MVP.
-
-Do not build audio transcription infrastructure in the MVP.
-
-The application should rely on an accessible YouTube transcript/caption source.
-
-The video itself does not need to be downloaded for the primary MVP workflow.
+YouTube URL only. No uploads. No Whisper.
 
 ---
 
 # 10. Transcript
 
-The transcript is the primary source material for AI analysis.
-
-Whenever possible, use the transcript provided/available through YouTube.
-
-The transcript should preserve timestamps.
-
-Conceptually:
+Primary source for AI analysis. Timestamped segments required for synced sections.
 
 ```text
-00:00.000 → "Welcome back..."
-00:08.500 → "Today we're going to..."
-00:21.200 → "The first important concept..."
+Preview: metadata only (no transcript required)
+Generate / worker: fetch English timestamped transcript
 ```
 
-Timestamped transcript segments are important because they allow the generated **sections** and summaries to be synchronized with the video.
+If English captions cannot be obtained after Generate, fail clearly on the workspace. Do not fall back to other languages or Whisper in this ship.
 
-Transcript acquisition should be treated as a separate concern from AI analysis.
-
-Conceptually:
-
-```text
-YouTube URL
-    ↓
-YouTube metadata
-    ↓
-Transcript acquisition
-    ↓
-Timestamped transcript
-```
-
-If an accessible **English** timestamped transcript cannot be obtained, show a clear error state. Do not fall back to other languages, Whisper, or uploaded audio.
-
-Transcript acquisition uses `youtubei.js` behind a `TranscriptProvider` interface. When `YOUTUBE_PROXY_URL` is set, Innertube and caption HTTP use a sticky residential proxy session (Webshare backbone gateway).
+`youtubei.js` behind `TranscriptProvider`. Optional `YOUTUBE_PROXY_URL`.
 
 ---
 
 # 11. Video Analysis Pipeline
 
-The analysis pipeline is the core backend business logic.
-
-It should be independent from the UI and should not be implemented directly inside a React component or Server Action.
-
-Conceptually:
+Independent from UI. Not implemented inside React or Server Actions.
 
 ```text
-YouTube URL
-    ↓
-Stub user_videos + redirect to workspace
-    ↓
-Get metadata (incl. categoryId hint if available)
-    ↓
-Get timestamped English transcript
-    ↓
-Classify (isEducational, confidence, topic?)
-    ↓
-If appropriate: familiarity and/or length selects (skip allowed)
-    ↓
-Generate personalized section bodies (profile + per-video prefs)
-    ↓
-Persist analysis
-    ↓
-Render video workspace (highlight + seek)
+Library Preview (no DB)
+  → metadata only
+Library Generate
+  → usage slot + upsert user_videos + analysis prefs + run_id
+  → enqueue analyze
+  → redirect workspace
+Worker
+  → fetching (transcript + refresh metadata)
+  → generating (overview + section bodies)
+  → complete | failed
 ```
 
-The pipeline should be implemented as reusable application/domain logic.
+---
 
-A Server Action should act as an entry point into the pipeline, not contain the entire pipeline itself.
+# 12. (Removed) Classification
 
-This separation is intentional because the pipeline may eventually need to move into background processing without rewriting the business logic.
+There is **no** classify LLM stage. Do not call `classifyVideo`. Do not persist `isEducational` / topic classification for product behavior.
 
 ---
 
-# 12. Stage 1: Classification
+# 13. Per-video prefs UI
 
-Cheap structured call. Decide whether the video is educational and, if so, name a topic for the familiarity question.
-
-Input:
-
-```text
-Video metadata (title, channel, categoryId hint)
-+
-Short transcript excerpt
-```
-
-Output (Zod-validated):
-
-* `isEducational` (boolean)
-* `confidence` (`high` | `medium` | `low`) — if ambiguous, **prefer educational**
-* `topic?` — short label for “How familiar are you with {topic}?”
-
-YouTube `categoryId` is a **hint** only. Do not treat creator category as ground truth.
-
-**Do not** emit a section skeleton, prerequisites, domains list, or LLM-invented questions in this stage.
+Product-owned library panel (not an LLM stage), after Preview, before Generate.
 
 ---
 
-# 13. Stage 2: Per-video prefs
-
-Product-owned UI, not an LLM stage.
-
-* Familiarity — educational + topic known; 3 levels; skippable
-* Length — when appropriate; 3 levels; default from `summary_style` or moderate; skippable
-
-Persist answers on the analysis row. Empty answers are valid. Then run generate.
-
-If not educational: skip familiarity; UI shows a soft disclaimer.
-
----
-
-# 14. Stage 3: Personalized sections
-
-One generation call **after** prefs (or skip).
+# 14. Personalized sections (only AI stage)
 
 Input:
 
@@ -383,45 +259,22 @@ Video metadata
 +
 Transcript subset
 +
-Classification (isEducational, topic)
-+
-Profile (YOB, education level, subjects, summary_style)
-+
-Per-video prefs (familiarity, summary_length) if any
+Per-video prefs (length, tone, familiarity if set)
 ```
 
-Output: sections, each with:
+Output:
 
-* title
-* start timestamp
-* end timestamp
-* personalized **body** (depth/framing from profile + prefs)
+```text
+{ summary, sections: { title, startTime, endTime, body }[] }
+```
 
-Short videos may have a **single** section. Do not invent facts absent from the transcript.
-
-Key takeaways / overview are optional later; MVP is section bodies synced to the player.
+Short videos may have a single section. Do not invent facts absent from the transcript.
 
 ---
 
 # 15. Personalized Does Not Mean "Rewrite Everything"
 
-Personalization should affect:
-
-* what information is emphasized
-* how much background is explained
-* terminology
-* examples
-* level of detail
-* what can safely be skipped
-* what the user should pay attention to
-
-It should not distort the actual content of the video.
-
-The summary must remain faithful to the source material.
-
-For example, if education level and familiarity with the topic are high, the application can avoid re-explaining basics while emphasizing new intuition.
-
-It should not invent claims because the user appears knowledgeable.
+Personalization affects emphasis, depth, tone/formality, and what can be skipped. It must stay faithful to the source. High familiarity → less re-explaining basics; it must not invent claims.
 
 ---
 
@@ -455,7 +308,7 @@ Conceptually:
 
 The exact visual design will be developed in Figma.
 
-For non-educational videos, show a soft disclaimer near the summary (e.g. personalization for learning may be limited).
+There is no non-edu disclaimer; generate always produces an overview summary and sections from the transcript and prefs.
 
 The most important interaction is synchronization.
 
@@ -509,7 +362,8 @@ MVP functionality:
 * view videos
 * see processing status
 * open a video
-* add a new YouTube video
+* **Preview** a YouTube URL (metadata + prefs under the input; no row yet)
+* **Generate** (create row, usage, enqueue, redirect to workspace)
 * optionally remove a video
 
 Do not build advanced search, recommendations, knowledge graphs, or cross-video intelligence in the MVP.
@@ -518,25 +372,25 @@ Do not build advanced search, recommendations, knowledge graphs, or cross-video 
 
 # 19. Suggested Database Concepts
 
-All video data is **per-user**. There is **no** shared cross-user cache of metadata, transcripts, or classification.
+All video data is **per-user**. There is **no** shared cross-user cache of metadata or transcripts.
 
 ```text
-profiles                 # typed: year_of_birth, education_level, subjects, summary_style
+profiles                 # typed: summary_tone, summary_length, plan
 user_videos              # one row per (user_id, youtube_id); metadata + EN transcript snapshot
-personalized_analyses    # 1:1 with user_videos: state, classify result, per-video prefs, sections
+personalized_analyses    # 1:1 with user_videos: state, prefs, summary, sections
 ```
 
 Conceptually:
 
 ```text
 User
-├── profile (stable educational baseline + optional summary_style)
+├── profile (default tone + length)
 └── User × Video
-    ├── user_videos (metadata + transcript; re-paste refreshes this user's row)
+    ├── user_videos (metadata + transcript; re-Generate refreshes this user's row)
     └── personalized_analyses
         ├── status
-        ├── classification (isEducational, confidence, topic?)
-        ├── per-video prefs (familiarity, summary_length)
+        ├── per-video prefs (summary_length, summary_tone, familiarity?)
+        ├── overview summary
         └── generated sections { title, startTime, endTime, body }
 ```
 
@@ -607,9 +461,9 @@ Server Actions are preferred for application mutations.
 Examples:
 
 ```text
-addVideo()            # stub + redirect; fetch runs in workspace
-updateProfile()
-submitVideoPrefs()    # optional familiarity / length → then generate
+previewYoutube()      # metadata only; no DB; no usage
+generateVideo()       # usage + upsert row + enqueue + redirect target
+updateProfile()       # tone / length defaults
 deleteVideo()
 ```
 
@@ -659,11 +513,10 @@ Conceptually:
 
 ```text
 AIProvider
-├── classifyVideo()      # isEducational, confidence, topic? — no skeleton, no LLM questions
-└── generateSections()   # { title, startTime, endTime, body }[] after prefs (or skip)
+└── generateSections()   # { summary, sections: { title, startTime, endTime, body }[] }
 ```
 
-Per-video prefs are product-owned UI, not an AIProvider method.
+Per-video prefs are product-owned UI, not an AIProvider method. No `classifyVideo`.
 
 Do not scatter vendor SDK calls outside the provider module.
 
@@ -693,12 +546,12 @@ Never blindly trust raw LLM output before writing it to the database.
 
 Schemas should explicitly define:
 
-* classification (`isEducational`, `confidence`, `topic?`)
+* overview `summary`
 * section titles
 * section timestamps (`startTime`, `endTime`)
 * section bodies
 
-Do not schema LLM-invented knowledge questions, domains lists, or section skeletons in classify.
+Do not schema LLM-invented knowledge questions or classify outputs.
 
 ---
 
@@ -710,70 +563,40 @@ Design the pipeline to avoid unnecessary calls.
 
 Important principles:
 
-* classify stays tiny (metadata + short excerpt) — do not send the full transcript
-* generate is one transcript-shaped call after prefs (or skip)
+* Preview never calls the LLM
+* generate is one transcript-shaped call after Generate
 * cap `maxOutputTokens` on generate
-* do not re-run classify in order to write bodies
 * do not send the same large transcript twice
 * keep prompts focused
 * model id lives in `analysisConfig`, not env
-* evaluate models using representative videos before committing
 
 ---
 
 # 27. Redis
 
-Redis is **not required for the initial MVP**.
+Redis is used for:
 
-Do not introduce Redis simply because it was part of the original technology list.
+* BullMQ analysis queue
+* per-video analysis lock
+* monthly per-user **Generate** usage counters
 
-Potential future uses include:
-
-* background job queues
-* temporary processing state
-* rate limiting
-* caching expensive video-level analysis
-* distributed locks
-
-However, none of these should be implemented until there is a concrete requirement.
-
-In particular, do not introduce a worker architecture solely to justify Redis.
-
-The initial application should remain simple.
-
-If video analysis proves too long-running for the chosen Next.js deployment model, revisit background jobs and Redis at that point.
+Do **not** cache transcripts or summaries in Redis.
 
 ---
 
 # 28. Background Processing
 
-Background workers are out of scope for the initial MVP.
-
-The analysis pipeline should nevertheless be structured so that it can eventually be moved to a worker without rewriting its business logic.
-
-For example:
+A BullMQ worker runs `continueAnalysis` (one stage per tick) until complete/failed.
 
 ```text
-Today:
-
-Server Action
+Server Action (generateVideo)
     ↓
-analyzeVideo()
+enqueue analyze job
+    ↓
+Worker loop → continueAnalysis
 ```
 
-Potentially later:
-
-```text
-Server Action
-    ↓
-Queue
-    ↓
-Worker
-    ↓
-analyzeVideo()
-```
-
-The function `analyzeVideo()` should remain independent from the transport/execution mechanism.
+Domain pipeline stays independent of the transport.
 
 ---
 
@@ -781,19 +604,17 @@ The function `analyzeVideo()` should remain independent from the transport/execu
 
 Video analysis can be represented with explicit states.
 
-Potential states:
+States:
 
 ```text
 pending
 fetching
-classifying
-awaiting              # skip when nothing to ask
 generating
 complete
 failed
 ```
 
-Skip `awaiting` when the video is not educational (no familiarity) and length is not asked, or when neither question is appropriate. Empty answers still proceed to generate.
+No `classifying` or `awaiting`. Prefs are collected before Generate in the library UI.
 
 The UI should clearly communicate processing state.
 
@@ -829,15 +650,14 @@ The MVP includes:
 
 ### Onboarding
 
-* optional year of birth (`yyyy`, framing)
-* education-level enum
-* subject interest chips (fixed list + other)
-* optional `summary_style` (`brief` / `moderate` / `extensive`) — settings later if not collected here
+* optional default summary tone (0–100; Formal←→Casual); skip → 50
+* optional default summary length (0–100; Short←→Long); skip → 50
 
 ### Library
 
 * list analyzed videos
-* add YouTube video (stub + immediate workspace redirect)
+* Preview YouTube URL (metadata + prefs; no row)
+* Generate (usage + row + enqueue + redirect workspace)
 * video processing states
 * open video
 * delete video
@@ -845,30 +665,26 @@ The MVP includes:
 ### Video ingestion
 
 * YouTube URL validation
-* stub library row then fetch in workspace
-* YouTube metadata (categoryId as classifier hint)
-* accessible timestamped English transcript
+* metadata preview (no DB)
+* on Generate: upsert row; worker fetches English transcript
+* YouTube category id for familiarity gating
 
 ### AI
 
-* cheap classification (`isEducational` + confidence + `topic?`)
-* personalized section **bodies** `{ title, startTime, endTime, body }`
-* no LLM-invented questions; no classify-time section skeleton
+* generate only: overview `summary` + section **bodies** `{ title, startTime, endTime, body }`
+* no classify stage; no LLM-invented questions
 
 ### Profile + per-video prefs
 
-* typed profile (YOB, education level, subjects, summary style)
-* optional familiarity (edu + topic known; 3 levels)
-* optional summary length (3 levels; default from `summary_style` or moderate)
-* skip always allowed; answers persist on the analysis row
-* soft disclaimer on non-educational videos
+* typed profile defaults: tone + length
+* per-video length + tone always; familiarity when category qualifies
+* answers persist on the analysis row
 
 ### Video workspace
 
 * YouTube video player
 * synchronized sections (highlight + seek)
-* section bodies
-* soft non-edu disclaimer when applicable
+* overview summary + section bodies
 
 ---
 
@@ -896,11 +712,13 @@ Do not implement these unless the scope is deliberately changed:
 * complex notification system
 * PostHog / product analytics
 * Stripe / billing
-* non-English UI or non-English captions
+* non-English UI or non-English captions (**next ship:** app DE, summary language, default-transcript language)
 * Playwright / E2E (unit tests only in MVP)
 * LLM-invented knowledge questions
 * topic / video EAV context
-* shared cross-user transcript or classification cache
+* shared cross-user transcript cache
+* AI classify / isEducational / non-edu disclaimer
+* educational profile fields (YOB, education level, subjects)
 
 These are potential future features, not MVP requirements.
 
@@ -1084,7 +902,7 @@ Next.js (src/app)
           ├── Drizzle → Supabase Postgres (+ RLS)
           └── enqueue BullMQ analyze job (Redis)
 Worker
-   └── loop continueAnalysis (fetch → classify → generate)
+   └── loop continueAnalysis (fetch → generate)
           ├── TranscriptProvider (youtubei.js)
           └── AIProvider (Vercel AI SDK; model from analysisConfig)
 ```
@@ -1095,7 +913,7 @@ In particular:
 
 * no tRPC without a concrete API requirement
 * Redis/BullMQ for the analysis queue and per-video lock only (not a transcript cache)
-* Worker owns fetch/classify/generate; Next does not run the pipeline
+* Worker owns fetch/generate; Next does not run the pipeline
 * no Prisma (Drizzle is locked)
 * no abstraction without a reason
 * no feature without a product purpose
@@ -1128,7 +946,7 @@ Do not begin by implementing every possible AI feature.
 
 The most important milestone is:
 
-> A user can paste a real educational YouTube video, land on the workspace immediately, optionally set familiarity and length, and receive useful personalized section **bodies** synchronized with that video — and still get a sectioned summary for non-educational videos with a soft disclaimer.
+> A user can preview a YouTube URL, set length/tone/(optional) familiarity, Generate, and receive personalized section **bodies** synchronized with that video.
 
 ---
 
@@ -1140,7 +958,7 @@ A user should be able to:
 2. Create an account.
 3. Complete lightweight educational onboarding (or skip).
 4. Enter a YouTube URL and land on the workspace immediately.
-5. See fetch / classify progress in the workspace (failures surface there).
+5. See fetch / generate progress in the workspace (failures surface there).
 6. If educational and a topic is known: optional familiarity select; skip allowed.
 7. Optional length select (default from `summary_style` or moderate); skip allowed.
 8. If not educational: see a soft disclaimer and no familiarity question.

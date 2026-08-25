@@ -6,7 +6,10 @@ import { LibraryList } from "@/components/library/library-list";
 import { AppShell } from "@/components/shared/layout/app-shell";
 import { Panel } from "@/components/shared/list/panel";
 import { getUserProfile } from "@/domain/analysis/get-user-profile";
-import { defaultLengthScore } from "@/domain/analysis/prefs";
+import {
+  DEFAULT_LENGTH_SCORE,
+  DEFAULT_TONE_SCORE,
+} from "@/domain/analysis/prefs";
 import { listLibraryForUser } from "@/domain/ingest/ingest-youtube-video";
 import { getOnboardingCompleted } from "@/domain/onboarding";
 import { createClient } from "@/lib/supabase/server";
@@ -36,7 +39,8 @@ export default async function LibraryPage() {
       <div className="flex flex-col gap-8">
         <Panel>
           <AddVideoForm
-            defaultLength={defaultLengthScore(profile?.summaryStyle)}
+            defaultLength={profile?.summaryLength ?? DEFAULT_LENGTH_SCORE}
+            defaultTone={profile?.summaryTone ?? DEFAULT_TONE_SCORE}
           />
         </Panel>
 

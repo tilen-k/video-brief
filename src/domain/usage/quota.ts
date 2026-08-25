@@ -112,7 +112,7 @@ async function resolveCounters(
   return createRedisUsageCounterStore(getRedis());
 }
 
-export async function consumeMonthlyPasteSlot(
+export async function consumeMonthlyGenerateSlot(
   userId: string,
   deps: UsageQuotaDeps = {},
 ): Promise<ConsumeResult> {
@@ -159,7 +159,7 @@ export async function consumeMonthlyPasteSlot(
   return { used, limit, plan, redisKey };
 }
 
-export async function refundMonthlyPasteSlot(
+export async function refundMonthlyGenerateSlot(
   userId: string,
   options: UsageQuotaDeps & { redisKey?: string } = {},
 ): Promise<void> {

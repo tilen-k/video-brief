@@ -15,7 +15,7 @@ import { getPlanForUser } from "@/domain/usage/plan";
 import {
   assertDurationAllowed,
   isRefundableErrorCode,
-  refundMonthlyPasteSlot,
+  refundMonthlyGenerateSlot,
 } from "@/domain/usage";
 import { UsageError } from "@/domain/usage/errors";
 import { errorFields, logger } from "@/lib/logger";
@@ -42,10 +42,19 @@ function sanitizeThumbnailUrl(url: string | null | undefined): string | null {
 export type IngestYoutubeVideoInput = {
   userId: string;
   youtubeId: string;
-  familiarity: number;
+  familiarity: number | null;
   summaryLength: number;
-  /** Redis key from consumeMonthlyPasteSlot — persisted for refunds. */
+  summaryTone: number;
+  /** Redis key from consumeMonthlyGenerateSlot — persisted for refunds. */
   usageQuotaKey?: string | null;
+  /** Optional preview metadata so the library/workspace is not a raw youtubeId stub. */
+  metadata?: {
+    title: string;
+    channelTitle: string | null;
+    thumbnailUrl: string | null;
+    durationSeconds: number | null;
+    youtubeCategoryId: string | null;
+  };
 };
 
 export type IngestYoutubeVideoResult = {
@@ -53,6 +62,8 @@ export type IngestYoutubeVideoResult = {
   analysisId: string;
   status: AnalysisStatus;
   runId: string;
+  /** Previous Redis usage key overwritten by this Generate (refund in the action). */
+  priorUsageQuotaKey?: string | null;
 };
 
 export type FetchYoutubeVideoInput = {
@@ -66,7 +77,7 @@ export type IngestYoutubeVideoDeps = {
   db?: Db;
   transcriptProvider?: TranscriptProvider;
   getPlan?: typeof getPlanForUser;
-  refundSlot?: typeof refundMonthlyPasteSlot;
+  refundSlot?: typeof refundMonthlyGenerateSlot;
 };
 
 type MetadataFields = {
@@ -124,7 +135,7 @@ async function markFetchOutcome(
   userVideoId: string,
   runId: string,
   outcome:
-    | { status: "classifying" }
+    | { status: "generating" }
     | { status: "failed"; code: string; message: string },
 ) {
   const [row] = await tx
@@ -133,7 +144,6 @@ async function markFetchOutcome(
       status: outcome.status,
       errorCode: outcome.status === "failed" ? outcome.code : null,
       errorMessage: outcome.status === "failed" ? outcome.message : null,
-      classification: null,
       sections: [],
       summary: null,
       ...(outcome.status === "failed" ? { usageQuotaKey: null } : {}),
@@ -174,11 +184,11 @@ async function loadUsageQuotaKey(
   return row?.usageQuotaKey ?? null;
 }
 
-async function maybeRefundPasteSlot(
+async function maybeRefundGenerateSlot(
   userId: string,
   errorCode: string,
   refundedViaCas: boolean,
-  refundSlot: typeof refundMonthlyPasteSlot,
+  refundSlot: typeof refundMonthlyGenerateSlot,
   redisKey: string | null,
 ): Promise<void> {
   if (!refundedViaCas || !isRefundableErrorCode(errorCode) || !redisKey) {
@@ -228,21 +238,52 @@ export async function startYoutubeIngest(
   deps: IngestYoutubeVideoDeps = {},
 ): Promise<IngestYoutubeVideoResult> {
   const db = deps.db ?? createDb();
-  const { userId, youtubeId, familiarity, summaryLength, usageQuotaKey = null } =
-    input;
+  const {
+    userId,
+    youtubeId,
+    familiarity,
+    summaryLength,
+    summaryTone,
+    usageQuotaKey = null,
+    metadata,
+  } = input;
   const runId = crypto.randomUUID();
+  const title = metadata?.title?.trim() || youtubeId;
+  const channelTitle = metadata?.channelTitle ?? null;
+  const thumbnailUrl = sanitizeThumbnailUrl(metadata?.thumbnailUrl ?? null);
+  const durationSeconds = metadata?.durationSeconds ?? null;
+  const youtubeCategoryId = metadata?.youtubeCategoryId ?? null;
 
   return db.transaction(async (tx) => {
+    const [existing] = await tx
+      .select({ id: userVideos.id })
+      .from(userVideos)
+      .where(and(eq(userVideos.userId, userId), eq(userVideos.youtubeId, youtubeId)))
+      .limit(1);
+
+    const priorUsageQuotaKey = existing
+      ? await loadUsageQuotaKey(tx, userId, existing.id)
+      : null;
+
     const [userVideo] = await tx
       .insert(userVideos)
       .values({
         userId,
         youtubeId,
-        title: youtubeId,
+        title,
+        channelTitle,
+        thumbnailUrl,
+        durationSeconds,
+        youtubeCategoryId,
       })
       .onConflictDoUpdate({
         target: [userVideos.userId, userVideos.youtubeId],
         set: {
+          title,
+          channelTitle,
+          thumbnailUrl,
+          durationSeconds,
+          youtubeCategoryId,
           updatedAt: new Date(),
         },
       })
@@ -256,11 +297,11 @@ export async function startYoutubeIngest(
         status: "pending",
         errorCode: null,
         errorMessage: null,
-        classification: null,
         sections: [],
         summary: null,
         familiarity,
         summaryLength,
+        summaryTone,
         runId,
         usageQuotaKey,
       })
@@ -270,11 +311,11 @@ export async function startYoutubeIngest(
           status: "pending",
           errorCode: null,
           errorMessage: null,
-          classification: null,
           sections: [],
           summary: null,
           familiarity,
           summaryLength,
+          summaryTone,
           runId,
           usageQuotaKey,
           updatedAt: new Date(),
@@ -287,6 +328,10 @@ export async function startYoutubeIngest(
       analysisId: analysis.id,
       status: "pending" as const,
       runId: analysis.runId,
+      priorUsageQuotaKey:
+        priorUsageQuotaKey && priorUsageQuotaKey !== usageQuotaKey
+          ? priorUsageQuotaKey
+          : null,
     };
   });
 }
@@ -302,7 +347,8 @@ export async function markAnalysisStartFailed(
     .set({
       status: "failed",
       errorCode: "analysis_failed",
-      errorMessage: "Couldn't start analysis. Try pasting the link again.",
+      errorMessage: "Couldn't start analysis. Try generating again.",
+      usageQuotaKey: null,
       updatedAt: new Date(),
     })
     .where(
@@ -317,7 +363,6 @@ export async function markAnalysisStartFailed(
 const IN_FLIGHT_STATUSES = [
   "pending",
   "fetching",
-  "classifying",
   "generating",
 ] as const;
 
@@ -333,7 +378,8 @@ export async function failAnalysisRun(
     .set({
       status: "failed",
       errorCode: "analysis_failed",
-      errorMessage: "Couldn't understand this video. Paste the link again to retry.",
+      errorMessage:
+        "Couldn't understand this video. Generate again from the library to retry.",
       updatedAt: new Date(),
     })
     .where(
@@ -347,8 +393,8 @@ export async function failAnalysisRun(
 }
 
 /**
- * Fetch metadata + English transcript and move pending/fetching → classifying | failed.
- * Re-pasting the same URL always refetches and refreshes the row.
+ * Fetch metadata + English transcript and move pending/fetching → generating | failed.
+ * Re-running Generate on the same URL always refetches and refreshes the row.
  */
 export async function fetchYoutubeVideo(
   input: FetchYoutubeVideoInput,
@@ -357,7 +403,7 @@ export async function fetchYoutubeVideo(
   const db = deps.db ?? createDb();
   const provider = deps.transcriptProvider ?? getDefaultTranscriptProvider();
   const getPlan = deps.getPlan ?? getPlanForUser;
-  const refundSlot = deps.refundSlot ?? refundMonthlyPasteSlot;
+  const refundSlot = deps.refundSlot ?? refundMonthlyGenerateSlot;
   const { userId, youtubeId, userVideoId, runId } = input;
 
   let fetchResult: Awaited<
@@ -426,7 +472,7 @@ export async function fetchYoutubeVideo(
         };
       });
 
-      await maybeRefundPasteSlot(
+      await maybeRefundGenerateSlot(
         userId,
         providerError.code,
         result._refunded,
@@ -451,7 +497,6 @@ export async function fetchYoutubeVideo(
         status: "failed",
         errorCode: providerError.code,
         errorMessage: providerError.message,
-        classification: null,
         sections: [],
         summary: null,
         usageQuotaKey: null,
@@ -468,7 +513,7 @@ export async function fetchYoutubeVideo(
       .returning();
 
     if (failed) {
-      await maybeRefundPasteSlot(
+      await maybeRefundGenerateSlot(
         userId,
         providerError.code,
         true,
@@ -552,7 +597,7 @@ export async function fetchYoutubeVideo(
 
   return db.transaction(async (tx) => {
     const analysis = await markFetchOutcome(tx, userId, userVideoId, runId, {
-      status: "classifying",
+      status: "generating",
     });
     if (!analysis) {
       const current = await currentIngestResult(tx, userId, userVideoId);
@@ -583,7 +628,7 @@ export async function fetchYoutubeVideo(
     return {
       userVideoId,
       analysisId: analysis.id,
-      status: "classifying" as const,
+      status: "generating" as const,
       runId: analysis.runId,
     };
   });

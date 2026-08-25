@@ -86,11 +86,6 @@ export function WorkspaceShell({ initial }: WorkspaceShellProps) {
         </aside>
         {kind === "complete" ? (
           <div className="order-3 min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-6 lg:col-start-1 lg:row-start-2 lg:border-r lg:border-border">
-            {video.classification && !video.classification.isEducational ? (
-              <p className="mb-4 text-sm text-muted-foreground">
-                {t("nonEduDisclaimer")}
-              </p>
-            ) : null}
             <WorkspaceSections
               sections={video.sections}
               emptyLabel={t("completePlaceholder")}

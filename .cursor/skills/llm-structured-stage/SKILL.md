@@ -1,6 +1,6 @@
 ---
 name: llm-structured-stage
-description: Implement a VideoBrief AI pipeline stage with Vercel AI SDK and Zod-validated structured output. Use when adding or changing classify or personalized section generation.
+description: Implement a VideoBrief AI generate stage with Vercel AI SDK and Zod-validated structured output. Use when adding or changing personalized section generation.
 ---
 
 # LLM structured stage
@@ -9,7 +9,7 @@ description: Implement a VideoBrief AI pipeline stage with Vercel AI SDK and Zod
 
 ```text
 domain function
-  → AIProvider method (Vercel AI SDK; model from analysisConfig)
+  → AIProvider.generateSections (Vercel AI SDK; model from analysisConfig)
   → structured output
   → Zod.parse (throw/map on failure)
   → return typed result for persistence
@@ -17,17 +17,17 @@ domain function
 
 ## Steps
 
-1. Define Zod schema for the stage (`classifyVideo` or `generateSections`).
+1. Define Zod schema for generate (`generateSections`).
 2. Add/extend method on `AIProvider` — do not call a vendor SDK from UI/actions.
-3. Prompt with only needed context (classify: metadata + short excerpt; generate: transcript subset + profile + per-video prefs).
+3. Prompt with transcript subset + per-video prefs (length, tone, familiarity if set).
 4. Validate before any DB write.
 5. Unit-test schema + mocked provider responses with Vitest.
 
 ## Rules
 
 - Default model: `analysisConfig.model.defaultId`
-- Classify: `isEducational`, `confidence`, `topic?`. YouTube category is a hint only; ambiguous → prefer educational. **No** section skeleton. **No** LLM-invented questions.
-- Per-video prefs are 0–100 integers on the analysis row (set at paste)
+- No `classifyVideo` / classification stage
+- Per-video prefs are 0–100 integers on the analysis row (set at Generate); familiarity may be null
 - `generateSections` returns `{ summary, sections: { title, startTime, endTime, body }[] }`
-- Personalization changes emphasis/depth — do not invent unrelated facts
+- Personalization changes emphasis/depth/tone — do not invent unrelated facts
 - Never persist unvalidated model JSON

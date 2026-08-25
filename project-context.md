@@ -6,19 +6,15 @@ Short overview for agents and humans. Full detail: `project-spec.md`. Agent rule
 
 ## What we're building
 
-**Education-first** personalized YouTube summaries, synchronized with the video.
-
-Paste a URL with familiarity/length sliders → stay on the library → a worker fetches metadata + English transcript → classify → generate an **overview summary** plus **section bodies** from profile + those prefs → open the workspace anytime and watch with synced highlight/seek. Not a chatbot. Not a generic summarizer.
-
-Non-educational videos still get a sectioned summary (soft disclaimer). Familiarity is omitted from the generate prompt.
+**Contextual YouTube summarizer** — personalized section summaries synchronized with the video. Not a chatbot. Not education-first tooling.
 
 ```text
-Landing → Auth → Onboarding → Library → Paste URL + sliders
-  → Stub library row (no redirect) + enqueue analyze job
-  → Fetch metadata + English transcript (fail on workspace / library row)
-  → Classify (isEducational, topic; YouTube category as hint)
-  → Generate { summary, sections: { title, startTime, endTime, body } }
-  → Workspace: summary on the right; sections under a smaller player; highlight + seek
+Landing → Auth → Onboarding (optional tone + length defaults)
+  → Library → Paste URL → Preview metadata (no DB, no usage)
+  → Settings under input: length + tone (always); familiarity if category qualifies
+  → Generate → create library row + usage + enqueue → redirect workspace
+  → Worker: fetch English transcript → generate { summary, sections[] }
+  → Workspace: summary + sections; highlight + seek (job continues if user leaves)
 ```
 
 ## Locked stack
@@ -27,77 +23,63 @@ Landing → Auth → Onboarding → Library → Paste URL + sliders
 |------|--------|
 | App | Next.js App Router, React, TS, `src/`, pnpm, Vercel |
 | UI | Tailwind, shadcn, lucide, RHF, Zod, TanStack Query |
-| Theme / i18n | next-themes (**dark default**), next-intl (**en only**) |
+| Theme / i18n | next-themes (**dark default**), next-intl (**en only** for this ship; DE later) |
 | Fonts | Nunito |
 | Auth | Supabase email/password + Google; soft email confirm |
 | DB | Supabase Postgres + **Drizzle** + RLS |
-| AI | Vercel AI SDK behind `AIProvider`; default model in `analysisConfig` (OpenRouter) |
+| AI | Vercel AI SDK behind `AIProvider`; model in `analysisConfig` (OpenRouter) |
 | YouTube | `youtubei.js` (EN captions required), `react-youtube` |
 | Tests | Vitest unit only (no E2E in MVP) |
 
-**Not in MVP:** chat, uploads, Whisper, tRPC, Prisma, Stripe, PostHog, non-English UI/captions, LLM-invented knowledge questions, topic/video EAV context, shared cross-user transcript/classification cache.
+**Not in this ship:** chat, uploads, Whisper, tRPC, Prisma, Stripe, PostHog, app DE / summary-language picker / non-EN transcripts, LLM classify, educational profile fields, shared cross-user transcript cache.
 
-**Redis:** BullMQ analysis queue + monthly per-user paste counters (`REDIS_URL`). Not a transcript cache.
+**Redis:** BullMQ analysis queue + monthly per-user Generate counters (`REDIS_URL`). Not a transcript cache.
 
 ## Onboarding (all optional)
 
-Stable profile — skip allowed. Typed fields (not open key/value):
+Skip allowed → defaults **tone 50**, **length 50**.
 
 | Field | Notes |
 |-------|--------|
-| Year of birth | Number → store `yyyy`; framing only |
-| Education level | Enum: `middle_school`, `high_school`, `undergrad`, `grad`, `bootcamp`, `self_taught`, `other` |
-| Subjects | Fixed chips + `other` last; no free-text for Other in MVP |
-| Summary style | Optional global default for length (`brief` / `moderate` / `extensive`); settings later if not collected at onboarding |
+| Default summary tone | Integer 0–100 (Formal ←→ Casual) |
+| Default summary length | Integer 0–100 (Short ←→ Long) |
 
-Suggested subject chips: Math, Physics, Chemistry, Biology, Computer Science, Engineering, Economics, History, Languages, Other.
+No YOB, education level, subjects, or `summary_style` enum.
 
-## Classification (stage 1)
+## Per-video prefs (analysis row)
 
-Cheap structured call. **No** section skeleton, **no** dynamic questions.
+Collected in the library preview panel before Generate:
 
-```text
-isEducational, confidence, topic?
-```
+- **Length** (0–100) — always; default from profile or 50
+- **Tone** (0–100, Formal←→Casual) — always; default from profile or 50
+- **Familiarity** (0–100) — only for YouTube categories: Education, Howto & Style, Science & Technology, News & Politics (fixed id map). Otherwise null / omitted from prompt.
 
-YouTube `categoryId` is a **hint**. Ambiguous → **prefer educational**.
+Re-Generate same URL → **reset** prefs write + new `run_id`.
 
-## Per-video prefs (not global context)
-
-Paste-time sliders. Persist on the **analysis row** (not the profile) as integers 0–100:
-
-- **Familiarity** — default 50. Omitted from the generate prompt when the video is not educational.
-- **Length** — default from profile `summary_style` (brief 25 / moderate 50 / extensive 75) or 50.
-
-Re-paste overwrites both and mints a new `run_id`.
-
-## Generate (stage 2)
-
-One call returns an overview plus timed sections:
+## Generate (only AI stage)
 
 ```text
 { summary, sections: { title, startTime, endTime, body }[] }
 ```
 
-Uses transcript subset + profile + per-video prefs. Personalization changes depth/framing — does not invent unrelated facts. Non-edu still uses profile when present.
+Inputs: transcript subset + per-video prefs (+ category for familiarity gating). No classify. No edu profile. No non-edu disclaimer.
 
 ## Data
 
-All **per-user**. No shared video/transcript/classification cache.
+All **per-user**. No shared video/transcript cache.
 
-- `user_videos` — metadata + English transcript (re-paste refreshes)
-- `user_videos` — metadata + English transcript (re-paste refreshes)
-- `personalized_analyses` — state machine, classify result, 0–100 prefs, `run_id`, overview summary, generated sections, optional `usage_quota_key`
-- Profile / preferences — typed columns: YOB, education level, subjects, summary style, **plan** (`free` | `pro`)
-- Usage — Redis monthly paste counter (free: 10/month, max 20 min); Pro scaffolded
+- `user_videos` — metadata + English transcript (created/refreshed on Generate)
+- `personalized_analyses` — state machine, prefs, `run_id`, summary, sections, optional `usage_quota_key`
+- Profile — `summary_tone`, `summary_length`, **plan** (`free` | `pro`)
+- Usage — Redis monthly **Generate** counter (free: 10/month, max 20 min); Pro scaffolded
 
 ## Architecture
 
-Thin Server Actions enqueue work. Domain `continueAnalysis` still advances **one** stage. A BullMQ worker loops it until complete/failed. Optional `YOUTUBE_PROXY_URL` for YouTube fetch on Vercel (same TranscriptProvider).
+Thin Server Actions. Domain `continueAnalysis` advances **one** stage. BullMQ worker loops until complete/failed.
 
-States (keep simple):
+States:
 
-`pending` → `fetching` → `classifying` → `generating` → `complete` | `failed`
+`pending` → `fetching` → `generating` → `complete` | `failed`
 
 ## Workspace
 
@@ -105,8 +87,12 @@ Smaller player + sections below; overview summary on the right. Active section f
 
 ## MVP done when
 
-User can sign up, onboard lightly, paste a YouTube URL with English captions, stay on the library while analysis runs, open the workspace anytime, see edu vs non-edu behavior, and watch a **personalized overview + section bodies** with highlight + seek.
+User can sign up, set optional tone/length defaults, preview a YouTube URL with metadata + prefs (no library row yet), Generate (usage + redirect), and watch a personalized overview + section bodies with highlight/seek while the job finishes.
 
 ## Guiding question
 
-> Does this help turn a YouTube video into a better personalized understanding for this user — especially for learning?
+> Does this help turn a YouTube video into a better personalized understanding for this user?
+
+## Next (not this ship)
+
+App language (en/de), preferred summary language, default-transcript language (drop EN-only caption requirement).

@@ -1,8 +1,5 @@
 import { describe, expect, it } from "vitest";
 
-import type { AnalysisStatus } from "@/db/schema";
-import { ANALYSIS_STATUSES } from "@/db/schema";
-
 import {
   analysisChecklist,
   analysisUiPhase,
@@ -10,27 +7,17 @@ import {
   paneKind,
   shouldPoll,
 } from "./analysis-ui";
-
-const IN_FLIGHT: AnalysisStatus[] = [
-  "pending",
-  "fetching",
-  "classifying",
-  "generating",
-];
-
-const STOP_POLL: AnalysisStatus[] = ["complete", "failed"];
+import { ANALYSIS_STATUSES } from "@/db/schema";
 
 describe("analysisUiPhase", () => {
-  it("maps every analysis status to a user-facing phase", () => {
-    const expected: Record<AnalysisStatus, string> = {
+  it("maps every analysis status", () => {
+    const expected: Record<(typeof ANALYSIS_STATUSES)[number], string> = {
       pending: "fetching",
       fetching: "fetching",
-      classifying: "understanding",
       generating: "generating",
       complete: "complete",
       failed: "failed",
     };
-
     for (const status of ANALYSIS_STATUSES) {
       expect(analysisUiPhase(status)).toBe(expected[status]);
     }
@@ -38,53 +25,35 @@ describe("analysisUiPhase", () => {
 });
 
 describe("paneKind", () => {
-  it("shows progress while work is in flight", () => {
+  it("maps progress, complete, and failed", () => {
     expect(paneKind("pending")).toBe("progress");
     expect(paneKind("fetching")).toBe("progress");
-    expect(paneKind("classifying")).toBe("progress");
     expect(paneKind("generating")).toBe("progress");
-  });
-
-  it("selects terminal panes without leaking machine names", () => {
-    expect(paneKind("failed")).toBe("failed");
     expect(paneKind("complete")).toBe("complete");
+    expect(paneKind("failed")).toBe("failed");
   });
 });
 
-describe("shouldPoll", () => {
+describe("shouldPoll / isFailedStatus", () => {
   it("polls in-flight statuses only", () => {
-    for (const status of IN_FLIGHT) {
-      expect(shouldPoll(status)).toBe(true);
-    }
-    for (const status of STOP_POLL) {
-      expect(shouldPoll(status)).toBe(false);
-    }
+    expect(shouldPoll("pending")).toBe(true);
+    expect(shouldPoll("fetching")).toBe(true);
+    expect(shouldPoll("generating")).toBe(true);
+    expect(shouldPoll("complete")).toBe(false);
+    expect(shouldPoll("failed")).toBe(false);
   });
-});
 
-describe("isFailedStatus", () => {
-  it("returns true only for failed", () => {
+  it("detects failed", () => {
     expect(isFailedStatus("failed")).toBe(true);
-    expect(isFailedStatus("complete")).toBe(false);
-    expect(isFailedStatus("classifying")).toBe(false);
+    expect(isFailedStatus("generating")).toBe(false);
   });
 });
 
 describe("analysisChecklist", () => {
-  it("marks transcript as current while captions load", () => {
+  it("marks transcript as current while fetching", () => {
     expect(analysisChecklist("fetching")).toEqual([
       { id: "found", state: "done" },
       { id: "transcript", state: "current" },
-      { id: "understanding", state: "upcoming" },
-      { id: "summary", state: "upcoming" },
-    ]);
-  });
-
-  it("marks understanding as current while classifying", () => {
-    expect(analysisChecklist("classifying")).toEqual([
-      { id: "found", state: "done" },
-      { id: "transcript", state: "done" },
-      { id: "understanding", state: "current" },
       { id: "summary", state: "upcoming" },
     ]);
   });
@@ -93,8 +62,15 @@ describe("analysisChecklist", () => {
     expect(analysisChecklist("generating")).toEqual([
       { id: "found", state: "done" },
       { id: "transcript", state: "done" },
-      { id: "understanding", state: "done" },
       { id: "summary", state: "current" },
+    ]);
+  });
+
+  it("marks all done when complete", () => {
+    expect(analysisChecklist("complete")).toEqual([
+      { id: "found", state: "done" },
+      { id: "transcript", state: "done" },
+      { id: "summary", state: "done" },
     ]);
   });
 });

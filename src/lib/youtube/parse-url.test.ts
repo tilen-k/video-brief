@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { addVideoInputSchema, parseYoutubeId } from "@/lib/youtube/parse-url";
+import { parseYoutubeId } from "@/lib/youtube/parse-url";
 
 describe("parseYoutubeId", () => {
   it("parses watch URLs", () => {
@@ -28,46 +28,5 @@ describe("parseYoutubeId", () => {
 
   it("rejects non-YouTube hosts", () => {
     expect(parseYoutubeId("https://vimeo.com/123456")).toBeNull();
-  });
-});
-
-describe("addVideoInputSchema", () => {
-  it("returns youtubeId for valid URLs", () => {
-    const result = addVideoInputSchema.safeParse({
-      url: "https://youtu.be/dQw4w9WgXcQ",
-    });
-    expect(result.success).toBe(true);
-    if (result.success) {
-      expect(result.data.youtubeId).toBe("dQw4w9WgXcQ");
-    }
-  });
-
-  it("rejects invalid URLs", () => {
-    const result = addVideoInputSchema.safeParse({
-      url: "https://example.com/watch?v=nope",
-    });
-    expect(result.success).toBe(false);
-  });
-
-  it("accepts 0–100 pref scores from form strings", () => {
-    const result = addVideoInputSchema.safeParse({
-      url: "https://youtu.be/dQw4w9WgXcQ",
-      familiarity: "12",
-      summaryLength: "80",
-    });
-    expect(result.success).toBe(true);
-    if (result.success) {
-      expect(result.data.familiarity).toBe(12);
-      expect(result.data.summaryLength).toBe(80);
-    }
-  });
-
-  it("rejects pref scores outside 0–100", () => {
-    expect(
-      addVideoInputSchema.safeParse({
-        url: "https://youtu.be/dQw4w9WgXcQ",
-        familiarity: "101",
-      }).success,
-    ).toBe(false);
   });
 });

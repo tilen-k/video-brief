@@ -1,5 +1,3 @@
-import { z } from "zod";
-
 /** 11-char YouTube video id. */
 export const YOUTUBE_ID_PATTERN = /^[\w-]{11}$/;
 
@@ -56,34 +54,3 @@ export function parseYoutubeId(raw: string): string | null {
 
   return null;
 }
-
-const prefScoreSchema = z.preprocess((value) => {
-  if (value === "" || value === null || value === undefined) {
-    return undefined;
-  }
-  return value;
-}, z.coerce.number().int().min(0).max(100).optional());
-
-export const addVideoInputSchema = z.object({
-  url: z.string().trim().min(1, "Paste a YouTube URL"),
-  familiarity: prefScoreSchema,
-  summaryLength: prefScoreSchema,
-}).transform((data, ctx) => {
-  const youtubeId = parseYoutubeId(data.url);
-  if (!youtubeId) {
-    ctx.addIssue({
-      code: "custom",
-      message: "That doesn’t look like a YouTube video URL",
-      path: ["url"],
-    });
-    return z.NEVER;
-  }
-  return {
-    url: data.url,
-    youtubeId,
-    familiarity: data.familiarity,
-    summaryLength: data.summaryLength,
-  };
-});
-
-export type AddVideoInput = z.infer<typeof addVideoInputSchema>;

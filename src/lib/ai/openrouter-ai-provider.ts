@@ -1,72 +1,42 @@
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
-import { generateText, NoObjectGeneratedError, Output } from "ai";
+import { generateText, Output } from "ai";
 
 import { analysisConfig } from "@/domain/analysis/config";
-import { repairClassifyText } from "@/domain/analysis/repair-classify-text";
-import {
-  classifyVideoSchema,
-  generateSectionsSchema,
-} from "@/domain/analysis/schemas";
+import { generateSectionsSchema } from "@/domain/analysis/schemas";
 import { llmErrorFields, logger } from "@/lib/logger";
 
 import {
   AIProviderError,
   type AIProvider,
-  type ClassifyVideoInput,
   type GenerateSectionsInput,
 } from "./provider";
 
 const { maxSections, maxOutputTokens } = analysisConfig.generate;
-
-const CLASSIFY_SYSTEM = `You classify a YouTube video for an education-first, personalized summary product.
-Respond with a JSON object only — no prose, no CSV, no markdown.
-Shape: {"isEducational":true,"confidence":"high","topic":"short noun phrase"}
-confidence must be one of: high, medium, low.
-Omit topic when none fits.
-YouTube category is a hint only — do not treat it as ground truth.
-If the video might teach or explain something, set isEducational true.
-If confidence is low or the label is ambiguous, still prefer educational.
-Do not invent facts. Do not emit sections, questions, domains, or extra keys.`;
 
 const GENERATE_SYSTEM = `You write a personalized overview and timed section notes of a YouTube video from its transcript.
 Respond with a JSON object only: {"summary":"...","sections":[{"title":"...","startTime":0,"endTime":12,"body":"..."}]}
 summary is a standalone overview the viewer can read instead of watching (about 1500–2000 characters).
 Each section needs a title, startTime and endTime in seconds, and a body for seek/highlight.
 Stay faithful to the transcript — do not invent facts that are not in the source.
-Use the viewer's profile and per-video prefs only to change depth, framing, and length — not to add unrelated content.
+Use the viewer's per-video prefs only to change depth, framing, formality, and length — not to add unrelated content.
 Return 1–${maxSections} sections that cover the video. Short videos may have a single section.`;
 
 function durationLabel(seconds: number | null): string {
   return seconds != null ? `${seconds} seconds` : "unknown";
 }
 
-function buildClassifyPrompt(input: ClassifyVideoInput): string {
-  return `Title: ${input.title}
-Channel: ${input.channelTitle ?? "unknown"}
-Duration: ${durationLabel(input.durationSeconds)}
-YouTube category id (hint only): ${input.youtubeCategoryId ?? "unknown"}
-
-Transcript excerpt:
-${input.transcriptExcerpt}`;
-}
-
 export function buildGeneratePrompt(input: GenerateSectionsInput): string {
-  const { profile, prefs, classification } = input;
-  const subjects = profile.subjects?.join(", ") || "none given";
-  const familiarityLine = classification.isEducational
-    ? `Familiarity with topic (0–100): ${prefs.familiarity}`
-    : null;
+  const { prefs } = input;
+  const familiarityLine =
+    prefs.familiarity != null
+      ? `Familiarity with topic (0–100, Novice←→Expert): ${prefs.familiarity}`
+      : null;
 
   return `Title: ${input.title}
 Channel: ${input.channelTitle ?? "unknown"}
 Duration: ${durationLabel(input.durationSeconds)}
-Educational: ${classification.isEducational}
-Topic: ${classification.topic ?? "none"}
-Viewer year of birth: ${profile.yearOfBirth ?? "unknown"}
-Education level: ${profile.educationLevel ?? "unknown"}
-Subjects of interest: ${subjects}
-Summary style default: ${profile.summaryStyle ?? "none"}
-${familiarityLine ? `${familiarityLine}\n` : ""}Requested length (0–100): ${prefs.summaryLength}
+${familiarityLine ? `${familiarityLine}\n` : ""}Requested length (0–100, Short←→Long): ${prefs.summaryLength}
+Requested tone (0–100, Formal←→Casual): ${prefs.summaryTone}
 
 Transcript:
 ${input.transcriptSubset}`;
@@ -97,63 +67,6 @@ export class OpenRouterAIProvider implements AIProvider {
 
   constructor(modelId: string = analysisConfig.models.basicId) {
     this.modelId = modelId;
-  }
-
-  async classifyVideo(input: ClassifyVideoInput) {
-    const model = createModel(requireApiKey(), this.modelId);
-    const started = Date.now();
-    const log = logger.child({
-      stage: "classify",
-      modelId: this.modelId,
-      excerptChars: input.transcriptExcerpt.length,
-    });
-
-    try {
-      const { output } = await generateText({
-        model,
-        output: Output.object({
-          name: "Classification",
-          description:
-            "JSON object with isEducational, confidence, and optional topic",
-          schema: classifyVideoSchema,
-        }),
-        system: CLASSIFY_SYSTEM,
-        prompt: buildClassifyPrompt(input),
-        temperature: 0,
-        timeout: analysisConfig.model.timeoutMs,
-        maxRetries: analysisConfig.model.maxRetries,
-      });
-
-      if (output == null) {
-        throw new AIProviderError("Model returned no structured output");
-      }
-
-      const parsed = classifyVideoSchema.parse(output);
-      log.info({ llmMs: Date.now() - started }, "llm.ok");
-      return parsed;
-    } catch (error) {
-      if (NoObjectGeneratedError.isInstance(error) && error.text) {
-        const repaired = repairClassifyText(error.text);
-        if (repaired) {
-          log.info(
-            { llmMs: Date.now() - started, repaired: true },
-            "llm.ok",
-          );
-          return repaired;
-        }
-      }
-
-      log.warn(
-        { llmMs: Date.now() - started, ...llmErrorFields(error) },
-        "llm.err",
-      );
-      if (error instanceof AIProviderError) {
-        throw error;
-      }
-      throw new AIProviderError("Could not classify this video", {
-        cause: error,
-      });
-    }
   }
 
   async generateSections(input: GenerateSectionsInput) {

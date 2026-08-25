@@ -21,41 +21,41 @@ Worker
 
 Server Actions authenticate, authorize, validate input, then call domain functions. **Do not** embed the analysis pipeline in actions or React components.
 
-Redis is queue + lock only. Do **not** store transcripts, classification, or sections in Redis.
+Redis is queue + lock + usage counters only. Do **not** store transcripts or sections in Redis.
+
+## Library preview vs Generate
+
+| Step | DB | Usage | Queue |
+|------|----|-------|-------|
+| Preview URL (metadata) | none | no | no |
+| Generate | upsert `user_videos` + analysis | yes | enqueue analyze |
+
+Preview is a thin authenticated action (or domain call) returning metadata only. Generate creates the library entry, writes prefs + `run_id`, consumes the monthly slot, enqueues, and **redirects to the workspace**.
 
 ## Per-user video data
 
 Each library entry is one row per `(user_id, youtube_id)`:
 
-- `user_videos` — metadata + English transcript snapshot (refreshed on every ingest/re-paste)
-- `personalized_analyses` — state machine, classify result, 0–100 prefs, `run_id`, overview `summary`, generated sections (1:1 with `user_videos`)
+- `user_videos` — metadata + English transcript snapshot (refreshed on every Generate/re-run)
+- `personalized_analyses` — state machine, 0–100 prefs (length, tone, optional familiarity), `run_id`, overview `summary`, generated sections (1:1 with `user_videos`)
 
-Re-pasting the same URL **always refetches** from YouTube and upserts that user's row. There is **no shared global cache** of videos/transcripts/classification across users.
+Re-running the same URL **always resets** analysis (new `run_id`, clear summary/sections) and refetches from YouTube. There is **no shared global cache** across users.
 
-Profile (typed columns, not EAV): year of birth, education level, subjects, summary style. Settings can edit these later.
-
-Per-video familiarity and summary length (integers 0–100) persist on the **analysis row**, not the profile.
-
-## Ingest vs workspace
-
-Paste creates/upserts a stub, writes prefs + a new `run_id`, enqueues an `analyze` job, and **stays on the library**. The worker runs fetch → classify → generate. The user can open the workspace anytime. YouTube failures surface on the workspace failed pane.
+Profile defaults (typed): `summary_tone`, `summary_length` (0–100). Per-video prefs override on the analysis row.
 
 ## Analysis states
 
-Keep the state machine simple:
+`pending` → `fetching` → `generating` → `complete` | `failed`
 
-`pending` → `fetching` → `classifying` → `generating` → `complete` | `failed`
-
-- UI should communicate progress without leaking internals (no Redis/BullMQ/`runId` in copy).
+No `classifying` stage. UI communicates progress without leaking Redis/BullMQ/`runId`.
 
 ## AIProvider
 
 ```text
-classifyVideo     # isEducational, confidence, topic? — no skeleton, no dynamic questions
 generateSections  # { summary, sections: { title, startTime, endTime, body }[] }
 ```
 
-Domain owns the pipeline. Callers must not import a vendor SDK.
+No `classifyVideo`. Domain owns the pipeline. Callers must not import a vendor SDK.
 
 ## Suggested folder sketch
 
@@ -73,4 +73,4 @@ src/
 
 ## Cost awareness
 
-Classify is a small JSON call. Generate is the expensive call (transcript subset + profile + per-video prefs). Do not send the full transcript twice. Cap generate output tokens. Model id lives in `analysisConfig`, not env.
+Generate is the expensive call (transcript subset + per-video prefs). Cap generate output tokens. Model id lives in `analysisConfig`, not env. Preview must not call the LLM.

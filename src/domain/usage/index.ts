@@ -2,8 +2,8 @@ export { UsageError, isRefundableErrorCode, REFUNDABLE_ERROR_CODES } from "./err
 export { assertDurationAllowed } from "./duration";
 export { getPlanForUser, planLimitsFor } from "./plan";
 export {
-  consumeMonthlyPasteSlot,
-  refundMonthlyPasteSlot,
+  consumeMonthlyGenerateSlot,
+  refundMonthlyGenerateSlot,
   getUsageSnapshot,
   monthlyUsageKey,
   utcMonthPeriodKey,
