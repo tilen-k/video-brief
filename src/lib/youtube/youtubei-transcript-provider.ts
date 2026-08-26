@@ -13,6 +13,12 @@ import {
 } from "@/lib/youtube/proxied-fetch";
 import { getYoutubeProxyConfig } from "@/lib/youtube/youtube-proxy-url";
 
+/**
+ * WEB/MWEB return PlayerMicroformat.category (English label).
+ * IOS/ANDROID omit microformat → category is always null.
+ */
+const METADATA_CLIENT = "WEB" as const;
+
 /** InnerTube client that returns working signed caption track URLs (WEB often does not). */
 const CAPTION_CLIENT = "IOS" as const;
 
@@ -26,6 +32,11 @@ type CaptionTrack = {
 };
 
 type YoutubeiModule = typeof import("youtubei.js");
+type InnertubeInstance = Awaited<
+  ReturnType<YoutubeiModule["Innertube"]["create"]>
+>;
+type BasicInfo = Awaited<ReturnType<InnertubeInstance["getBasicInfo"]>>;
+type BasicInfoFields = BasicInfo["basic_info"];
 
 function pickThumbnail(
   thumbnails: Array<{ url: string }> | undefined,
@@ -63,6 +74,41 @@ function captionTrackUrl(baseUrl: string): string {
   return `${withoutFmt}&fmt=json3`;
 }
 
+function mapBasicInfoToMetadata(
+  youtubeId: string,
+  basic: BasicInfoFields,
+): VideoMetadata | null {
+  const title = basic.title?.toString()?.trim();
+  if (!title) {
+    return null;
+  }
+
+  return {
+    youtubeId,
+    title,
+    channelTitle: basic.author ?? basic.channel?.name ?? null,
+    thumbnailUrl: pickThumbnail(basic.thumbnail),
+    durationSeconds:
+      typeof basic.duration === "number" ? basic.duration : null,
+    // English label from PlayerMicroformat (e.g. "Education"), not Data API id.
+    youtubeCategoryId: basic.category ?? null,
+  };
+}
+
+function requireMetadata(
+  youtubeId: string,
+  basic: BasicInfoFields,
+): VideoMetadata {
+  const metadata = mapBasicInfoToMetadata(youtubeId, basic);
+  if (!metadata) {
+    throw new TranscriptProviderError(
+      "provider_error",
+      "Could not load video metadata from YouTube",
+    );
+  }
+  return metadata;
+}
+
 async function fetchCaptionSegments(
   baseUrl: string,
   fetchImpl: typeof fetch,
@@ -90,35 +136,11 @@ async function fetchCaptionSegments(
   return segments;
 }
 
-async function loadBasicMetadata(
-  youtubeId: string,
+async function createInnertube(
   youtubei: YoutubeiModule,
   youtubeFetch: YoutubeFetchSession,
-): Promise<{ metadata: VideoMetadata; captionTracks: CaptionTrack[] }> {
-  const yt = await youtubei.Innertube.create({ fetch: youtubeFetch.fetch });
-  const info = await yt.getBasicInfo(youtubeId, { client: CAPTION_CLIENT });
-
-  const basic = info.basic_info;
-  const title = basic.title?.toString()?.trim();
-  if (!title) {
-    throw new TranscriptProviderError(
-      "provider_error",
-      "Could not load video metadata from YouTube",
-    );
-  }
-
-  return {
-    metadata: {
-      youtubeId,
-      title,
-      channelTitle: basic.author ?? basic.channel?.name ?? null,
-      thumbnailUrl: pickThumbnail(basic.thumbnail),
-      durationSeconds:
-        typeof basic.duration === "number" ? basic.duration : null,
-      youtubeCategoryId: basic.category ?? null,
-    },
-    captionTracks: info.captions?.caption_tracks ?? [],
-  };
+): Promise<InnertubeInstance> {
+  return youtubei.Innertube.create({ fetch: youtubeFetch.fetch });
 }
 
 async function fetchVideoMetadataOnce(
@@ -127,12 +149,9 @@ async function fetchVideoMetadataOnce(
   youtubeFetch: YoutubeFetchSession,
 ): Promise<VideoMetadata> {
   try {
-    const { metadata } = await loadBasicMetadata(
-      youtubeId,
-      youtubei,
-      youtubeFetch,
-    );
-    return metadata;
+    const yt = await createInnertube(youtubei, youtubeFetch);
+    const info = await yt.getBasicInfo(youtubeId, { client: METADATA_CLIENT });
+    return requireMetadata(youtubeId, info.basic_info);
   } catch (error) {
     if (error instanceof TranscriptProviderError) {
       throw error;
@@ -153,10 +172,29 @@ async function fetchEnglishTranscriptOnce(
   let metadata: VideoMetadata | undefined;
 
   try {
-    const loaded = await loadBasicMetadata(youtubeId, youtubei, youtubeFetch);
-    metadata = loaded.metadata;
+    const yt = await createInnertube(youtubei, youtubeFetch);
 
-    const englishTrack = pickEnglishCaptionTrack(loaded.captionTracks);
+    // WEB for category + display metadata; IOS for signed caption track URLs.
+    const [webResult, iosResult] = await Promise.allSettled([
+      yt.getBasicInfo(youtubeId, { client: METADATA_CLIENT }),
+      yt.getBasicInfo(youtubeId, { client: CAPTION_CLIENT }),
+    ]);
+
+    if (iosResult.status === "rejected") {
+      throw iosResult.reason;
+    }
+
+    const iosInfo = iosResult.value;
+    const webMetadata =
+      webResult.status === "fulfilled"
+        ? mapBasicInfoToMetadata(youtubeId, webResult.value.basic_info)
+        : null;
+    metadata =
+      webMetadata ?? requireMetadata(youtubeId, iosInfo.basic_info);
+
+    const englishTrack = pickEnglishCaptionTrack(
+      iosInfo.captions?.caption_tracks ?? [],
+    );
     if (!englishTrack?.base_url) {
       throw new TranscriptProviderError(
         "missing_english_captions",
@@ -228,7 +266,7 @@ async function withYoutubeSession<T>(
 
 /**
  * Default TranscriptProvider backed by youtubei.js (Innertube).
- * Uses IOS player caption tracks + timedtext json3 (WEB getTranscript is unreliable).
+ * Dual client: WEB for metadata/category; IOS for caption tracks + timedtext json3.
  * English captions only — missing EN → missing_english_captions.
  * Optional YOUTUBE_PROXY_URL: same proxied fetch for Innertube + captions, one sticky session.
  */
