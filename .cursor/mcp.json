@@ -9,6 +9,12 @@
     },
     "vercel": {
       "url": "https://mcp.vercel.com"
-    }
+    },
+    "railway": {
+      "url": "https://mcp.railway.com"
+    },
+    "openrouter": {
+      "url": "https://mcp.openrouter.ai/mcp"
     }
   }
+}
