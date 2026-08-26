@@ -109,7 +109,15 @@
     "usageUsedOfLimit": "{used} / {limit} generates this month",
     "usageResetsOn": "Resets {date} (UTC)",
     "usageDurationMinutes": "Videos up to {minutes} minutes on your plan.",
-    "usageDurationUnlimited": "No video length limit on your plan."
+    "usageDurationUnlimited": "No video length limit on your plan.",
+    "upgradeHint": "Pro: more generates, no length limit, and a stronger model.",
+    "upgradeToPro": "Upgrade to Pro — $10/month",
+    "upgradePending": "Starting checkout…",
+    "manageBilling": "Manage billing",
+    "manageBillingPending": "Opening portal…",
+    "checkoutSuccess": "Thanks — Pro unlocks once payment confirms (usually a few seconds).",
+    "checkoutCanceled": "Checkout canceled. You can upgrade anytime.",
+    "billingPastDue": "Payment is past due. Pro stays active while we retry; update your card in Manage billing."
   },
   "AnalysisStatus": {
     "fetching": "Loading captions",
