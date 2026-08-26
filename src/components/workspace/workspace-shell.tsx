@@ -37,7 +37,7 @@ export function WorkspaceShell({ initial }: WorkspaceShellProps) {
   const kind = paneKind(video.status);
 
   return (
-    <main className="flex min-h-full flex-1 flex-col">
+    <main className="flex min-h-full flex-1 flex-col lg:h-dvh lg:max-h-dvh lg:overflow-hidden">
       <header className="sticky top-0 z-20 shrink-0 border-b border-border bg-background/95 backdrop-blur-sm">
         <div className="flex items-center gap-3 px-4 py-3 sm:gap-4 sm:px-6">
           <Link
@@ -69,7 +69,7 @@ export function WorkspaceShell({ initial }: WorkspaceShellProps) {
         </div>
       </header>
 
-      <div className="flex min-h-0 flex-1 flex-col lg:grid lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)] lg:grid-rows-[auto_minmax(0,1fr)]">
+      <div className="flex min-h-0 flex-1 flex-col lg:h-full lg:min-h-0 lg:overflow-hidden lg:grid lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)] lg:grid-rows-[auto_minmax(0,1fr)]">
         <div className="order-1 mx-auto w-full max-w-3xl lg:col-start-1 lg:row-start-1 lg:border-r lg:border-border">
           <WorkspacePlayer youtubeId={video.youtubeId} onReady={onReady} />
         </div>

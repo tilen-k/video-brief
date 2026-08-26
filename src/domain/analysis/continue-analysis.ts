@@ -1,4 +1,4 @@
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, isNull, sql } from "drizzle-orm";
 
 import { createDb, type Db } from "@/db";
 import {
@@ -199,7 +199,13 @@ async function runContinueAnalysis(
         eq(personalizedAnalyses.userId, userId),
       ),
     )
-    .where(and(eq(userVideos.id, userVideoId), eq(userVideos.userId, userId)))
+    .where(
+      and(
+        eq(userVideos.id, userVideoId),
+        eq(userVideos.userId, userId),
+        isNull(userVideos.deletedAt),
+      ),
+    )
     .limit(1);
 
   if (!row) {

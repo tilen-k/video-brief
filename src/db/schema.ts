@@ -1,3 +1,4 @@
+import { isNull } from "drizzle-orm";
 import {
   boolean,
   index,
@@ -55,7 +56,8 @@ export const profiles = pgTable("profiles", {
 
 /**
  * Per-user library entry: metadata + English transcript snapshot.
- * Re-running Generate on the same URL refreshes this row (no shared cache).
+ * Re-running Generate on the same URL refreshes the **active** row (no shared cache).
+ * Soft-deleted rows keep history; re-add after delete inserts a new row.
  */
 export const userVideos = pgTable(
   "user_videos",
@@ -75,6 +77,7 @@ export const userVideos = pgTable(
       .$type<TranscriptSegment[]>()
       .notNull()
       .default([]),
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -84,10 +87,9 @@ export const userVideos = pgTable(
       .$onUpdate(() => new Date()),
   },
   (table) => [
-    uniqueIndex("user_videos_user_youtube_uidx").on(
-      table.userId,
-      table.youtubeId,
-    ),
+    uniqueIndex("user_videos_user_youtube_active_uidx")
+      .on(table.userId, table.youtubeId)
+      .where(isNull(table.deletedAt)),
     index("user_videos_user_updated_idx").on(table.userId, table.updatedAt),
   ],
 );

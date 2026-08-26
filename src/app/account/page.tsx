@@ -29,6 +29,7 @@ export default async function AccountPage() {
             value={user.email ?? ""}
             readOnly
             autoComplete="username"
+            className="cursor-text caret-transparent"
           />
         </div>
 

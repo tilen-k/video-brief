@@ -10,6 +10,7 @@ import {
 import {
   listLibraryForUser,
   markAnalysisStartFailed,
+  softDeleteUserVideo,
   startYoutubeIngest,
   type LibraryListItem,
 } from "@/domain/ingest/ingest-youtube-video";
@@ -28,6 +29,7 @@ import { createClient } from "@/lib/supabase/server";
 import {
   generateVideoInputSchema,
   previewYoutubeInputSchema,
+  softDeleteLibraryVideoInputSchema,
 } from "@/lib/validations/library";
 import { TranscriptProviderError } from "@/lib/youtube/transcript-provider";
 
@@ -315,4 +317,47 @@ export async function getLibraryStatus(): Promise<GetLibraryStatusResult> {
 
   const items = await listLibraryForUser(user.id);
   return { ok: true, data: items };
+}
+
+export type SoftDeleteLibraryVideoResult =
+  | { ok: true }
+  | { ok: false; error: string; errorCode?: string };
+
+export async function softDeleteLibraryVideo(
+  input: { userVideoId: string },
+): Promise<SoftDeleteLibraryVideoResult> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    redirect("/login?next=/library");
+  }
+
+  if (!(await getOnboardingCompleted(user.id))) {
+    redirect("/onboarding");
+  }
+
+  const parsed = softDeleteLibraryVideoInputSchema.safeParse(input);
+  if (!parsed.success) {
+    return {
+      ok: false,
+      error: parsed.error.issues[0]?.message ?? "Invalid video",
+      errorCode: "invalid_input",
+    };
+  }
+
+  const result = await softDeleteUserVideo(user.id, parsed.data.userVideoId);
+  if (!result.ok) {
+    return {
+      ok: false,
+      error: "Video not found.",
+      errorCode: "not_found",
+    };
+  }
+
+  revalidatePath("/library");
+  revalidatePath(`/library/${parsed.data.userVideoId}`);
+  return { ok: true };
 }

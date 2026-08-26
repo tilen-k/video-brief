@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 
 import { createDb, type Db } from "@/db";
 import {
@@ -62,7 +62,11 @@ export async function getWorkspaceVideo(
       ),
     )
     .where(
-      and(eq(userVideos.id, userVideoId), eq(userVideos.userId, userId)),
+      and(
+        eq(userVideos.id, userVideoId),
+        eq(userVideos.userId, userId),
+        isNull(userVideos.deletedAt),
+      ),
     )
     .limit(1);
 

@@ -91,6 +91,7 @@ describe("getWorkspaceVideo", () => {
 
     expect(blob).toContain("owner-user");
     expect(blob).toContain("video-row");
+    expect(blob).toMatch(/deletedAt|deleted_at/i);
   });
 
   it("treats a missing analysis row as pending", async () => {

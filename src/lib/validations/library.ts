@@ -63,3 +63,11 @@ export const generateVideoInputSchema = z
   });
 
 export type GenerateVideoInput = z.infer<typeof generateVideoInputSchema>;
+
+export const softDeleteLibraryVideoInputSchema = z.object({
+  userVideoId: z.uuid(),
+});
+
+export type SoftDeleteLibraryVideoInput = z.infer<
+  typeof softDeleteLibraryVideoInputSchema
+>;

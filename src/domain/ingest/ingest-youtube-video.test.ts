@@ -67,6 +67,7 @@ vi.mock("@/domain/usage/plan", () => ({
 
 import {
   fetchYoutubeVideo,
+  softDeleteUserVideo,
   startYoutubeIngest,
 } from "@/domain/ingest/ingest-youtube-video";
 
@@ -132,6 +133,56 @@ describe("startYoutubeIngest", () => {
       priorUsageQuotaKey: null,
     });
   });
+
+  it("refreshes an active row instead of inserting", async () => {
+    mocks.limit
+      .mockResolvedValueOnce([{ id: "uv-active" }])
+      .mockResolvedValueOnce([{ usageQuotaKey: "vb:usage:videos:user-1:old" }]);
+    mocks.returning
+      .mockResolvedValueOnce([{ id: "uv-active" }])
+      .mockResolvedValueOnce([
+        { id: "analysis-1", status: "pending", runId: "run-2" },
+      ]);
+
+    const result = await startYoutubeIngest({
+      userId: "user-1",
+      youtubeId: "dQw4w9WgXcQ",
+      familiarity: 40,
+      summaryLength: 75,
+      summaryTone: 50,
+      usageQuotaKey: "vb:usage:videos:user-1:202608",
+      metadata: {
+        title: "Sample video",
+        channelTitle: "Channel",
+        thumbnailUrl: "https://i.ytimg.com/vi/dQw4w9WgXcQ/hqdefault.jpg",
+        durationSeconds: 120,
+        youtubeCategoryId: "27",
+      },
+    });
+
+    expect(result.userVideoId).toBe("uv-active");
+    expect(result.priorUsageQuotaKey).toBe("vb:usage:videos:user-1:old");
+    expect(mocks.onConflictDoUpdate).toHaveBeenCalled();
+  });
+
+  it("inserts a new row when only soft-deleted rows exist", async () => {
+    mocks.limit.mockResolvedValueOnce([]);
+    mocks.returning
+      .mockResolvedValueOnce([{ id: "uv-new" }])
+      .mockResolvedValueOnce([{ id: "analysis-2", status: "pending", runId: "run-3" }]);
+
+    const result = await startYoutubeIngest({
+      userId: "user-1",
+      youtubeId: "dQw4w9WgXcQ",
+      familiarity: null,
+      summaryLength: 50,
+      summaryTone: 50,
+      usageQuotaKey: "vb:usage:videos:user-1:202608",
+    });
+
+    expect(result.userVideoId).toBe("uv-new");
+    expect(result.priorUsageQuotaKey).toBeNull();
+  });
 });
 
 describe("fetchYoutubeVideo", () => {
@@ -146,10 +197,11 @@ describe("fetchYoutubeVideo", () => {
     const getEnglishTranscript = vi.fn(async () => sampleTranscript);
     const provider = mockProvider(getEnglishTranscript);
 
-    mocks.updateReturning.mockResolvedValueOnce([
-      { id: "analysis-1", status: "generating" },
-    ]);
-    mocks.returning.mockResolvedValueOnce([{ id: "uv-1" }]);
+    mocks.updateReturning
+      .mockResolvedValueOnce([
+        { id: "analysis-1", status: "generating", runId: "run-1" },
+      ])
+      .mockResolvedValueOnce([{ id: "uv-1" }]);
 
     const result = await fetchYoutubeVideo(
       { userId: "user-1", youtubeId: "dQw4w9WgXcQ", userVideoId: "uv-1", runId: "run-1" },
@@ -166,10 +218,9 @@ describe("fetchYoutubeVideo", () => {
     const provider = mockProvider(getEnglishTranscript);
 
     mocks.updateReturning
-      .mockResolvedValueOnce([{ id: "analysis-1", status: "generating" }])
-      .mockResolvedValueOnce([{ id: "analysis-1", status: "generating" }]);
-    mocks.returning
+      .mockResolvedValueOnce([{ id: "analysis-1", status: "generating", runId: "run-1" }])
       .mockResolvedValueOnce([{ id: "uv-1" }])
+      .mockResolvedValueOnce([{ id: "analysis-1", status: "generating", runId: "run-1" }])
       .mockResolvedValueOnce([{ id: "uv-1" }]);
 
     const input = {
@@ -187,10 +238,11 @@ describe("fetchYoutubeVideo", () => {
   it("only promotes fetching analyses and clears summary/sections", async () => {
     const provider = mockProvider(async () => sampleTranscript);
 
-    mocks.updateReturning.mockResolvedValueOnce([
-      { id: "analysis-1", status: "generating" },
-    ]);
-    mocks.returning.mockResolvedValueOnce([{ id: "uv-1" }]);
+    mocks.updateReturning
+      .mockResolvedValueOnce([
+        { id: "analysis-1", status: "generating", runId: "run-1" },
+      ])
+      .mockResolvedValueOnce([{ id: "uv-1" }]);
 
     await fetchYoutubeVideo(
       { userId: "user-1", youtubeId: "dQw4w9WgXcQ", userVideoId: "uv-1", runId: "run-1" },
@@ -217,10 +269,11 @@ describe("fetchYoutubeVideo", () => {
     });
     const refundSlot = vi.fn(async () => undefined);
 
-    mocks.updateReturning.mockResolvedValueOnce([
-      { id: "analysis-1", runId: "run-1" },
-    ]);
-    mocks.returning.mockResolvedValueOnce([{ id: "uv-1" }]);
+    mocks.updateReturning
+      .mockResolvedValueOnce([
+        { id: "analysis-1", runId: "run-1" },
+      ])
+      .mockResolvedValueOnce([{ id: "uv-1" }]);
 
     const result = await fetchYoutubeVideo(
       {
@@ -283,10 +336,11 @@ describe("fetchYoutubeVideo", () => {
     const provider = mockProvider(async () => longTranscript);
     const refundSlot = vi.fn(async () => undefined);
 
-    mocks.updateReturning.mockResolvedValueOnce([
-      { id: "analysis-1", runId: "run-1" },
-    ]);
-    mocks.returning.mockResolvedValueOnce([{ id: "uv-1" }]);
+    mocks.updateReturning
+      .mockResolvedValueOnce([
+        { id: "analysis-1", runId: "run-1" },
+      ])
+      .mockResolvedValueOnce([{ id: "uv-1" }]);
 
     const result = await fetchYoutubeVideo(
       {
@@ -324,10 +378,11 @@ describe("fetchYoutubeVideo", () => {
     });
     const refundSlot = vi.fn(async () => undefined);
 
-    mocks.updateReturning.mockResolvedValueOnce([
-      { id: "analysis-1", runId: "run-1" },
-    ]);
-    mocks.returning.mockResolvedValueOnce([{ id: "uv-1" }]);
+    mocks.updateReturning
+      .mockResolvedValueOnce([
+        { id: "analysis-1", runId: "run-1" },
+      ])
+      .mockResolvedValueOnce([{ id: "uv-1" }]);
 
     await fetchYoutubeVideo(
       {
@@ -340,5 +395,32 @@ describe("fetchYoutubeVideo", () => {
     );
 
     expect(refundSlot).not.toHaveBeenCalled();
+  });
+});
+
+describe("softDeleteUserVideo", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("sets deleted_at on an active owned row", async () => {
+    mocks.updateReturning.mockResolvedValueOnce([{ id: "uv-1" }]);
+
+    const result = await softDeleteUserVideo("user-1", "uv-1");
+
+    expect(result).toEqual({ ok: true });
+    expect(mocks.set).toHaveBeenCalledWith(
+      expect.objectContaining({
+        deletedAt: expect.any(Date),
+      }),
+    );
+  });
+
+  it("returns not_found when no active row is updated", async () => {
+    mocks.updateReturning.mockResolvedValueOnce([]);
+
+    const result = await softDeleteUserVideo("user-1", "uv-missing");
+
+    expect(result).toEqual({ ok: false, reason: "not_found" });
   });
 });

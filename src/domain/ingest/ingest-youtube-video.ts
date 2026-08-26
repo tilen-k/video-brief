@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull } from "drizzle-orm";
 
 import { createDb, type Db } from "@/db";
 import {
@@ -90,19 +90,17 @@ type MetadataFields = {
 
 type TransactionClient = Parameters<Parameters<Db["transaction"]>[0]>[0];
 
-async function upsertUserVideoMetadata(
+async function updateUserVideoMetadataById(
   tx: TransactionClient,
   userId: string,
-  youtubeId: string,
+  userVideoId: string,
   metadata: MetadataFields,
   transcriptSegments: TranscriptSegment[],
   transcriptLanguage: string,
 ) {
   const [row] = await tx
-    .insert(userVideos)
-    .values({
-      userId,
-      youtubeId,
+    .update(userVideos)
+    .set({
       title: metadata.title,
       channelTitle: metadata.channelTitle,
       thumbnailUrl: sanitizeThumbnailUrl(metadata.thumbnailUrl),
@@ -110,23 +108,18 @@ async function upsertUserVideoMetadata(
       youtubeCategoryId: metadata.youtubeCategoryId,
       transcriptLanguage,
       transcriptSegments,
+      updatedAt: new Date(),
     })
-    .onConflictDoUpdate({
-      target: [userVideos.userId, userVideos.youtubeId],
-      set: {
-        title: metadata.title,
-        channelTitle: metadata.channelTitle,
-        thumbnailUrl: sanitizeThumbnailUrl(metadata.thumbnailUrl),
-        durationSeconds: metadata.durationSeconds,
-        youtubeCategoryId: metadata.youtubeCategoryId,
-        transcriptLanguage,
-        transcriptSegments,
-        updatedAt: new Date(),
-      },
-    })
-    .returning();
+    .where(
+      and(
+        eq(userVideos.id, userVideoId),
+        eq(userVideos.userId, userId),
+        isNull(userVideos.deletedAt),
+      ),
+    )
+    .returning({ id: userVideos.id });
 
-  return row;
+  return row ?? null;
 }
 
 async function markFetchOutcome(
@@ -258,7 +251,13 @@ export async function startYoutubeIngest(
     const [existing] = await tx
       .select({ id: userVideos.id })
       .from(userVideos)
-      .where(and(eq(userVideos.userId, userId), eq(userVideos.youtubeId, youtubeId)))
+      .where(
+        and(
+          eq(userVideos.userId, userId),
+          eq(userVideos.youtubeId, youtubeId),
+          isNull(userVideos.deletedAt),
+        ),
+      )
       .limit(1);
 
     const priorUsageQuotaKey = existing
@@ -278,6 +277,7 @@ export async function startYoutubeIngest(
       })
       .onConflictDoUpdate({
         target: [userVideos.userId, userVideos.youtubeId],
+        targetWhere: isNull(userVideos.deletedAt),
         set: {
           title,
           channelTitle,
@@ -287,7 +287,9 @@ export async function startYoutubeIngest(
           updatedAt: new Date(),
         },
       })
-      .returning();
+      .returning({ id: userVideos.id });
+
+    const refreshedActive = Boolean(existing && existing.id === userVideo.id);
 
     const [analysis] = await tx
       .insert(personalizedAnalyses)
@@ -329,7 +331,9 @@ export async function startYoutubeIngest(
       status: "pending" as const,
       runId: analysis.runId,
       priorUsageQuotaKey:
-        priorUsageQuotaKey && priorUsageQuotaKey !== usageQuotaKey
+        refreshedActive &&
+        priorUsageQuotaKey &&
+        priorUsageQuotaKey !== usageQuotaKey
           ? priorUsageQuotaKey
           : null,
     };
@@ -447,10 +451,10 @@ export async function fetchYoutubeVideo(
           throw providerError;
         }
 
-        await upsertUserVideoMetadata(
+        await updateUserVideoMetadataById(
           tx,
           userId,
-          youtubeId,
+          userVideoId,
           {
             title: providerError.metadata!.title,
             channelTitle: providerError.metadata!.channelTitle,
@@ -559,10 +563,10 @@ export async function fetchYoutubeVideo(
         throw usageError;
       }
 
-      await upsertUserVideoMetadata(
+      await updateUserVideoMetadataById(
         tx,
         userId,
-        youtubeId,
+        userVideoId,
         {
           title: fetchResult.metadata.title,
           channelTitle: fetchResult.metadata.channelTitle,
@@ -610,10 +614,10 @@ export async function fetchYoutubeVideo(
       );
     }
 
-    await upsertUserVideoMetadata(
+    await updateUserVideoMetadataById(
       tx,
       userId,
-      youtubeId,
+      userVideoId,
       {
         title: fetchResult.metadata.title,
         channelTitle: fetchResult.metadata.channelTitle,
@@ -640,11 +644,43 @@ export type LibraryListItem = {
   title: string;
   channelTitle: string | null;
   thumbnailUrl: string | null;
+  durationSeconds: number | null;
+  youtubeCategoryId: string | null;
   status: AnalysisStatus;
   errorMessage: string | null;
+  summaryLength: number;
+  summaryTone: number;
+  familiarity: number | null;
   addedAt: Date;
   refreshedAt: Date;
 };
+
+export async function softDeleteUserVideo(
+  userId: string,
+  userVideoId: string,
+  deps: { db?: Db } = {},
+): Promise<{ ok: true } | { ok: false; reason: "not_found" }> {
+  const db = deps.db ?? createDb();
+  const [row] = await db
+    .update(userVideos)
+    .set({
+      deletedAt: new Date(),
+      updatedAt: new Date(),
+    })
+    .where(
+      and(
+        eq(userVideos.id, userVideoId),
+        eq(userVideos.userId, userId),
+        isNull(userVideos.deletedAt),
+      ),
+    )
+    .returning({ id: userVideos.id });
+
+  if (!row) {
+    return { ok: false, reason: "not_found" };
+  }
+  return { ok: true };
+}
 
 export async function listLibraryForUser(
   userId: string,
@@ -659,8 +695,13 @@ export async function listLibraryForUser(
       title: userVideos.title,
       channelTitle: userVideos.channelTitle,
       thumbnailUrl: userVideos.thumbnailUrl,
+      durationSeconds: userVideos.durationSeconds,
+      youtubeCategoryId: userVideos.youtubeCategoryId,
       status: personalizedAnalyses.status,
       errorMessage: personalizedAnalyses.errorMessage,
+      summaryLength: personalizedAnalyses.summaryLength,
+      summaryTone: personalizedAnalyses.summaryTone,
+      familiarity: personalizedAnalyses.familiarity,
       addedAt: userVideos.createdAt,
       refreshedAt: userVideos.updatedAt,
     })
@@ -669,7 +710,7 @@ export async function listLibraryForUser(
       personalizedAnalyses,
       eq(personalizedAnalyses.userVideoId, userVideos.id),
     )
-    .where(eq(userVideos.userId, userId))
+    .where(and(eq(userVideos.userId, userId), isNull(userVideos.deletedAt)))
     .orderBy(desc(userVideos.updatedAt));
 
   return rows.map((row) => ({
@@ -678,8 +719,13 @@ export async function listLibraryForUser(
     title: row.title,
     channelTitle: row.channelTitle,
     thumbnailUrl: row.thumbnailUrl,
+    durationSeconds: row.durationSeconds,
+    youtubeCategoryId: row.youtubeCategoryId,
     status: (row.status ?? "pending") as AnalysisStatus,
     errorMessage: row.errorMessage,
+    summaryLength: row.summaryLength ?? 50,
+    summaryTone: row.summaryTone ?? 50,
+    familiarity: row.familiarity ?? null,
     addedAt: row.addedAt,
     refreshedAt: row.refreshedAt,
   }));
