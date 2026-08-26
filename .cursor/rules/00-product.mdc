@@ -23,7 +23,9 @@ Landing, auth (email/password + Google), soft email confirm, lightweight onboard
 
 ## MVP excludes
 
-Chat, uploads, Whisper/audio transcription, non-YouTube, recommendations, knowledge graph, cross-video search, quizzes, social/sharing, Stripe, tRPC, PostHog/analytics, E2E tests, non-English UI or captions (app DE + summary-language + non-EN transcripts = **post-MVP**), **LLM-invented knowledge questions**, topic/video EAV context, shared cross-user transcript cache, AI classify / `isEducational` / non-edu disclaimer, educational profile fields (YOB, education level, subjects).
+Chat, uploads, Whisper/audio transcription, non-YouTube, recommendations, knowledge graph, cross-video search, quizzes, social/sharing, tRPC, PostHog/analytics, E2E tests, non-English UI or captions (app DE + summary-language + non-EN transcripts = **post-MVP**), **LLM-invented knowledge questions**, topic/video EAV context, shared cross-user transcript cache, AI classify / `isEducational` / non-edu disclaimer, educational profile fields (YOB, education level, subjects).
+
+**Billing (shipped):** Stripe Checkout + Customer Portal; Pro is $10/mo; webhooks sync `profiles.plan`. Redis quotas stay the usage meter.
 
 Redis is **queue + per-video lock + usage counters** (not a transcript cache).
 

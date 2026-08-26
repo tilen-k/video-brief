@@ -31,7 +31,9 @@ Landing → Auth → Onboarding (optional tone + length defaults)
 | YouTube | `youtubei.js` (EN captions required), `react-youtube` |
 | Tests | Vitest unit only (no E2E in MVP) |
 
-**Not in this ship:** chat, uploads, Whisper, tRPC, Prisma, Stripe, PostHog, app DE / summary-language picker / non-EN transcripts, LLM classify, educational profile fields, shared cross-user transcript cache.
+**Not in this ship:** chat, uploads, Whisper, tRPC, Prisma, PostHog, app DE / summary-language picker / non-EN transcripts, LLM classify, educational profile fields, shared cross-user transcript cache.
+
+**Billing:** Stripe Checkout + Customer Portal; webhooks sync `profiles.plan` (`free` | `pro`). Redis quotas unchanged.
 
 **Redis:** BullMQ analysis queue + monthly per-user Generate counters (`REDIS_URL`). Not a transcript cache.
 
@@ -70,8 +72,8 @@ All **per-user**. No shared video/transcript cache.
 
 - `user_videos` — metadata + English transcript (created/refreshed on Generate)
 - `personalized_analyses` — state machine, prefs, `run_id`, summary, sections, optional `usage_quota_key`
-- Profile — `summary_tone`, `summary_length`, **plan** (`free` | `pro`)
-- Usage — Redis monthly **Generate** counter (free: 10/month, max 20 min); Pro scaffolded
+- Profile — `summary_tone`, `summary_length`, **plan** (`free` | `pro`), Stripe customer/subscription ids
+- Usage — Redis monthly **Generate** counter (free: 10/month, max 20 min); Pro via Stripe ($10/mo)
 
 ## Architecture
 

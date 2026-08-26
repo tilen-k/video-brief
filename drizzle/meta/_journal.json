@@ -71,6 +71,13 @@
       "when": 1700000009000,
       "tag": "0009_flow_refinement",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1787744698595,
+      "tag": "0010_graceful_valeria_richards",
+      "breakpoints": true
     }
   ]
 }

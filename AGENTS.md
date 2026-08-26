@@ -64,8 +64,9 @@ See `.cursor/rules/05-worktrees.mdc`.
 - Per-user `user_videos` — Preview is ephemeral; Generate creates the row + usage; worker runs fetch→generate; re-Generate resets; no shared transcript cache
 - Typed profile defaults (tone/length); per-video 0–100 prefs (length, tone, optional familiarity) on the analysis row
 - No lint/type suppressions without justification — see `.cursor/rules/15-code-quality.mdc`
-- No chat, uploads, Whisper, tRPC, Stripe, analytics, or LLM-invented knowledge questions in MVP
-- Redis + BullMQ: analysis queue and per-video lock only (not a transcript cache)
+- No chat, uploads, Whisper, tRPC, analytics, or LLM-invented knowledge questions in MVP
+- Billing: Stripe Checkout + Customer Portal; webhooks update `profiles.plan` (not Checkout success URL)
+- Redis + BullMQ: analysis queue, per-video lock, and monthly usage counters (not a transcript cache)
 
 ## UI verification
 
