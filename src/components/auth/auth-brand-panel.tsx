@@ -27,7 +27,7 @@ function getReducedMotionServerSnapshot() {
 }
 
 export function AuthBrandPanel() {
-  const t = useTranslations("Landing");
+  const t = useTranslations("Auth");
   const [activeIndex, setActiveIndex] = useState(1);
   const reducedMotion = useSyncExternalStore(
     subscribeReducedMotion,
@@ -62,7 +62,7 @@ export function AuthBrandPanel() {
           {t("previewVideoTitle")}
         </h2>
         <p className="mt-3 max-w-sm text-sm leading-relaxed text-muted-foreground">
-          {t("subtitle")}
+          {t("previewSubtitle")}
         </p>
       </div>
 

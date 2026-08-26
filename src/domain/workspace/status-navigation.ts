@@ -7,12 +7,13 @@ export function pathForWorkspaceStatusError(
   error: WorkspaceStatusClientError,
   userVideoId: string,
 ): string {
+  void userVideoId;
   switch (error) {
     case "unauthenticated":
-      return `/login?next=/library/${userVideoId}`;
+      return "/auth/guest?next=/";
     case "onboarding":
       return "/onboarding";
     case "not_found":
-      return "/library";
+      return "/";
   }
 }

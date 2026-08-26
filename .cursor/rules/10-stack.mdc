@@ -17,8 +17,8 @@ alwaysApply: true
 
 ## Data & auth
 
-- Supabase Auth: email/password + Google OAuth (personal GCP project)
-- Soft email confirmation (app usable before verify)
+- Supabase Auth: email/password + Google OAuth + **anonymous guests** (personal GCP project)
+- Guest → permanent via `updateUser` / `linkIdentity` (same `user.id`); soft email confirmation
 - Drizzle ORM + Drizzle Kit migrations on Supabase Postgres
 - `@supabase/ssr` for session/cookies; never trust client-supplied `user_id`
 - RLS on all user-owned tables
@@ -31,11 +31,18 @@ alwaysApply: true
 - Player: `react-youtube` (IFrame API — seek/time sync required)
 - English captions only; if missing → clear error (no Whisper)
 
+## Billing
+
+- Stripe Billing: Checkout (`mode: subscription`) + Customer Portal
+- Webhooks update `profiles.plan` (source of truth for entitlement)
+- Stripe SDK only behind `src/lib/stripe` + `src/domain/billing`
+- Env: `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_PRO_MONTHLY`
+
 ## Explicitly not used
 
 Prisma, tRPC, PostHog, Jest (use Vitest), Playwright (post-MVP)
 
-Redis + BullMQ are used for the **analysis queue and per-video lock only**. Do not cache transcripts or classification in Redis.
+Redis + BullMQ are used for the **analysis queue, per-video lock, and monthly usage counters**. Do not cache transcripts or classification in Redis.
 
 ## Commands
 

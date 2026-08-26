@@ -3,8 +3,20 @@ import { getTranslations } from "next-intl/server";
 import { SignupForm } from "@/components/auth/signup-form";
 import { AuthShell } from "@/components/shared/layout/auth-shell";
 
-export default async function SignupPage() {
+type SignupPageProps = {
+  searchParams: Promise<{ error?: string }>;
+};
+
+export default async function SignupPage({ searchParams }: SignupPageProps) {
   const t = await getTranslations("Auth");
+  const { error } = await searchParams;
+
+  const googleError =
+    error === "google_linked"
+      ? t("googleLinkedError")
+      : error === "google"
+        ? t("googleError")
+        : null;
 
   return (
     <AuthShell>
@@ -13,6 +25,9 @@ export default async function SignupPage() {
           {t("signupTitle")}
         </h1>
         <p className="text-sm text-muted-foreground">{t("signupSubtitle")}</p>
+        {googleError ? (
+          <p className="text-sm text-destructive">{googleError}</p>
+        ) : null}
       </div>
       <SignupForm
         copy={{
@@ -23,7 +38,6 @@ export default async function SignupPage() {
           or: t("or"),
           hasAccount: t("hasAccount"),
           login: t("login"),
-          softConfirm: t("softConfirm"),
         }}
       />
     </AuthShell>

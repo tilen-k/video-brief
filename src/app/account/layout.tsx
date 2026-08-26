@@ -3,7 +3,8 @@ import { redirect } from "next/navigation";
 
 import { AccountNav } from "@/components/account/account-nav";
 import { AppShell } from "@/components/shared/layout/app-shell";
-import { getOnboardingCompleted } from "@/domain/onboarding";
+import { isGuestUser } from "@/domain/auth/is-anonymous";
+import { needsOnboarding } from "@/domain/auth/needs-onboarding";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function AccountLayout({
@@ -21,7 +22,11 @@ export default async function AccountLayout({
     redirect("/login?next=/account");
   }
 
-  if (!(await getOnboardingCompleted(user.id))) {
+  if (isGuestUser(user)) {
+    redirect("/");
+  }
+
+  if (await needsOnboarding(user)) {
     redirect("/onboarding");
   }
 

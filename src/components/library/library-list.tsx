@@ -60,7 +60,7 @@ export function LibraryList({ initialItems, onRefresh }: LibraryListProps) {
         {items.map((item) => {
           const failed = isFailedStatus(item.status);
           const phase = analysisUiPhase(item.status);
-          const href = `/library/${item.userVideoId}`;
+          const href = `/v/${item.userVideoId}`;
 
           return (
             <div

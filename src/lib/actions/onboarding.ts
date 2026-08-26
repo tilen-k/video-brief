@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 
+import { isGuestUser } from "@/domain/auth/is-anonymous";
 import { saveOnboarding } from "@/domain/onboarding";
 import { createClient } from "@/lib/supabase/server";
 import { onboardingInputSchema } from "@/lib/validations/onboarding";
@@ -30,6 +31,10 @@ export async function completeOnboarding(
     redirect("/login");
   }
 
+  if (isGuestUser(user)) {
+    redirect("/");
+  }
+
   const intent = formData.get("intent");
   const input =
     intent === "skip"
@@ -52,5 +57,5 @@ export async function completeOnboarding(
     };
   }
 
-  redirect("/library");
+  redirect("/");
 }

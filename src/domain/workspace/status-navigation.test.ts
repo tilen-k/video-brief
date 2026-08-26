@@ -3,19 +3,19 @@ import { describe, expect, it } from "vitest";
 import { pathForWorkspaceStatusError } from "./status-navigation";
 
 describe("pathForWorkspaceStatusError", () => {
-  const id = "550e8400-e29b-41d4-a716-446655440000";
+  const id = "11111111-1111-1111-1111-111111111111";
 
-  it("sends expired sessions back to login with the workspace next path", () => {
+  it("sends unauthenticated users through guest bootstrap to home", () => {
     expect(pathForWorkspaceStatusError("unauthenticated", id)).toBe(
-      `/login?next=/library/${id}`,
+      "/auth/guest?next=/",
     );
   });
 
-  it("sends incomplete onboarding to onboarding", () => {
+  it("sends onboarding users to onboarding", () => {
     expect(pathForWorkspaceStatusError("onboarding", id)).toBe("/onboarding");
   });
 
-  it("sends missing or not-owned rows to the library", () => {
-    expect(pathForWorkspaceStatusError("not_found", id)).toBe("/library");
+  it("sends not_found to home", () => {
+    expect(pathForWorkspaceStatusError("not_found", id)).toBe("/");
   });
 });

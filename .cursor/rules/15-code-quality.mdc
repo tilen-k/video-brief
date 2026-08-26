@@ -5,6 +5,18 @@ alwaysApply: true
 
 # VideoBrief — Code quality
 
+## Comments
+
+Add comments only when they are **absolutely necessary** — non-obvious invariants, security/trust boundaries, or temporary suppressions (see below).
+
+Do **not** add:
+
+- Restatements of names/types (`// Stripe customer id`, `/** user id */`)
+- Narration of what the next line does
+- Schema/field JSDoc that only repeats the column name or obvious Stripe/id prefixes (`cus_`, `sub_`, `price_`)
+
+Prefer clearer names and types over commentary. If a comment is removable without losing a constraint a future reader would miss, remove it.
+
 ## Suppressions
 
 Do **not** suppress ESLint, TypeScript, or build warnings/errors unless unavoidable.

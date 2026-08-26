@@ -37,22 +37,34 @@ export type GeneratedSection = {
 export const PLAN_IDS = ["free", "pro"] as const;
 export type PlanId = (typeof PLAN_IDS)[number];
 
-export const profiles = pgTable("profiles", {
-  id: uuid("id").primaryKey(),
-  email: text("email"),
-  displayName: text("display_name"),
-  onboardingCompleted: boolean("onboarding_completed").notNull().default(false),
-  summaryTone: integer("summary_tone").notNull().default(50),
-  summaryLength: integer("summary_length").notNull().default(50),
-  plan: text("plan").$type<PlanId>().notNull().default("free"),
-  createdAt: timestamp("created_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-  updatedAt: timestamp("updated_at", { withTimezone: true })
-    .notNull()
-    .defaultNow()
-    .$onUpdate(() => new Date()),
-});
+export const profiles = pgTable(
+  "profiles",
+  {
+    id: uuid("id").primaryKey(),
+    email: text("email"),
+    displayName: text("display_name"),
+    onboardingCompleted: boolean("onboarding_completed").notNull().default(false),
+    summaryTone: integer("summary_tone").notNull().default(50),
+    summaryLength: integer("summary_length").notNull().default(50),
+    plan: text("plan").$type<PlanId>().notNull().default("free"),
+    stripeCustomerId: text("stripe_customer_id"),
+    stripeSubscriptionId: text("stripe_subscription_id"),
+    stripeSubscriptionStatus: text("stripe_subscription_status"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow()
+      .$onUpdate(() => new Date()),
+  },
+  (table) => [
+    uniqueIndex("profiles_stripe_customer_uidx").on(table.stripeCustomerId),
+    uniqueIndex("profiles_stripe_subscription_uidx").on(
+      table.stripeSubscriptionId,
+    ),
+  ],
+);
 
 /**
  * Per-user library entry: metadata + English transcript snapshot.

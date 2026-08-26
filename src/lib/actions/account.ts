@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { userHasPassword } from "@/domain/account";
+import { isGuestUser } from "@/domain/auth/is-anonymous";
 import { getOnboardingCompleted } from "@/domain/onboarding";
 import { createClient } from "@/lib/supabase/server";
 import {
@@ -40,6 +41,10 @@ export async function updateAccountPassword(
 
   if (!user) {
     redirect("/login?next=/account");
+  }
+
+  if (isGuestUser(user)) {
+    redirect("/");
   }
 
   if (!(await getOnboardingCompleted(user.id))) {

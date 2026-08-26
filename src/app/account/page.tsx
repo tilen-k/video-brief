@@ -6,6 +6,7 @@ import { Panel } from "@/components/shared/list/panel";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { userHasPassword } from "@/domain/account";
+import { isGuestUser } from "@/domain/auth/is-anonymous";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function AccountPage() {
@@ -17,6 +18,10 @@ export default async function AccountPage() {
 
   if (!user) {
     redirect("/login?next=/account");
+  }
+
+  if (isGuestUser(user)) {
+    redirect("/");
   }
 
   return (
