@@ -88,7 +88,7 @@ export function AddVideoForm({ defaultLength, defaultTone }: AddVideoFormProps) 
   const [urlDraft, setUrlDraft] = useState("");
   const [dismissedPreview, setDismissedPreview] = useState(false);
   const [hideGenerateError, setHideGenerateError] = useState(false);
-  useTopLoaderOnPending(previewPending || generatePending);
+  useTopLoaderOnPending(generatePending);
 
   const preview =
     dismissedPreview || !previewState.preview ? null : previewState.preview;

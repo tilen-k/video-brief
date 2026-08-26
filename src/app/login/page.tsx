@@ -10,7 +10,6 @@ export default async function LoginPage() {
     <AuthShell>
       <div className="flex w-full max-w-sm flex-col gap-2 text-center lg:text-left">
         <h1 className="font-heading text-3xl tracking-tight">{t("loginTitle")}</h1>
-        <p className="text-sm text-muted-foreground">{t("loginSubtitle")}</p>
       </div>
       <LoginForm
         copy={{

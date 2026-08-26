@@ -1,7 +1,6 @@
 "use client";
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useRouter } from "nextjs-toploader/app";
 import { useEffect } from "react";
 
 import { shouldPoll } from "@/domain/workspace/analysis-ui";
@@ -23,15 +22,11 @@ class WorkspaceStatusError extends Error {
 }
 
 export function useWorkspaceStatus(initial: WorkspaceVideo): WorkspaceVideo {
-  const router = useRouter();
   const queryClient = useQueryClient();
 
   useEffect(() => {
     queryClient.setQueryData(["workspace", initial.userVideoId], initial);
-  }, [
-    initial,
-    queryClient,
-  ]);
+  }, [initial, queryClient]);
 
   const query = useQuery({
     queryKey: ["workspace", initial.userVideoId],
@@ -57,11 +52,14 @@ export function useWorkspaceStatus(initial: WorkspaceVideo): WorkspaceVideo {
 
   useEffect(() => {
     if (query.error instanceof WorkspaceStatusError) {
-      router.replace(
-        pathForWorkspaceStatusError(query.error.code, initial.userVideoId),
+      const path = pathForWorkspaceStatusError(
+        query.error.code,
+        initial.userVideoId,
       );
+      // Hard navigation avoids History API SecurityError during auth transitions.
+      window.location.assign(path);
     }
-  }, [initial.userVideoId, query.error, router]);
+  }, [initial.userVideoId, query.error]);
 
   return query.data ?? initial;
 }

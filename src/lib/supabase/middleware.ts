@@ -1,9 +1,12 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
+import { isAnonymousUser, isGuestUser } from "@/domain/auth/is-anonymous";
+
 /**
  * Session refresh + coarse auth redirects only.
- * Onboarding is gated in RSC pages via Drizzle (profiles.onboarding_completed).
+ * Anonymous guests are created by `/auth/guest`, not here.
+ * Onboarding is gated in RSC / actions via needsOnboarding.
  */
 export async function updateSession(request: NextRequest) {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -47,9 +50,7 @@ export async function updateSession(request: NextRequest) {
   const isAuthRoute =
     path.startsWith("/login") || path.startsWith("/signup");
   const isProtected =
-    path.startsWith("/library") ||
-    path.startsWith("/onboarding") ||
-    path.startsWith("/account");
+    path.startsWith("/account") || path.startsWith("/onboarding");
   const isServerAction = request.headers.has("next-action");
 
   if (!user && isProtected && !isServerAction) {
@@ -59,10 +60,21 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(redirectUrl);
   }
 
-  // Authenticated users leave auth screens; /library RSC enforces onboarding.
-  if (user && isAuthRoute) {
+  // Guests may visit /login and /signup to convert; only permanent users leave.
+  if (user && !isAnonymousUser(user) && isAuthRoute) {
     const redirectUrl = request.nextUrl.clone();
-    redirectUrl.pathname = "/library";
+    redirectUrl.pathname = "/";
+    return NextResponse.redirect(redirectUrl);
+  }
+
+  // Guests never see onboarding or account/usage.
+  if (
+    user &&
+    isGuestUser(user) &&
+    (path.startsWith("/onboarding") || path.startsWith("/account"))
+  ) {
+    const redirectUrl = request.nextUrl.clone();
+    redirectUrl.pathname = "/";
     return NextResponse.redirect(redirectUrl);
   }
 

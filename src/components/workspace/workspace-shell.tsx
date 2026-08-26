@@ -41,7 +41,7 @@ export function WorkspaceShell({ initial }: WorkspaceShellProps) {
       <header className="sticky top-0 z-20 shrink-0 border-b border-border bg-background/95 backdrop-blur-sm">
         <div className="flex items-center gap-3 px-4 py-3 sm:gap-4 sm:px-6">
           <Link
-            href="/library"
+            href="/"
             className="inline-flex shrink-0 items-center gap-0.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
           >
             <ChevronLeft className="size-4 shrink-0" aria-hidden />

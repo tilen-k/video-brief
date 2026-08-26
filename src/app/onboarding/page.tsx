@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 
 import { OnboardingForm } from "@/components/onboarding/onboarding-form";
 import { AppShell } from "@/components/shared/layout/app-shell";
+import { isGuestUser } from "@/domain/auth/is-anonymous";
 import { getOnboardingCompleted } from "@/domain/onboarding";
 import { createClient } from "@/lib/supabase/server";
 
@@ -15,8 +16,12 @@ export default async function OnboardingPage() {
     redirect("/login?next=/onboarding");
   }
 
+  if (isGuestUser(user)) {
+    redirect("/");
+  }
+
   if (await getOnboardingCompleted(user.id)) {
-    redirect("/library");
+    redirect("/");
   }
 
   return (

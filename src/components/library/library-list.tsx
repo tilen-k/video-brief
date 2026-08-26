@@ -36,7 +36,7 @@ export function LibraryList({ initialItems }: LibraryListProps) {
         return (
           <ListRowLink
             key={item.userVideoId}
-            href={`/library/${item.userVideoId}`}
+            href={`/v/${item.userVideoId}`}
             aria-label={t("openVideo", { title: item.title })}
           >
             {item.thumbnailUrl ? (

@@ -3,13 +3,27 @@
     "name": "VideoBrief",
     "tagline": "Personalized YouTube summaries, synced to the video."
   },
-  "Landing": {
-    "headline": "Turn any video into sections you can follow",
-    "subtitle": "Paste a YouTube link. Preview, set prefs, and get a sectioned summary synced as you watch.",
-    "cta": "Get started",
-    "secondary": "Log in",
-    "previewLabel": "Synced sections",
+  "Guest": {
+    "persistCtaSignUp": "Sign up",
+    "persistCtaRest": " to persist your library",
+    "signIn": "Sign in"
+  },
+  "Auth": {
+    "loginTitle": "Welcome back",
+    "signupTitle": "Sign up",
+    "signupSubtitle": "Create an account to persist your videos and access more features",
+    "email": "Email",
+    "password": "Password",
+    "login": "Log in",
+    "signup": "Sign up",
+    "or": "or",
+    "google": "Continue with Google",
+    "noAccount": "Need an account?",
+    "hasAccount": "Already have an account?",
+    "googleLinkedError": "That Google account is already linked to another user. Log in with it instead — this browser’s guest library won’t move over.",
+    "googleError": "Couldn't continue with Google. Try again.",
     "previewVideoTitle": "Introduction to neural networks",
+    "previewSubtitle": "Paste a YouTube link. Preview, set prefs, and get a sectioned summary synced as you watch.",
     "previewActive": "Now playing",
     "previewSections": {
       "s1": {
@@ -25,21 +39,6 @@
         "title": "Common pitfalls for beginners"
       }
     }
-  },
-  "Auth": {
-    "loginTitle": "Welcome back",
-    "loginSubtitle": "Pick up where you left off in your library.",
-    "signupTitle": "Create your account",
-    "signupSubtitle": "Paste a video link and follow along in sections.",
-    "email": "Email",
-    "password": "Password",
-    "login": "Log in",
-    "signup": "Sign up",
-    "or": "or",
-    "google": "Continue with Google",
-    "noAccount": "Need an account?",
-    "hasAccount": "Already have an account?",
-    "softConfirm": "You can start using VideoBrief right away. Check your email to confirm when you can."
   },
   "Onboarding": {
     "title": "Default summary style",

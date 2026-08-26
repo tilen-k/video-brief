@@ -7,6 +7,7 @@ import {
   DEFAULT_LENGTH_SCORE,
   DEFAULT_TONE_SCORE,
 } from "@/domain/analysis/prefs";
+import { needsOnboarding } from "@/domain/auth/needs-onboarding";
 import {
   listLibraryForUser,
   markAnalysisStartFailed,
@@ -14,7 +15,6 @@ import {
   type LibraryListItem,
 } from "@/domain/ingest/ingest-youtube-video";
 import { previewYoutubeVideo } from "@/domain/ingest/preview-youtube";
-import { getOnboardingCompleted } from "@/domain/onboarding";
 import { assertDurationAllowed } from "@/domain/usage/duration";
 import { getPlanForUser } from "@/domain/usage/plan";
 import {
@@ -56,10 +56,10 @@ export async function previewYoutube(
   } = await supabase.auth.getUser();
 
   if (!user) {
-    redirect("/login?next=/library");
+    redirect("/auth/guest?next=/");
   }
 
-  if (!(await getOnboardingCompleted(user.id))) {
+  if (await needsOnboarding(user)) {
     redirect("/onboarding");
   }
 
@@ -132,10 +132,10 @@ export async function generateVideo(
   } = await supabase.auth.getUser();
 
   if (!user) {
-    redirect("/login?next=/library");
+    redirect("/auth/guest?next=/");
   }
 
-  if (!(await getOnboardingCompleted(user.id))) {
+  if (await needsOnboarding(user)) {
     redirect("/onboarding");
   }
 
@@ -246,7 +246,7 @@ export async function generateVideo(
         "generateVideo.refund_after_ingest_err",
       );
     }
-    revalidatePath("/library");
+    revalidatePath("/");
     logger.error({ ...errorFields(error) }, "startYoutubeIngest failed");
     return {
       error: "Could not generate this video. Try again.",
@@ -284,15 +284,15 @@ export async function generateVideo(
       );
     }
     await markAnalysisStartFailed(user.id, result.userVideoId);
-    revalidatePath("/library");
+    revalidatePath("/");
     return {
       error: "Couldn't start analysis. Try generating again.",
       errorCode: "enqueue_failed",
     };
   }
 
-  revalidatePath("/library");
-  redirect(`/library/${result.userVideoId}`);
+  revalidatePath("/");
+  redirect(`/v/${result.userVideoId}`);
 }
 
 export type GetLibraryStatusResult =
@@ -309,7 +309,7 @@ export async function getLibraryStatus(): Promise<GetLibraryStatusResult> {
     return { ok: false, error: "unauthenticated" };
   }
 
-  if (!(await getOnboardingCompleted(user.id))) {
+  if (await needsOnboarding(user)) {
     return { ok: false, error: "onboarding" };
   }
 

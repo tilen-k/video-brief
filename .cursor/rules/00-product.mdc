@@ -19,7 +19,7 @@ Does this help turn a YouTube video into a better personalized understanding for
 
 ## MVP includes
 
-Landing, auth (email/password + Google), soft email confirm, lightweight onboarding (optional default **tone** + **length** only), library with ephemeral preview → Generate, YouTube ingest (per-user `user_videos`; fetch transcript **from the analysis worker** on Generate), English timestamped captions, AI **generate only** (via `AIProvider`; **no classify stage**), per-video length/tone/familiarity (0–100) on the analysis row, video workspace with overview **summary** + section **bodies** + highlight/seek, dark-default UI, EN-only i18n scaffolding, unit tests, BullMQ analysis worker (Redis queue + usage counters).
+App home (former library) with guest (anonymous) sessions on first visit, auth (email/password + Google convert/link), soft email confirm, lightweight onboarding after convert (optional default **tone** + **length** only; hidden for guests), ephemeral preview → Generate, YouTube ingest (per-user `user_videos`; fetch transcript **from the analysis worker** on Generate), English timestamped captions, AI **generate only** (via `AIProvider`; **no classify stage**), per-video length/tone/familiarity (0–100) on the analysis row, video workspace at `/v/[id]` with overview **summary** + section **bodies** + highlight/seek, dark-default UI, EN-only i18n scaffolding, unit tests, BullMQ analysis worker (Redis queue + usage counters).
 
 ## MVP excludes
 

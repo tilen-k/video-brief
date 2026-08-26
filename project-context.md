@@ -9,12 +9,13 @@ Short overview for agents and humans. Full detail: `project-spec.md`. Agent rule
 **Contextual YouTube summarizer** — personalized section summaries synchronized with the video. Not a chatbot. Not education-first tooling.
 
 ```text
-Landing → Auth → Onboarding (optional tone + length defaults)
-  → Library → Paste URL → Preview metadata (no DB, no usage)
+Home (/) → first visit creates anonymous guest session
+  → Paste URL → Preview metadata (no DB, no usage)
   → Settings under input: length + tone (always); familiarity if category qualifies
-  → Generate → create library row + usage + enqueue → redirect workspace
+  → Generate → create library row + usage + enqueue → redirect /v/[userVideoId]
   → Worker: fetch English transcript → generate { summary, sections[] }
   → Workspace: summary + sections; highlight + seek (job continues if user leaves)
+  → Optional: Sign up / Google linkIdentity converts guest (same user id) → onboarding
 ```
 
 ## Locked stack
@@ -25,7 +26,7 @@ Landing → Auth → Onboarding (optional tone + length defaults)
 | UI | Tailwind, shadcn, lucide, RHF, Zod, TanStack Query |
 | Theme / i18n | next-themes (**dark default**), next-intl (**en only** for this ship; DE later) |
 | Fonts | Nunito |
-| Auth | Supabase email/password + Google; soft email confirm |
+| Auth | Supabase email/password + Google + **anonymous guests**; soft email confirm; convert preserves `user.id` |
 | DB | Supabase Postgres + **Drizzle** + RLS |
 | AI | Vercel AI SDK behind `AIProvider`; model in `analysisConfig` (OpenRouter) |
 | YouTube | `youtubei.js` (EN captions required), `react-youtube` |
