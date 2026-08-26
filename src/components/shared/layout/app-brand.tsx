@@ -8,7 +8,7 @@ type AppBrandProps = {
   className?: string;
 };
 
-export function AppBrand({ name, href = "/library", className }: AppBrandProps) {
+export function AppBrand({ name, href = "/", className }: AppBrandProps) {
   return (
     <Link
       href={href}

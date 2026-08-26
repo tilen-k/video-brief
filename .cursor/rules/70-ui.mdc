@@ -41,8 +41,8 @@ Implement colors in `src/app/globals.css` only. Light mode: neutral white/gray a
 
 ## Composition
 
-- Landing: brand-first, one clear CTA, not dashboard clutter
-- Library: paste bar first, video inventory below; rows (including in-progress and failed) link to workspace
+- Home (library): paste bar first, video inventory below; guest shell shows this-browser-only + save CTA
+- Auth: convert copy when guest; login warns that signing in switches accounts
 - Onboarding: optional YOB number, education-level select, subject chips (+ Other), optional summary style
 - Paste: create stub, stay on library; worker runs fetch/classify/generate
 - Analyze: familiarity + length sliders at paste (0–100)

@@ -11,7 +11,7 @@ description: Ingest a YouTube URL into VideoBrief — Preview metadata, then Gen
 URL → parse youtubeId
   → Preview: TranscriptProvider.getVideoMetadata (no DB, no usage)
   → Generate: upsert stub + prefs + new runId (pending) + usage + enqueue
-  → redirect /library/[userVideoId]
+  → redirect /v/[userVideoId]
   → worker: TranscriptProvider.getEnglishTranscript(youtubeId)
   → upsert metadata + transcript segments → generating → generate
 ```

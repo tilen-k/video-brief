@@ -15,7 +15,7 @@ export default async function WorkspaceNotFound() {
         </h1>
         <p className="text-sm text-muted-foreground">{t("notFoundBody")}</p>
         <Link
-          href="/library"
+          href="/"
           className="inline-flex items-center gap-0.5 text-sm text-foreground transition-colors hover:text-muted-foreground"
         >
           <ChevronLeft className="size-4 shrink-0" aria-hidden />

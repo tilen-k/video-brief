@@ -4,7 +4,7 @@ import { useActionState } from "react";
 import Link from "next/link";
 
 import {
-  signInWithGoogle,
+  linkGoogleIdentity,
   signUp,
   type AuthActionState,
 } from "@/lib/actions/auth";
@@ -26,7 +26,6 @@ export function SignupForm({
     or: string;
     hasAccount: string;
     login: string;
-    softConfirm: string;
   };
 }) {
   const [state, action, pending] = useActionState(signUp, initial);
@@ -64,15 +63,13 @@ export function SignupForm({
         </Button>
       </form>
 
-      <p className="text-xs text-muted-foreground">{copy.softConfirm}</p>
-
       <div className="flex items-center gap-3 text-xs text-muted-foreground">
         <span className="h-px flex-1 bg-border" />
         {copy.or}
         <span className="h-px flex-1 bg-border" />
       </div>
 
-      <form action={signInWithGoogle}>
+      <form action={linkGoogleIdentity}>
         <Button type="submit" variant="outline" className="w-full">
           {copy.google}
         </Button>
@@ -80,7 +77,10 @@ export function SignupForm({
 
       <p className="text-center text-sm text-muted-foreground">
         {copy.hasAccount}{" "}
-        <Link href="/login" className="text-foreground underline-offset-4 hover:underline">
+        <Link
+          href="/login"
+          className="text-foreground underline-offset-4 hover:underline"
+        >
           {copy.login}
         </Link>
       </p>

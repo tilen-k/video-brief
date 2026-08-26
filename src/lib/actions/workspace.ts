@@ -1,11 +1,8 @@
 "use server";
 
-import { getOnboardingCompleted } from "@/domain/onboarding";
-import {
-  getWorkspaceVideo,
-  type WorkspaceVideo,
-} from "@/domain/workspace/get-workspace-video";
+import { getWorkspaceVideo, type WorkspaceVideo } from "@/domain/workspace/get-workspace-video";
 import type { WorkspaceStatusClientError } from "@/domain/workspace/status-navigation";
+import { needsOnboarding } from "@/domain/auth/needs-onboarding";
 import { createClient } from "@/lib/supabase/server";
 import { userVideoIdSchema } from "@/lib/validations/workspace";
 
@@ -30,7 +27,7 @@ export async function getWorkspaceStatus(
     return { ok: false, error: "unauthenticated" };
   }
 
-  if (!(await getOnboardingCompleted(user.id))) {
+  if (await needsOnboarding(user)) {
     return { ok: false, error: "onboarding" };
   }
 

@@ -5,6 +5,20 @@ const withNextIntl = createNextIntlPlugin("./src/i18n/request.ts");
 
 const nextConfig: NextConfig = {
   serverExternalPackages: ["bullmq", "ioredis"],
+  async redirects() {
+    return [
+      {
+        source: "/library",
+        destination: "/",
+        permanent: false,
+      },
+      {
+        source: "/library/:userVideoId",
+        destination: "/v/:userVideoId",
+        permanent: false,
+      },
+    ];
+  },
   images: {
     remotePatterns: [
       {

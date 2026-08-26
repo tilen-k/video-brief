@@ -17,8 +17,8 @@ alwaysApply: true
 
 ## Data & auth
 
-- Supabase Auth: email/password + Google OAuth (personal GCP project)
-- Soft email confirmation (app usable before verify)
+- Supabase Auth: email/password + Google OAuth + **anonymous guests** (personal GCP project)
+- Guest → permanent via `updateUser` / `linkIdentity` (same `user.id`); soft email confirmation
 - Drizzle ORM + Drizzle Kit migrations on Supabase Postgres
 - `@supabase/ssr` for session/cookies; never trust client-supplied `user_id`
 - RLS on all user-owned tables

@@ -3,7 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { cache } from "react";
 
 import { WorkspaceShell } from "@/components/workspace/workspace-shell";
-import { getOnboardingCompleted } from "@/domain/onboarding";
+import { needsOnboarding } from "@/domain/auth/needs-onboarding";
 import { getWorkspaceVideo } from "@/domain/workspace/get-workspace-video";
 import { createClient } from "@/lib/supabase/server";
 import { userVideoIdSchema } from "@/lib/validations/workspace";
@@ -27,7 +27,7 @@ const resolveWorkspace = cache(async (userVideoId: string) => {
     return { kind: "unauthenticated" as const, userVideoId: parsed.data };
   }
 
-  if (!(await getOnboardingCompleted(user.id))) {
+  if (await needsOnboarding(user)) {
     return { kind: "onboarding" as const };
   }
 
@@ -55,7 +55,8 @@ export default async function WorkspacePage({ params }: WorkspacePageProps) {
   const result = await resolveWorkspace(userVideoId);
 
   if (result.kind === "unauthenticated") {
-    redirect(`/login?next=/library/${result.userVideoId}`);
+    // Don't mint a guest per shared / scraped workspace URL — send home.
+    redirect("/auth/guest?next=/");
   }
 
   if (result.kind === "onboarding") {

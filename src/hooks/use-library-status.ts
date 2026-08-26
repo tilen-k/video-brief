@@ -23,11 +23,13 @@ export function useLibraryStatus(
     queryFn: async () => {
       const result = await getLibraryStatus();
       if (!result.ok) {
+        queryClient.removeQueries({ queryKey: ["library"] });
         if (result.error === "unauthenticated") {
-          router.replace("/login?next=/library");
-        } else {
-          router.replace("/onboarding");
+          // Do not soft-navigate or refresh — races logout → guest remint
+          // (Firefox SecurityError). Full-document /auth/signout handles remint.
+          return [];
         }
+        router.replace("/onboarding");
         return initialItems;
       }
       return result.data;
