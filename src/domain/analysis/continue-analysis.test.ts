@@ -50,6 +50,7 @@ const generatingRow = {
   familiarity: 50,
   summaryLength: 50,
   summaryTone: 50,
+  modelTier: "basic" as const,
   runId: RUN_ID,
 };
 

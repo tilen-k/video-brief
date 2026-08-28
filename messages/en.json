@@ -76,7 +76,15 @@
     "lengthHigh": "Long",
     "toneLabel": "Summary tone",
     "toneLow": "Formal",
-    "toneHigh": "Casual"
+    "toneHigh": "Casual",
+    "modelLabel": "Model",
+    "modelBasic": "Basic",
+    "modelAdvanced": "Advanced",
+    "modelAdvancedHint": "Stronger summaries — Pro only",
+    "modelUpgradeHint": "Upgrade to Pro for Advanced",
+    "modelUpgradeAccount": "Account",
+    "modelTierBasic": "Basic model",
+    "modelTierAdvanced": "Advanced model"
   },
   "Account": {
     "title": "Account",

@@ -142,6 +142,11 @@ export function LibraryList({ initialItems, onRefresh }: LibraryListProps) {
                       status={item.status}
                       label={statusT(phase)}
                     />
+                    <span className="text-xs text-muted-foreground">
+                      {item.modelTier === "advanced"
+                        ? t("modelTierAdvanced")
+                        : t("modelTierBasic")}
+                    </span>
                     {failed && item.errorMessage ? (
                       <span className="truncate text-xs text-destructive/90">
                         {item.errorMessage}

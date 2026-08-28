@@ -6,19 +6,21 @@ import {
   userVideos,
   type AnalysisStatus,
   type GeneratedSection,
+  type ModelTier,
   type TranscriptSegment,
 } from "@/db/schema";
 import { clampSectionTimes } from "@/domain/analysis/clamp-section-times";
 import { DEFAULT_LENGTH_SCORE, DEFAULT_TONE_SCORE } from "@/domain/analysis/prefs";
 import { generateSectionsSchema } from "@/domain/analysis/schemas";
 import { selectTranscriptSubset } from "@/domain/analysis/select-transcript-subset";
+import { resolveModelTier } from "@/domain/analysis/model-tier";
 import { fetchYoutubeVideo } from "@/domain/ingest/ingest-youtube-video";
 import { getPlanForUser } from "@/domain/usage/plan";
 import {
   getWorkspaceVideo,
   type WorkspaceVideo,
 } from "@/domain/workspace/get-workspace-video";
-import { getAIProviderForPlan } from "@/lib/ai/get-default-ai-provider";
+import { getAIProviderForTier } from "@/lib/ai/get-default-ai-provider";
 import type { AIProvider } from "@/lib/ai/provider";
 import { errorFields, llmErrorFields, logger } from "@/lib/logger";
 import type { TranscriptProvider } from "@/lib/youtube/transcript-provider";
@@ -72,6 +74,7 @@ type LoadedRow = {
   familiarity: number | null;
   summaryLength: number;
   summaryTone: number;
+  modelTier: ModelTier;
   runId: string;
 };
 
@@ -168,9 +171,6 @@ async function runContinueAnalysis(
   deps: ContinueAnalysisDeps,
 ): Promise<WorkspaceVideo | null> {
   const db = deps.db ?? createDb();
-  const ai =
-    deps.ai ??
-    getAIProviderForPlan(await getPlanForUser(userId, { db }));
 
   const [row] = await db
     .select({
@@ -189,6 +189,7 @@ async function runContinueAnalysis(
       familiarity: personalizedAnalyses.familiarity,
       summaryLength: personalizedAnalyses.summaryLength,
       summaryTone: personalizedAnalyses.summaryTone,
+      modelTier: personalizedAnalyses.modelTier,
       runId: personalizedAnalyses.runId,
     })
     .from(userVideos)
@@ -238,6 +239,12 @@ async function runContinueAnalysis(
     },
     "continueAnalysis.start",
   );
+
+  const effectiveTier = resolveModelTier(
+    await getPlanForUser(userId, { db }),
+    loaded.modelTier ?? "basic",
+  );
+  const ai = deps.ai ?? getAIProviderForTier(effectiveTier);
 
   if (loaded.status === "pending" || loaded.status === "fetching") {
     return runFetch(userId, userVideoId, loaded, db, deps, log);

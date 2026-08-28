@@ -16,6 +16,13 @@ const nullableFamiliaritySchema = z.preprocess((value) => {
   return value;
 }, z.coerce.number().int().min(0).max(100).nullable());
 
+const modelTierSchema = z.preprocess((value) => {
+  if (value === "" || value === null || value === undefined) {
+    return undefined;
+  }
+  return value;
+}, z.enum(["basic", "advanced"]).optional());
+
 export const previewYoutubeInputSchema = z
   .object({
     url: z.string().trim().min(1, "Paste a YouTube URL"),
@@ -42,6 +49,7 @@ export const generateVideoInputSchema = z
     summaryLength: prefScoreSchema,
     summaryTone: prefScoreSchema,
     familiarity: nullableFamiliaritySchema,
+    modelTier: modelTierSchema,
   })
   .transform((data, ctx) => {
     const youtubeId = parseYoutubeId(data.youtubeId) ?? data.youtubeId;
@@ -59,6 +67,7 @@ export const generateVideoInputSchema = z
       summaryLength: data.summaryLength,
       summaryTone: data.summaryTone,
       familiarity: data.familiarity,
+      modelTier: data.modelTier,
     };
   });
 

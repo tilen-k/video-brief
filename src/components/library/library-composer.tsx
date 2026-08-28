@@ -4,7 +4,9 @@ import { useCallback, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 
 import { showFamiliaritySlider } from "@/domain/analysis/familiarity-categories";
+import { defaultModelTierForPlan, resolveModelTier } from "@/domain/analysis/model-tier";
 import type { LibraryListItem } from "@/domain/ingest/ingest-youtube-video";
+import type { PlanId } from "@/db/schema";
 import { LoadingPanel } from "@/components/shared/status/loading-dots";
 import { Panel } from "@/components/shared/list/panel";
 
@@ -26,12 +28,16 @@ type LibraryComposerProps = {
   initialItems: LibraryListItem[];
   defaultLength: number;
   defaultTone: number;
+  plan: PlanId;
+  advancedModelEnabled: boolean;
 };
 
 export function LibraryComposer({
   initialItems,
   defaultLength,
   defaultTone,
+  plan,
+  advancedModelEnabled,
 }: LibraryComposerProps) {
   const t = useTranslations("Library");
   const [configure, setConfigure] = useState<ConfigureState | null>(null);
@@ -48,10 +54,11 @@ export function LibraryComposer({
           summaryLength: defaultLength,
           summaryTone: defaultTone,
           familiarity: preview.showFamiliarity ? 50 : null,
+          modelTier: defaultModelTierForPlan(plan),
         },
       });
     },
-    [defaultLength, defaultTone],
+    [defaultLength, defaultTone, plan],
   );
 
   const handleRefresh = useCallback((item: LibraryListItem) => {
@@ -71,6 +78,7 @@ export function LibraryComposer({
         summaryLength: item.summaryLength,
         summaryTone: item.summaryTone,
         familiarity: showFamiliarity ? (item.familiarity ?? 50) : null,
+        modelTier: resolveModelTier(plan, item.modelTier),
       },
     });
     composerRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -123,6 +131,8 @@ export function LibraryComposer({
             <VideoConfiguration
               preview={configure.preview}
               defaults={configure.defaults}
+              plan={plan}
+              advancedModelEnabled={advancedModelEnabled}
               onClear={dismissConfigure}
             />
           </Panel>

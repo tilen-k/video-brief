@@ -112,6 +112,7 @@ describe("startYoutubeIngest", () => {
         familiarity: 40,
         summaryLength: 75,
         summaryTone: 50,
+        modelTier: "basic",
         usageQuotaKey: "vb:usage:videos:user-1:202608",
         metadata: {
           title: "Sample video",
@@ -150,6 +151,7 @@ describe("startYoutubeIngest", () => {
       familiarity: 40,
       summaryLength: 75,
       summaryTone: 50,
+      modelTier: "basic",
       usageQuotaKey: "vb:usage:videos:user-1:202608",
       metadata: {
         title: "Sample video",
@@ -177,6 +179,7 @@ describe("startYoutubeIngest", () => {
       familiarity: null,
       summaryLength: 50,
       summaryTone: 50,
+      modelTier: "basic",
       usageQuotaKey: "vb:usage:videos:user-1:202608",
     });
 

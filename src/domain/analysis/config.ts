@@ -3,8 +3,10 @@ import type { PlanId } from "@/db/schema";
 /**
  * Product/algorithm knobs for classify + generate + plan limits.
  * Model ids live here, not in env. Secret: OPENROUTER_API_KEY only.
+ * Set ADVANCED_MODEL_ENABLED=0 to disable the advanced tier at runtime.
  */
 const BASIC_MODEL_ID = "openrouter/free";
+const ADVANCED_MODEL_ID = "google/gemini-2.5-flash-lite";
 
 export const analysisConfig = {
   model: {
@@ -16,10 +18,8 @@ export const analysisConfig = {
   },
   models: {
     // Free router: picks a free model that supports the request (incl. structured JSON).
-    // Paid pin later: google/gemini-2.5-flash-lite
     basicId: BASIC_MODEL_ID,
-    /** Scaffold only — pin a paid advanced model when Pro ships. */
-    advancedId: BASIC_MODEL_ID,
+    advancedId: ADVANCED_MODEL_ID,
   },
   planLimits: {
     free: {
@@ -56,10 +56,3 @@ export const analysisConfig = {
     maxSummaryChars: 2000,
   },
 } as const;
-
-export function modelIdForPlan(plan: PlanId): string {
-  const tier = analysisConfig.planLimits[plan].modelTier;
-  return tier === "advanced"
-    ? analysisConfig.models.advancedId
-    : analysisConfig.models.basicId;
-}

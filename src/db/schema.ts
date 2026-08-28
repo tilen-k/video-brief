@@ -37,6 +37,9 @@ export type GeneratedSection = {
 export const PLAN_IDS = ["free", "pro"] as const;
 export type PlanId = (typeof PLAN_IDS)[number];
 
+export const MODEL_TIERS = ["basic", "advanced"] as const;
+export type ModelTier = (typeof MODEL_TIERS)[number];
+
 export const profiles = pgTable(
   "profiles",
   {
@@ -124,6 +127,10 @@ export const personalizedAnalyses = pgTable(
     familiarity: integer("familiarity"),
     summaryLength: integer("summary_length").notNull().default(50),
     summaryTone: integer("summary_tone").notNull().default(50),
+    modelTier: text("model_tier")
+      .$type<ModelTier>()
+      .notNull()
+      .default("basic"),
     summary: text("summary"),
     runId: uuid("run_id").notNull().defaultRandom(),
     /** Redis monthly counter key consumed at Generate; used for pre-LLM refunds. */

@@ -11,6 +11,7 @@ import {
   generateVideo,
   type GenerateVideoActionState,
 } from "@/lib/actions/library";
+import type { ModelTier, PlanId } from "@/db/schema";
 import { LoadingDots } from "@/components/shared/status/loading-dots";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -32,11 +33,14 @@ export type VideoConfigurationDefaults = {
   summaryLength: number;
   summaryTone: number;
   familiarity: number | null;
+  modelTier: ModelTier;
 };
 
 type VideoConfigurationProps = {
   preview: VideoConfigurationPreview;
   defaults: VideoConfigurationDefaults;
+  plan: PlanId;
+  advancedModelEnabled: boolean;
   onClear: () => void;
 };
 
@@ -90,9 +94,79 @@ function formatDuration(seconds: number | null): string | null {
   return `${m}:${String(s).padStart(2, "0")}`;
 }
 
+function ModelTierSelector({
+  label,
+  basicLabel,
+  advancedLabel,
+  advancedHint,
+  upgradeHint,
+  upgradeAccountLabel,
+  defaultValue,
+  plan,
+  advancedModelEnabled,
+  disabled,
+}: {
+  label: string;
+  basicLabel: string;
+  advancedLabel: string;
+  advancedHint: string;
+  upgradeHint: string;
+  upgradeAccountLabel: string;
+  defaultValue: ModelTier;
+  plan: PlanId;
+  advancedModelEnabled: boolean;
+  disabled: boolean;
+}) {
+  const canChooseAdvanced = plan === "pro" && advancedModelEnabled;
+
+  return (
+    <fieldset className="flex flex-col gap-2 border-0 p-0">
+      <legend className="text-sm text-foreground">{label}</legend>
+      <div className="flex flex-wrap gap-2">
+        <label className="inline-flex cursor-pointer items-center gap-2 rounded-md border border-border px-3 py-2 text-sm has-disabled:cursor-not-allowed has-disabled:opacity-50">
+          <input
+            type="radio"
+            name="modelTier"
+            value="basic"
+            defaultChecked={defaultValue === "basic" || !canChooseAdvanced}
+            disabled={disabled}
+            className="accent-foreground"
+          />
+          <span>{basicLabel}</span>
+        </label>
+        {advancedModelEnabled ? (
+          <label className="inline-flex cursor-pointer items-center gap-2 rounded-md border border-border px-3 py-2 text-sm has-disabled:cursor-not-allowed has-disabled:opacity-50">
+            <input
+              type="radio"
+              name="modelTier"
+              value="advanced"
+              defaultChecked={defaultValue === "advanced" && canChooseAdvanced}
+              disabled={disabled || !canChooseAdvanced}
+              className="accent-foreground"
+            />
+            <span>{advancedLabel}</span>
+          </label>
+        ) : null}
+      </div>
+      {canChooseAdvanced ? (
+        <p className="text-xs text-muted-foreground">{advancedHint}</p>
+      ) : plan === "free" && advancedModelEnabled ? (
+        <p className="text-xs text-muted-foreground">
+          {upgradeHint}{" "}
+          <a href="/account" className="underline-offset-4 hover:underline">
+            {upgradeAccountLabel}
+          </a>
+        </p>
+      ) : null}
+    </fieldset>
+  );
+}
+
 export function VideoConfiguration({
   preview,
   defaults,
+  plan,
+  advancedModelEnabled,
   onClear,
 }: VideoConfigurationProps) {
   const t = useTranslations("Library");
@@ -121,7 +195,7 @@ export function VideoConfiguration({
 
   return (
     <form
-      key={`${preview.youtubeId}-${defaults.summaryLength}-${defaults.summaryTone}-${defaults.familiarity ?? "none"}`}
+      key={`${preview.youtubeId}-${defaults.summaryLength}-${defaults.summaryTone}-${defaults.familiarity ?? "none"}-${defaults.modelTier}`}
       action={generateAction}
       className="flex w-full flex-col gap-8"
     >
@@ -198,6 +272,18 @@ export function VideoConfiguration({
               disabled={isBusy || blocked}
             />
           ) : null}
+          <ModelTierSelector
+            label={t("modelLabel")}
+            basicLabel={t("modelBasic")}
+            advancedLabel={t("modelAdvanced")}
+            advancedHint={t("modelAdvancedHint")}
+            upgradeHint={t("modelUpgradeHint")}
+            upgradeAccountLabel={t("modelUpgradeAccount")}
+            defaultValue={defaults.modelTier}
+            plan={plan}
+            advancedModelEnabled={advancedModelEnabled}
+            disabled={isBusy || blocked}
+          />
         </div>
 
         {preview.tooLong ? (

@@ -16,6 +16,7 @@ import {
   type LibraryListItem,
 } from "@/domain/ingest/ingest-youtube-video";
 import { previewYoutubeVideo } from "@/domain/ingest/preview-youtube";
+import { resolveModelTier } from "@/domain/analysis/model-tier";
 import { assertDurationAllowed } from "@/domain/usage/duration";
 import { getPlanForUser } from "@/domain/usage/plan";
 import {
@@ -147,6 +148,7 @@ export async function generateVideo(
     summaryLength: formData.get("summaryLength"),
     summaryTone: formData.get("summaryTone"),
     familiarity: formData.get("familiarity"),
+    modelTier: formData.get("modelTier"),
   });
 
   if (!parsed.success) {
@@ -183,8 +185,9 @@ export async function generateVideo(
     };
   }
 
+  let plan;
   try {
-    const plan = await getPlanForUser(user.id);
+    plan = await getPlanForUser(user.id);
     assertDurationAllowed(plan, metadata.durationSeconds);
   } catch (error) {
     if (error instanceof UsageError) {
@@ -222,6 +225,7 @@ export async function generateVideo(
   const familiarity = metadata.showFamiliarity
     ? (parsed.data.familiarity ?? null)
     : null;
+  const modelTier = resolveModelTier(plan, parsed.data.modelTier);
 
   let result;
   try {
@@ -231,6 +235,7 @@ export async function generateVideo(
       familiarity,
       summaryLength,
       summaryTone,
+      modelTier,
       usageQuotaKey: slot.redisKey,
       metadata: {
         title: metadata.title,

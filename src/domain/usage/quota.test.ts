@@ -13,7 +13,8 @@ import {
   utcPeriodEndsAt,
   type UsageCounterStore,
 } from "@/domain/usage/quota";
-import { modelIdForPlan, analysisConfig } from "@/domain/analysis/config";
+import { modelIdForPlan } from "@/domain/analysis/model-tier";
+import { analysisConfig } from "@/domain/analysis/config";
 
 function memoryCounters(): UsageCounterStore & {
   data: Map<string, { value: number; ttl?: number }>;

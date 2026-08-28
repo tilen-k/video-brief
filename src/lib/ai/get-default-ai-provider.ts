@@ -1,5 +1,8 @@
-import type { PlanId } from "@/db/schema";
-import { modelIdForPlan } from "@/domain/analysis/config";
+import type { ModelTier, PlanId } from "@/db/schema";
+import {
+  modelIdForTier,
+  resolveModelTier,
+} from "@/domain/analysis/model-tier";
 
 import { OpenRouterAIProvider } from "./openrouter-ai-provider";
 import type { AIProvider } from "./provider";
@@ -10,8 +13,8 @@ export function getDefaultAIProvider(): AIProvider {
   return getAIProviderForPlan("free");
 }
 
-export function getAIProviderForPlan(plan: PlanId): AIProvider {
-  const modelId = modelIdForPlan(plan);
+export function getAIProviderForTier(tier: ModelTier): AIProvider {
+  const modelId = modelIdForTier(tier);
   const existing = providersByModel.get(modelId);
   if (existing) {
     return existing;
@@ -19,4 +22,8 @@ export function getAIProviderForPlan(plan: PlanId): AIProvider {
   const provider = new OpenRouterAIProvider(modelId);
   providersByModel.set(modelId, provider);
   return provider;
+}
+
+export function getAIProviderForPlan(plan: PlanId): AIProvider {
+  return getAIProviderForTier(resolveModelTier(plan));
 }

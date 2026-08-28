@@ -5,6 +5,7 @@ import {
   personalizedAnalyses,
   userVideos,
   type AnalysisStatus,
+  type ModelTier,
   type TranscriptSegment,
 } from "@/db/schema";
 import {
@@ -12,6 +13,7 @@ import {
   type TranscriptProvider,
 } from "@/lib/youtube/transcript-provider";
 import { getPlanForUser } from "@/domain/usage/plan";
+import { resolveModelTier } from "@/domain/analysis/model-tier";
 import {
   assertDurationAllowed,
   isRefundableErrorCode,
@@ -45,6 +47,7 @@ export type IngestYoutubeVideoInput = {
   familiarity: number | null;
   summaryLength: number;
   summaryTone: number;
+  modelTier: ModelTier;
   /** Redis key from consumeMonthlyGenerateSlot — persisted for refunds. */
   usageQuotaKey?: string | null;
   /** Optional preview metadata so the library/workspace is not a raw youtubeId stub. */
@@ -231,15 +234,19 @@ export async function startYoutubeIngest(
   deps: IngestYoutubeVideoDeps = {},
 ): Promise<IngestYoutubeVideoResult> {
   const db = deps.db ?? createDb();
+  const getPlan = deps.getPlan ?? getPlanForUser;
   const {
     userId,
     youtubeId,
     familiarity,
     summaryLength,
     summaryTone,
+    modelTier: requestedModelTier,
     usageQuotaKey = null,
     metadata,
   } = input;
+  const plan = await getPlan(userId, { db });
+  const modelTier = resolveModelTier(plan, requestedModelTier);
   const runId = crypto.randomUUID();
   const title = metadata?.title?.trim() || youtubeId;
   const channelTitle = metadata?.channelTitle ?? null;
@@ -304,6 +311,7 @@ export async function startYoutubeIngest(
         familiarity,
         summaryLength,
         summaryTone,
+        modelTier,
         runId,
         usageQuotaKey,
       })
@@ -318,6 +326,7 @@ export async function startYoutubeIngest(
           familiarity,
           summaryLength,
           summaryTone,
+          modelTier,
           runId,
           usageQuotaKey,
           updatedAt: new Date(),
@@ -651,6 +660,7 @@ export type LibraryListItem = {
   summaryLength: number;
   summaryTone: number;
   familiarity: number | null;
+  modelTier: ModelTier;
   addedAt: Date;
   refreshedAt: Date;
 };
@@ -702,6 +712,7 @@ export async function listLibraryForUser(
       summaryLength: personalizedAnalyses.summaryLength,
       summaryTone: personalizedAnalyses.summaryTone,
       familiarity: personalizedAnalyses.familiarity,
+      modelTier: personalizedAnalyses.modelTier,
       addedAt: userVideos.createdAt,
       refreshedAt: userVideos.updatedAt,
     })
@@ -726,6 +737,7 @@ export async function listLibraryForUser(
     summaryLength: row.summaryLength ?? 50,
     summaryTone: row.summaryTone ?? 50,
     familiarity: row.familiarity ?? null,
+    modelTier: row.modelTier ?? "basic",
     addedAt: row.addedAt,
     refreshedAt: row.refreshedAt,
   }));

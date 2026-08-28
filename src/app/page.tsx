@@ -11,7 +11,9 @@ import {
   DEFAULT_LENGTH_SCORE,
   DEFAULT_TONE_SCORE,
 } from "@/domain/analysis/prefs";
+import { isAdvancedModelEnabled } from "@/domain/analysis/model-tier";
 import { listLibraryForUser } from "@/domain/ingest/ingest-youtube-video";
+import { getPlanForUser } from "@/domain/usage/plan";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function HomePage() {
@@ -31,9 +33,10 @@ export default async function HomePage() {
   }
 
   const isGuest = isGuestUser(user);
-  const [items, profile] = await Promise.all([
+  const [items, profile, plan] = await Promise.all([
     listLibraryForUser(user.id),
     getUserProfile(user.id),
+    getPlanForUser(user.id),
   ]);
 
   return (
@@ -48,6 +51,8 @@ export default async function HomePage() {
         initialItems={items}
         defaultLength={profile?.summaryLength ?? DEFAULT_LENGTH_SCORE}
         defaultTone={profile?.summaryTone ?? DEFAULT_TONE_SCORE}
+        plan={plan}
+        advancedModelEnabled={isAdvancedModelEnabled()}
       />
       {isGuest ? (
         <p className="pt-1 text-center text-xs text-muted-foreground">
