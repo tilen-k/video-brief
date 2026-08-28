@@ -70,7 +70,7 @@ export function WorkspaceShell({ initial }: WorkspaceShellProps) {
       </header>
 
       <div className="flex min-h-0 flex-1 flex-col lg:h-full lg:min-h-0 lg:overflow-hidden lg:grid lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)] lg:grid-rows-[auto_minmax(0,1fr)]">
-        <div className="order-1 mx-auto w-full max-w-3xl lg:col-start-1 lg:row-start-1 lg:border-r lg:border-border">
+        <div className="order-1 mx-auto w-full max-w-3xl px-4 sm:px-6 lg:col-start-1 lg:row-start-1 lg:border-r lg:border-border lg:px-6">
           <WorkspacePlayer youtubeId={video.youtubeId} onReady={onReady} />
         </div>
         <aside className="order-2 min-h-0 overflow-y-auto border-b border-border p-4 sm:p-6 lg:order-none lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:border-b-0">

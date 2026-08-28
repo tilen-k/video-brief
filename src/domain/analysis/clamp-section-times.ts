@@ -9,9 +9,20 @@ export function clampSectionTimes(
       ? durationSeconds
       : Number.POSITIVE_INFINITY;
 
-  return sections.map((section) => {
+  const clamped = sections.map((section) => {
     const startTime = Math.min(Math.max(0, section.startTime), max);
     const endTime = Math.min(Math.max(startTime, section.endTime), max);
     return { ...section, startTime, endTime };
   });
+
+  if (
+    durationSeconds != null &&
+    durationSeconds > 0 &&
+    clamped.length > 0
+  ) {
+    const last = clamped.length - 1;
+    clamped[last] = { ...clamped[last], endTime: durationSeconds };
+  }
+
+  return clamped;
 }

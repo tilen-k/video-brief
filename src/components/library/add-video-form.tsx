@@ -2,17 +2,17 @@
 
 import { AlertCircleIcon, Link2 } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useActionState, useEffect, useState } from "react";
+import { useActionState, useEffect, useSyncExternalStore, useState } from "react";
 
 import {
   previewYoutube,
   type PreviewYoutubeActionState,
 } from "@/lib/actions/library";
-import { useTopLoaderOnPending } from "@/components/shared/layout/use-top-loader-on-pending";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
+import { parseYoutubeId } from "@/lib/youtube/parse-url";
 
 import type { VideoConfigurationPreview } from "./video-configuration";
 
@@ -20,16 +20,33 @@ const previewInitial: PreviewYoutubeActionState = {};
 
 type AddVideoFormProps = {
   onPreview: (preview: VideoConfigurationPreview) => void;
+  onClearPreview: () => void;
+  onPreviewPendingChange?: (pending: boolean) => void;
 };
 
-export function AddVideoForm({ onPreview }: AddVideoFormProps) {
+export function AddVideoForm({
+  onPreview,
+  onClearPreview,
+  onPreviewPendingChange,
+}: AddVideoFormProps) {
   const t = useTranslations("Library");
   const [previewState, previewAction, previewPending] = useActionState(
     previewYoutube,
     previewInitial,
   );
   const [urlDraft, setUrlDraft] = useState("");
-  useTopLoaderOnPending(previewPending);
+  const hydrated = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false,
+  );
+  const canContinue =
+    hydrated && parseYoutubeId(urlDraft) != null;
+  const continueDisabled = previewPending || !canContinue;
+
+  useEffect(() => {
+    onPreviewPendingChange?.(previewPending);
+  }, [previewPending, onPreviewPendingChange]);
 
   useEffect(() => {
     if (previewState.preview) {
@@ -55,19 +72,22 @@ export function AddVideoForm({ onPreview }: AddVideoFormProps) {
             disabled={previewPending}
             required
             value={urlDraft}
-            onChange={(event) => setUrlDraft(event.target.value)}
+            onChange={(event) => {
+              setUrlDraft(event.target.value);
+              onClearPreview();
+            }}
             className="h-11 pl-9"
             aria-label={t("pasteLabel")}
           />
         </div>
         <Button
           type="submit"
-          disabled={previewPending}
+          disabled={continueDisabled}
           size="lg"
           className="h-11 shrink-0 px-6 sm:min-w-[7rem]"
         >
           {previewPending ? <Spinner /> : null}
-          {previewPending ? t("previewing") : t("continue")}
+          {previewPending ? null : t("continue")}
         </Button>
       </div>
 

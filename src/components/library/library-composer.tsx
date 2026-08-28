@@ -1,9 +1,11 @@
 "use client";
 
 import { useCallback, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 
 import { showFamiliaritySlider } from "@/domain/analysis/familiarity-categories";
 import type { LibraryListItem } from "@/domain/ingest/ingest-youtube-video";
+import { LoadingPanel } from "@/components/shared/status/loading-dots";
 import { Panel } from "@/components/shared/list/panel";
 
 import { AddVideoForm } from "./add-video-form";
@@ -33,8 +35,11 @@ export function LibraryComposer({
   defaultTone,
   defaultSummaryLanguage,
 }: LibraryComposerProps) {
+  const t = useTranslations("Library");
   const [configure, setConfigure] = useState<ConfigureState | null>(null);
-  const panelRef = useRef<HTMLDivElement>(null);
+  const [previewPending, setPreviewPending] = useState(false);
+  const [pasteFormKey, setPasteFormKey] = useState(0);
+  const composerRef = useRef<HTMLDivElement>(null);
 
   const handlePreview = useCallback(
     (preview: VideoConfigurationPreview) => {
@@ -72,26 +77,60 @@ export function LibraryComposer({
         familiarity: showFamiliarity ? (item.familiarity ?? 50) : null,
       },
     });
-    panelRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    composerRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   }, []);
 
   const clearConfigure = useCallback(() => {
     setConfigure(null);
   }, []);
 
+  const dismissConfigure = useCallback(() => {
+    setConfigure(null);
+    setPasteFormKey((value) => value + 1);
+  }, []);
+
+  const handlePreviewPendingChange = useCallback((pending: boolean) => {
+    setPreviewPending(pending);
+    if (pending) {
+      setConfigure(null);
+    }
+  }, []);
+
   return (
-    <div className="flex flex-col gap-8">
-      <div ref={panelRef}>
+    <div ref={composerRef} className="flex flex-col gap-8">
+      <div className="flex flex-col gap-4">
         <Panel>
-          <AddVideoForm onPreview={handlePreview} />
-          {configure ? (
+          <div className="flex flex-col gap-5">
+            <div className="space-y-1">
+              <h2 className="font-heading text-base tracking-tight">
+                {t("addTitle")}
+              </h2>
+              <p className="text-sm text-muted-foreground">{t("pasteHint")}</p>
+            </div>
+            <AddVideoForm
+              key={pasteFormKey}
+              onPreview={handlePreview}
+              onClearPreview={clearConfigure}
+              onPreviewPendingChange={handlePreviewPendingChange}
+            />
+          </div>
+        </Panel>
+
+        {previewPending ? (
+          <Panel>
+            <LoadingPanel label={t("previewing")} />
+          </Panel>
+        ) : null}
+
+        {!previewPending && configure ? (
+          <Panel>
             <VideoConfiguration
               preview={configure.preview}
               defaults={configure.defaults}
-              onClear={clearConfigure}
+              onClear={dismissConfigure}
             />
-          ) : null}
-        </Panel>
+          </Panel>
+        ) : null}
       </div>
 
       <LibraryList initialItems={initialItems} onRefresh={handleRefresh} />

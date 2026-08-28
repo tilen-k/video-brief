@@ -31,7 +31,11 @@ export default async function OnboardingPage() {
   const profile = await getUserProfile(user.id, { acceptLanguage });
 
   return (
-    <AppShell userEmail={user.email} showLogout={false}>
+    <AppShell
+      userEmail={user.email}
+      showLogout={false}
+      contentClassName="flex flex-1 items-center justify-center"
+    >
       <OnboardingForm
         defaultSummaryLanguage={
           profile?.defaultSummaryLanguage ?? DEFAULT_SUMMARY_LANGUAGE

@@ -15,10 +15,14 @@ import {
 
 const { maxSections, maxOutputTokens } = analysisConfig.generate;
 
-const GENERATE_SYSTEM = `You write a personalized overview and timed section notes of a YouTube video from its transcript.
+export const GENERATE_SYSTEM = `You write a personalized overview and timed section notes of a YouTube video from its transcript.
 Respond with a JSON object only: {"summary":"...","sections":[{"title":"...","startTime":0,"endTime":12,"body":"..."}]}
-summary is a standalone overview the viewer can read instead of watching (about 1500–2000 characters).
+summary is a standalone overview the viewer can read instead of watching (about 1500–2000 characters total).
+Write the summary as multiple short paragraphs separated by blank lines (\\n\\n) — paragraph count follows the per-video length preference in the user prompt.
 Each section needs a title, startTime and endTime in seconds, and a body for seek/highlight.
+Write synthesized prose in complete sentences — summarize ideas, arguments, and takeaways.
+Do not quote the transcript verbatim, reproduce dialogue line-by-line, or list who said what.
+For interviews, debates, or Q&A, explain the main positions and conclusions rather than repeating answers.
 Stay faithful to the transcript — do not invent facts that are not in the source.
 Write the summary and every section title and body in the requested output language.
 When the transcript language differs from the output language, translate faithfully while preserving meaning.
@@ -27,6 +31,21 @@ Return 1–${maxSections} sections that cover the video. Short videos may have a
 
 function durationLabel(seconds: number | null): string {
   return seconds != null ? `${seconds} seconds` : "unknown";
+}
+
+export function summaryParagraphCount(summaryLength: number): number {
+  if (summaryLength <= 40) {
+    return 2;
+  }
+  if (summaryLength <= 70) {
+    return 3;
+  }
+  return 4;
+}
+
+export function summaryParagraphGuidance(summaryLength: number): string {
+  const count = summaryParagraphCount(summaryLength);
+  return `Write the summary as ${count} short paragraphs separated by blank lines (\\n\\n). Each paragraph should be 2–4 sentences.`;
 }
 
 export function buildGeneratePrompt(input: GenerateSectionsInput): string {
@@ -53,6 +72,7 @@ Output language: ${outputLanguageName} (${input.outputLanguage})
 Transcript language: ${transcriptLanguageName} (${input.transcriptLanguage})
 ${translationNote ? `${translationNote}\n` : ""}${familiarityLine ? `${familiarityLine}\n` : ""}Requested length (0–100, Short←→Long): ${prefs.summaryLength}
 Requested tone (0–100, Formal←→Casual): ${prefs.summaryTone}
+${summaryParagraphGuidance(prefs.summaryLength)}
 
 Transcript:
 ${input.transcriptSubset}`;
