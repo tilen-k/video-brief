@@ -44,6 +44,8 @@ Subagents in this chat share the same checkout. Independent writing tasks (CSS, 
 
 ```bash
 .cursor/worktree-create.sh [name] [start-ref]   # → WORKTREE_PATH under .worktrees/
+.cursor/worktree-status.sh [name]               # drift + merge previews (readonly)
+.cursor/worktree-sync.sh <name>                 # merge primary into worktree (after siblings land)
 .cursor/worktree-apply.sh <name>                # merge into current branch
 .cursor/worktree-delete.sh <name>
 ```

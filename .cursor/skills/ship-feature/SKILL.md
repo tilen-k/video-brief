@@ -156,8 +156,12 @@ Skip if work stayed on primary, or if the user has not asked to apply yet.
 From **primary** (scripts resolve primary if cwd is linked):
 
 ```bash
+.cursor/worktree-status.sh [WORKTREE_NAME]   # optional: check behind/conflicts first
+.cursor/worktree-sync.sh <WORKTREE_NAME>    # when behind>0 or apply=conflict — resolve in WORKTREE_PATH
 .cursor/worktree-apply.sh <WORKTREE_NAME>
 ```
+
+If sibling worktrees already landed, run status first. When the remaining worktree is behind or apply would conflict, sync merges primary into the worktree; resolve conflicts and re-test **in the worktree** before apply.
 
 Apply commits any remaining uncommitted worktree changes, then merges `wt/<name>` into the primary branch.
 

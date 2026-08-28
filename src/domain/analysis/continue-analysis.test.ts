@@ -20,6 +20,10 @@ vi.mock("@/domain/ingest/ingest-youtube-video", () => ({
   })),
 }));
 
+vi.mock("@/domain/usage/plan", () => ({
+  getPlanForUser: vi.fn(async () => "free" as const),
+}));
+
 const RUN_ID = "11111111-1111-4111-8111-111111111111";
 
 const generateOutput: GenerateSectionsOutput = {

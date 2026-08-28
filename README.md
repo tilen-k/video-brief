@@ -52,6 +52,14 @@ pnpm worker
 
 Open [http://localhost:3000](http://localhost:3000). Preview a URL on the library, then Generate — the worker fetches the transcript and generates.
 
+### Stripe (optional)
+
+Not needed for Preview/Generate. Uncomment the three `STRIPE_*` vars in `.env.local` (see `.env.example`).
+
+- Dashboard: Pro monthly price, Customer Portal, webhook → `/api/stripe/webhook` (subscription + checkout + invoice events).
+- Local: `stripe listen --forward-to localhost:3000/api/stripe/webhook` → set `STRIPE_WEBHOOK_SECRET` from CLI output.
+- `profiles.plan` is webhook-driven only (not the Checkout success URL).
+
 ## Deploy (Vercel + Railway + Supabase)
 
 | Piece | Host | Role |
@@ -94,6 +102,7 @@ Open [http://localhost:3000](http://localhost:3000). Preview a URL on the librar
    | `DATABASE_URL` | Supabase Transaction pooler |
    | `REDIS_URL` | **Same public** Railway Redis URL as the worker |
    | `OPENROUTER_API_KEY` | Optional on web today (AI runs in the worker) |
+   | `STRIPE_*` | If billing enabled (see `.env.example`) |
 
 3. Redeploy after setting `REDIS_URL`.
 

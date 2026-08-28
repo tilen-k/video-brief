@@ -18,6 +18,8 @@ Use **in-repo** worktrees under `.worktrees/` via the repo scripts. Do **not** h
 
 ```bash
 .cursor/worktree-create.sh [name] [start-ref]   # prints WORKTREE_PATH
+.cursor/worktree-status.sh [name]               # drift + merge previews (readonly)
+.cursor/worktree-sync.sh <name>                  # merge primary into wt/<name> (catch up)
 .cursor/worktree-apply.sh <name>                # merge wt/<name> into current branch
 .cursor/worktree-delete.sh <name>               # remove worktree + branch
 ```
@@ -26,7 +28,9 @@ After `worktree-create.sh`, do **all** reads, edits, and shell for that task in 
 
 Before creating, check for an existing worktree: `git worktree list`. If the user points at a current worktree, or one already exists for this work, **keep using it** — do not open a second worktree. Reuse `.worktrees/<name>` **as-is** when present (even if `main` is ahead).
 
-**Do not catch up the worktree onto primary/`main` before implementing.** No `git merge main`, `git rebase main`, `git pull`, or `git reset --hard` onto main. Other worktrees and later main commits are usually isolated. Stay on the worktree’s current HEAD. Integrate later with `worktree-apply.sh` — fix conflicts then, not up front.
+**Do not catch up the worktree onto primary/`main` while parallel work is still active.** No manual `git merge main`, `git rebase main`, `git pull`, or `git reset --hard` onto main during implementation. Other worktrees and later main commits are usually isolated — stay on the worktree’s current HEAD.
+
+**After sibling worktrees land**, the remaining worktree is often behind. Run `worktree-status.sh`, then `worktree-sync.sh <name>` to merge primary into the worktree, resolve conflicts **in the worktree**, test there, and only then `worktree-apply.sh`. Do not sync preemptively if other agents are still working in parallel on sibling worktrees.
 
 `.worktrees/` is typically gitignored / tool-ignored. Grep and Glob from the primary root will miss worktree files. Read, write, and search with absolute paths under `WORKTREE_PATH`.
 
@@ -54,6 +58,6 @@ If an existing worktree is missing env only: `cp .env.local .worktrees/<name>/.e
 
 Do **not** run `db:migrate` from a worktree against shared Supabase unless that is the task.
 
-Apply one worktree at a time **only when the human asks** (after their improve/UI pass): apply → type-check, lint, test in primary checkout → delete.
+Apply one worktree at a time **only when the human asks** (after their improve/UI pass). If `worktree-status.sh` shows `behind>0` or `apply=conflict`, sync first. Then: apply → type-check, lint, test in primary checkout → delete.
 
 `/ship-feature` follows this policy: pick `CHECKOUT` (primary or `.worktrees/<name>`), pass that absolute path into every specialist Task prompt, implement/check/review there, then **stop with READY** until the user says `/worktree-apply` (or equivalent). See `.cursor/skills/ship-feature/SKILL.md`.

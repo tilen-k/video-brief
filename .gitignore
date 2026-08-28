@@ -50,3 +50,4 @@ notes/
 
 # Agent git worktrees (see .cursor/worktree-create.sh)
 .worktrees/
+node_modules.stale*/
