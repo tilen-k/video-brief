@@ -42,7 +42,7 @@
   },
   "Onboarding": {
     "title": "Default summary style",
-    "subtitle": "Optional defaults for tone and length. Skip anytime — you can change them per video.",
+    "subtitle": "Optional defaults for tone and length. Can be changed in user settings.",
     "optionalHint": "Every field is optional. Skip uses Formal/Casual and Short/Long midpoints (50).",
     "toneLabel": "Default tone",
     "toneLow": "Formal",
@@ -69,7 +69,7 @@
     "generating": "Starting…",
     "generateHint": "Generate creates a library entry, counts toward your monthly limit, and opens the workspace.",
     "generateErrorTitle": "Couldn't generate",
-    "clearPreview": "Change URL",
+    "clearPreview": "Cancel",
     "tooLongTitle": "Video too long",
     "tooLongBody": "This video is longer than your plan allows. Try a shorter video, or upgrade.",
     "quotaExceeded": "You've used all generates for this month. Check Account → Usage for your limit and reset date.",

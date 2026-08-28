@@ -71,8 +71,6 @@ export function AddVideoForm({ onPreview }: AddVideoFormProps) {
         </Button>
       </div>
 
-      <p className="text-xs text-muted-foreground">{t("pasteHint")}</p>
-
       {previewState.error ? (
         <Alert variant="destructive">
           <AlertCircleIcon />

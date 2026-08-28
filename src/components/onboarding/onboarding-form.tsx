@@ -92,7 +92,6 @@ export function OnboardingForm() {
             defaultValue={50}
             disabled={pending}
           />
-          <FieldDescription>{t("optionalHint")}</FieldDescription>
         </FieldGroup>
 
         {state.error ? (

@@ -174,9 +174,6 @@ export function VideoConfiguration({
           />
         ) : null}
       </div>
-
-      <p className="text-xs text-muted-foreground">{t("generateHint")}</p>
-
       {preview.tooLong ? (
         <Alert variant="destructive">
           <AlertCircleIcon />

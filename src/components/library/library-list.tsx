@@ -68,6 +68,16 @@ export function LibraryList({ initialItems, onRefresh }: LibraryListProps) {
               className="flex gap-3 px-4 py-3.5 sm:gap-4"
             >
               <div className="flex shrink-0 flex-col justify-center gap-1">
+              <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-sm"
+                  className="text-muted-foreground"
+                  aria-label={t("refreshVideo", { title: item.title })}
+                  onClick={() => onRefresh(item)}
+                >
+                  <RefreshCw className="size-4" />
+                </Button>
                 <Button
                   type="button"
                   variant="ghost"
@@ -100,16 +110,6 @@ export function LibraryList({ initialItems, onRefresh }: LibraryListProps) {
                   }}
                 >
                   <Trash2 className="size-4" />
-                </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon-sm"
-                  className="text-muted-foreground"
-                  aria-label={t("refreshVideo", { title: item.title })}
-                  onClick={() => onRefresh(item)}
-                >
-                  <RefreshCw className="size-4" />
                 </Button>
               </div>
 
