@@ -1,14 +1,12 @@
 import { getTranslations } from "next-intl/server";
 
 import {
+  CompletePaymentButton,
   ManageBillingButton,
   UpgradeToProButton,
 } from "@/components/account/billing-actions";
 import { Panel } from "@/components/shared/list/panel";
-import {
-  getBillingProfileState,
-  isPastDueStatus,
-} from "@/domain/billing";
+import { getBillingStateForUsage } from "@/domain/billing";
 import { getUsageSnapshot, UsageError } from "@/domain/usage";
 import { createClient } from "@/lib/supabase/server";
 
@@ -37,6 +35,8 @@ export default async function AccountUsagePage({
     return null;
   }
 
+  const billing = await getBillingStateForUsage(user.id);
+
   let snapshot;
   try {
     snapshot = await getUsageSnapshot(user.id);
@@ -53,9 +53,8 @@ export default async function AccountUsagePage({
     );
   }
 
-  const billing = await getBillingProfileState(user.id);
   const planLabel =
-    snapshot.plan === "pro" ? t("planPro") : t("planFree");
+    billing.plan === "pro" ? t("planPro") : t("planFree");
   const durationLabel =
     snapshot.maxDurationSeconds == null
       ? t("usageDurationUnlimited")
@@ -63,7 +62,6 @@ export default async function AccountUsagePage({
           minutes: Math.round(snapshot.maxDurationSeconds / 60),
         });
 
-  const showPastDue = isPastDueStatus(billing.stripeSubscriptionStatus);
   const checkoutBanner =
     params.checkout === "success"
       ? t("checkoutSuccess")
@@ -84,9 +82,14 @@ export default async function AccountUsagePage({
           {checkoutBanner}
         </p>
       ) : null}
-      {showPastDue ? (
+      {billing.showPastDueBanner ? (
         <p className="text-sm text-muted-foreground" role="status">
           {t("billingPastDue")}
+        </p>
+      ) : null}
+      {billing.needsPaymentCompletion ? (
+        <p className="text-sm text-muted-foreground" role="status">
+          {t("billingIncomplete")}
         </p>
       ) : null}
       <div className="space-y-1">
@@ -103,7 +106,7 @@ export default async function AccountUsagePage({
         </p>
       </div>
       <p className="text-sm text-muted-foreground">{durationLabel}</p>
-      {snapshot.plan === "free" ? (
+      {billing.showUpgrade ? (
         <div className="space-y-2 border-t border-border pt-4">
           <p className="text-sm text-muted-foreground">{t("upgradeHint")}</p>
           <UpgradeToProButton
@@ -111,14 +114,23 @@ export default async function AccountUsagePage({
             pendingLabel={t("upgradePending")}
           />
         </div>
-      ) : (
+      ) : null}
+      {billing.showCompletePayment ? (
+        <div className="space-y-2 border-t border-border pt-4">
+          <CompletePaymentButton
+            label={t("completePayment")}
+            pendingLabel={t("completePaymentPending")}
+          />
+        </div>
+      ) : null}
+      {billing.showManageBilling ? (
         <div className="space-y-2 border-t border-border pt-4">
           <ManageBillingButton
             label={t("manageBilling")}
             pendingLabel={t("manageBillingPending")}
           />
         </div>
-      )}
+      ) : null}
     </Panel>
   );
 }

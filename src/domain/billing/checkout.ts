@@ -2,9 +2,18 @@ import { eq } from "drizzle-orm";
 
 import { createDb, type Db } from "@/db";
 import { profiles } from "@/db/schema";
-import { isOpenSubscriptionStatus } from "@/domain/billing/compute-profile-patch";
+import {
+  isBlockingCheckoutStatus,
+  isPaymentRecoveryStatus,
+} from "@/domain/billing/billing-flags";
 import { BillingError } from "@/domain/billing/errors";
 import { ensureStripeCustomer } from "@/domain/billing/ensure-customer";
+import { isPastDueStatus } from "@/domain/billing/plan-from-status";
+import { createBillingPortalSession } from "@/domain/billing/portal";
+import {
+  pickPreferredSubscription,
+  reconcileBillingFromStripe,
+} from "@/domain/billing/reconcile-billing";
 import { getStripeClient } from "@/lib/stripe/client";
 import {
   getSiteUrl,
@@ -16,14 +25,38 @@ export type CheckoutSessionResult = {
   url: string;
 };
 
+function subscriptionInProgressError(): BillingError {
+  return new BillingError(
+    "subscription_in_progress",
+    "A subscription is already in progress. Refresh this page or manage billing.",
+  );
+}
+
+function shouldRedirectToPortal(
+  status: string | null | undefined,
+): boolean {
+  return isPaymentRecoveryStatus(status) || isPastDueStatus(status);
+}
+
 /**
  * Create a Stripe Checkout Session for Pro monthly. Caller redirects to url.
+ * Incomplete/unpaid subscriptions redirect to the Customer Portal instead.
  */
 export async function createCheckoutSessionForPro(
   userId: string,
   deps: { db?: Db; email?: string | null } = {},
 ): Promise<CheckoutSessionResult> {
   const db = deps.db ?? createDb();
+
+  try {
+    await reconcileBillingFromStripe(userId, { db });
+  } catch (error) {
+    logger.warn(
+      { userId, ...errorFields(error) },
+      "billing.checkout_reconcile_err",
+    );
+  }
+
   const [row] = await db
     .select({
       plan: profiles.plan,
@@ -45,14 +78,15 @@ export async function createCheckoutSessionForPro(
     );
   }
 
+  if (shouldRedirectToPortal(row.stripeSubscriptionStatus)) {
+    return createBillingPortalSession(userId, { db });
+  }
+
   if (
     row.stripeSubscriptionId &&
-    isOpenSubscriptionStatus(row.stripeSubscriptionStatus)
+    isBlockingCheckoutStatus(row.stripeSubscriptionStatus)
   ) {
-    throw new BillingError(
-      "already_pro",
-      "A subscription is already in progress. Refresh this page or manage billing.",
-    );
+    throw subscriptionInProgressError();
   }
 
   const customerId = await ensureStripeCustomer(userId, {
@@ -68,14 +102,14 @@ export async function createCheckoutSessionForPro(
       status: "all",
       limit: 10,
     });
-    const open = existing.data.find((sub) =>
-      isOpenSubscriptionStatus(sub.status),
-    );
-    if (open) {
-      throw new BillingError(
-        "already_pro",
-        "A subscription is already in progress. Refresh this page or manage billing.",
-      );
+    const preferred = pickPreferredSubscription(existing.data);
+    if (preferred) {
+      if (isBlockingCheckoutStatus(preferred.status)) {
+        throw subscriptionInProgressError();
+      }
+      if (shouldRedirectToPortal(preferred.status)) {
+        return createBillingPortalSession(userId, { db });
+      }
     }
   } catch (error) {
     if (error instanceof BillingError) {

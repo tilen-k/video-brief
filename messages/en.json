@@ -122,6 +122,9 @@
     "upgradePending": "Starting checkout…",
     "manageBilling": "Manage billing",
     "manageBillingPending": "Opening portal…",
+    "completePayment": "Complete payment",
+    "completePaymentPending": "Opening billing…",
+    "billingIncomplete": "Your Pro upgrade needs a payment method. Complete payment to unlock Pro.",
     "checkoutSuccess": "Thanks — Pro unlocks once payment confirms (usually a few seconds).",
     "checkoutCanceled": "Checkout canceled. You can upgrade anytime.",
     "billingPastDue": "Payment is past due. Pro stays active while we retry; update your card in Manage billing."

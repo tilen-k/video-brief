@@ -57,3 +57,23 @@ export function ManageBillingButton({
     </form>
   );
 }
+
+export function CompletePaymentButton({
+  label,
+  pendingLabel,
+}: PortalButtonProps) {
+  const [state, action, pending] = useActionState(openBillingPortal, initial);
+
+  return (
+    <form action={action} className="space-y-2">
+      <Button type="submit" disabled={pending}>
+        {pending ? pendingLabel : label}
+      </Button>
+      {state.error ? (
+        <p className="text-sm text-destructive" role="alert">
+          {state.error}
+        </p>
+      ) : null}
+    </form>
+  );
+}

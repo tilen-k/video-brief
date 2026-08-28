@@ -9,6 +9,7 @@ import {
   type SubscriptionSyncInput,
 } from "@/domain/billing/compute-profile-patch";
 import { BillingError } from "@/domain/billing/errors";
+import { pickPreferredSubscription } from "@/domain/billing/reconcile-billing";
 import { getStripeClient } from "@/lib/stripe/client";
 import { errorFields, logger } from "@/lib/logger";
 
@@ -299,12 +300,12 @@ export async function handleSubscriptionDeleted(
   );
 
   if (remaining.length > 0) {
-    const preferred =
-      remaining.find((s) => s.status === "active" || s.status === "past_due") ??
-      remaining[0];
-    return applySubscriptionToProfile(subscriptionSyncFromStripe(preferred), {
-      db,
-    });
+    const preferred = pickPreferredSubscription(remaining);
+    if (preferred) {
+      return applySubscriptionToProfile(subscriptionSyncFromStripe(preferred), {
+        db,
+      });
+    }
   }
 
   return applySubscriptionToProfile(
