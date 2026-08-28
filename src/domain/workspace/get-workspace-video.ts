@@ -1,5 +1,6 @@
 import { and, eq, isNull } from "drizzle-orm";
 
+import { sortSectionsByStartTime } from "@/domain/analysis/clamp-section-times";
 import { createDb, type Db } from "@/db";
 import {
   personalizedAnalyses,
@@ -87,6 +88,6 @@ export async function getWorkspaceVideo(
     summaryTone: row.summaryTone ?? 50,
     summary: row.summary ?? null,
     runId: row.runId ?? "00000000-0000-0000-0000-000000000000",
-    sections: asSections(row.sections),
+    sections: sortSectionsByStartTime(asSections(row.sections)),
   };
 }

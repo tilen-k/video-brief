@@ -112,12 +112,9 @@ export function LibraryComposer({
       <div className="flex flex-col gap-4">
         <Panel>
           <div className="flex flex-col gap-5">
-            <div className="space-y-1">
-              <h2 className="font-heading text-base tracking-tight">
-                {t("addTitle")}
-              </h2>
-              <p className="text-sm text-muted-foreground">{t("pasteHint")}</p>
-            </div>
+            <h2 className="font-heading text-base tracking-tight">
+              {t("addTitle")}
+            </h2>
             <AddVideoForm
               key={pasteFormKey}
               onPreview={handlePreview}

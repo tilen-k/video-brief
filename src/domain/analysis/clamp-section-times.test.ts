@@ -29,4 +29,19 @@ describe("clampSectionTimes", () => {
       ),
     ).toEqual([{ title: "A", startTime: 0, endTime: 120, body: "x" }]);
   });
+
+  it("sorts sections chronologically before extending the final end time", () => {
+    expect(
+      clampSectionTimes(
+        [
+          { title: "Late", startTime: 1842, endTime: 2000, body: "late" },
+          { title: "Early", startTime: 335, endTime: 400, body: "early" },
+        ],
+        2000,
+      ),
+    ).toEqual([
+      { title: "Early", startTime: 335, endTime: 400, body: "early" },
+      { title: "Late", startTime: 1842, endTime: 2000, body: "late" },
+    ]);
+  });
 });

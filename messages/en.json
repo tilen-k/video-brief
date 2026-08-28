@@ -45,14 +45,12 @@
     "addTitle": "Add a video",
     "pasteLabel": "YouTube URL",
     "pastePlaceholder": "Paste a YouTube link…",
-    "pasteHint": "Paste a link and continue to load metadata — Generate starts analysis. Captions are fetched automatically.",
     "configureTitle": "Configure summary",
     "continue": "Continue",
     "previewing": "Loading video…",
     "previewErrorTitle": "Couldn't preview video",
     "generate": "Generate",
     "generating": "Starting…",
-    "generateHint": "Generate counts toward your monthly limit.",
     "generateErrorTitle": "Couldn't generate",
     "clearPreview": "Cancel",
     "tooLongTitle": "Video too long",
@@ -83,6 +81,7 @@
     "modelBasic": "Basic",
     "modelAdvanced": "Advanced",
     "modelAdvancedHint": "Stronger summaries — Pro only",
+    "modelAdvancedUnavailableHint": "Advanced model is temporarily unavailable.",
     "modelUpgradeHint": "Upgrade to Pro for Advanced",
     "modelUpgradeAccount": "Account",
     "modelTierBasic": "Basic model",
@@ -127,7 +126,8 @@
     "billingIncomplete": "Your Pro upgrade needs a payment method. Complete payment to unlock Pro.",
     "checkoutSuccess": "Thanks — Pro unlocks once payment confirms (usually a few seconds).",
     "checkoutCanceled": "Checkout canceled. You can upgrade anytime.",
-    "billingPastDue": "Payment is past due. Pro stays active while we retry; update your card in Manage billing."
+    "billingPastDue": "Payment is past due. Pro stays active while we retry; update your card in Manage billing.",
+    "demoModeDisclaimer": "Demo mode is enabled: use card number \"4242 4242 4242 4242\" and any expiration date/CVC to enable Pro plan for free."
   },
   "AnalysisStatus": {
     "fetching": "Loading captions",

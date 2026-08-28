@@ -1,5 +1,13 @@
 import type { GeneratedSection } from "@/db/schema";
 
+export function sortSectionsByStartTime(
+  sections: GeneratedSection[],
+): GeneratedSection[] {
+  return [...sections].sort(
+    (a, b) => a.startTime - b.startTime || a.endTime - b.endTime,
+  );
+}
+
 export function clampSectionTimes(
   sections: GeneratedSection[],
   durationSeconds: number | null,
@@ -9,11 +17,13 @@ export function clampSectionTimes(
       ? durationSeconds
       : Number.POSITIVE_INFINITY;
 
-  const clamped = sections.map((section) => {
-    const startTime = Math.min(Math.max(0, section.startTime), max);
-    const endTime = Math.min(Math.max(startTime, section.endTime), max);
-    return { ...section, startTime, endTime };
-  });
+  const clamped = sortSectionsByStartTime(
+    sections.map((section) => {
+      const startTime = Math.min(Math.max(0, section.startTime), max);
+      const endTime = Math.min(Math.max(startTime, section.endTime), max);
+      return { ...section, startTime, endTime };
+    }),
+  );
 
   if (
     durationSeconds != null &&

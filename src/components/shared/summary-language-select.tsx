@@ -1,6 +1,6 @@
 "use client";
 
-import { SUMMARY_LANGUAGES } from "@/domain/i18n/summary-languages";
+import { SUMMARY_LANGUAGES_FOR_SELECT } from "@/domain/i18n/summary-languages";
 import { Label } from "@/components/ui/label";
 import {
   NativeSelect,
@@ -34,7 +34,7 @@ export function SummaryLanguageSelect({
         disabled={disabled}
         className="w-full"
       >
-        {SUMMARY_LANGUAGES.map((entry) => (
+        {SUMMARY_LANGUAGES_FOR_SELECT.map((entry) => (
           <NativeSelectOption key={entry.code} value={entry.code}>
             {entry.name}
           </NativeSelectOption>
