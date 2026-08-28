@@ -109,7 +109,7 @@ export function shouldRetryTranscriptFetch(
   }
   if (
     error instanceof TranscriptProviderError &&
-    error.code === "missing_english_captions"
+    error.code === "missing_captions"
   ) {
     return false;
   }

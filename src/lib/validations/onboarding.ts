@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { optionalSummaryLanguageSchema } from "@/lib/validations/summary-language";
+
 const emptyToUndefined = (value: unknown) => {
   if (value === "" || value === null || value === undefined) {
     return undefined;
@@ -18,6 +20,7 @@ const prefScoreSchema = z.preprocess((value) => {
 export const onboardingInputSchema = z.object({
   summaryTone: prefScoreSchema,
   summaryLength: prefScoreSchema,
+  defaultSummaryLanguage: optionalSummaryLanguageSchema,
 });
 
 export type OnboardingInput = z.infer<typeof onboardingInputSchema>;

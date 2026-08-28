@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { getTranslations } from "next-intl/server";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { LibraryComposer } from "@/components/library/library-composer";
@@ -12,6 +13,7 @@ import {
   DEFAULT_TONE_SCORE,
 } from "@/domain/analysis/prefs";
 import { isAdvancedModelEnabled } from "@/domain/analysis/model-tier";
+import { DEFAULT_SUMMARY_LANGUAGE } from "@/domain/i18n/summary-languages";
 import { listLibraryForUser } from "@/domain/ingest/ingest-youtube-video";
 import { getPlanForUser } from "@/domain/usage/plan";
 import { createClient } from "@/lib/supabase/server";
@@ -33,9 +35,10 @@ export default async function HomePage() {
   }
 
   const isGuest = isGuestUser(user);
+  const acceptLanguage = (await headers()).get("accept-language");
   const [items, profile, plan] = await Promise.all([
     listLibraryForUser(user.id),
-    getUserProfile(user.id),
+    getUserProfile(user.id, { acceptLanguage }),
     getPlanForUser(user.id),
   ]);
 
@@ -51,6 +54,9 @@ export default async function HomePage() {
         initialItems={items}
         defaultLength={profile?.summaryLength ?? DEFAULT_LENGTH_SCORE}
         defaultTone={profile?.summaryTone ?? DEFAULT_TONE_SCORE}
+        defaultSummaryLanguage={
+          profile?.defaultSummaryLanguage ?? DEFAULT_SUMMARY_LANGUAGE
+        }
         plan={plan}
         advancedModelEnabled={isAdvancedModelEnabled()}
       />

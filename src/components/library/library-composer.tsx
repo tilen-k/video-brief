@@ -28,6 +28,7 @@ type LibraryComposerProps = {
   initialItems: LibraryListItem[];
   defaultLength: number;
   defaultTone: number;
+  defaultSummaryLanguage: string;
   plan: PlanId;
   advancedModelEnabled: boolean;
 };
@@ -36,6 +37,7 @@ export function LibraryComposer({
   initialItems,
   defaultLength,
   defaultTone,
+  defaultSummaryLanguage,
   plan,
   advancedModelEnabled,
 }: LibraryComposerProps) {
@@ -53,36 +55,41 @@ export function LibraryComposer({
         defaults: {
           summaryLength: defaultLength,
           summaryTone: defaultTone,
+          summaryLanguage: defaultSummaryLanguage,
           familiarity: preview.showFamiliarity ? 50 : null,
           modelTier: defaultModelTierForPlan(plan),
         },
       });
     },
-    [defaultLength, defaultTone, plan],
+    [defaultLength, defaultTone, defaultSummaryLanguage, plan],
   );
 
-  const handleRefresh = useCallback((item: LibraryListItem) => {
-    const showFamiliarity = showFamiliaritySlider(item.youtubeCategoryId);
-    setConfigure({
-      source: "refresh",
-      preview: {
-        youtubeId: item.youtubeId,
-        title: item.title,
-        channelTitle: item.channelTitle,
-        thumbnailUrl: item.thumbnailUrl,
-        durationSeconds: item.durationSeconds,
-        youtubeCategoryId: item.youtubeCategoryId,
-        showFamiliarity,
-      },
-      defaults: {
-        summaryLength: item.summaryLength,
-        summaryTone: item.summaryTone,
-        familiarity: showFamiliarity ? (item.familiarity ?? 50) : null,
-        modelTier: resolveModelTier(plan, item.modelTier),
-      },
-    });
-    composerRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-  }, []);
+  const handleRefresh = useCallback(
+    (item: LibraryListItem) => {
+      const showFamiliarity = showFamiliaritySlider(item.youtubeCategoryId);
+      setConfigure({
+        source: "refresh",
+        preview: {
+          youtubeId: item.youtubeId,
+          title: item.title,
+          channelTitle: item.channelTitle,
+          thumbnailUrl: item.thumbnailUrl,
+          durationSeconds: item.durationSeconds,
+          youtubeCategoryId: item.youtubeCategoryId,
+          showFamiliarity,
+        },
+        defaults: {
+          summaryLength: item.summaryLength,
+          summaryTone: item.summaryTone,
+          summaryLanguage: item.summaryLanguage,
+          familiarity: showFamiliarity ? (item.familiarity ?? 50) : null,
+          modelTier: resolveModelTier(plan, item.modelTier),
+        },
+      });
+      composerRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    },
+    [plan],
+  );
 
   const clearConfigure = useCallback(() => {
     setConfigure(null);

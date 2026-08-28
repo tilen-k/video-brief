@@ -12,6 +12,7 @@ import {
   type GenerateVideoActionState,
 } from "@/lib/actions/library";
 import type { ModelTier, PlanId } from "@/db/schema";
+import { SummaryLanguageSelect } from "@/components/shared/summary-language-select";
 import { LoadingDots } from "@/components/shared/status/loading-dots";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -32,6 +33,7 @@ export type VideoConfigurationPreview = {
 export type VideoConfigurationDefaults = {
   summaryLength: number;
   summaryTone: number;
+  summaryLanguage: string;
   familiarity: number | null;
   modelTier: ModelTier;
 };
@@ -195,7 +197,7 @@ export function VideoConfiguration({
 
   return (
     <form
-      key={`${preview.youtubeId}-${defaults.summaryLength}-${defaults.summaryTone}-${defaults.familiarity ?? "none"}-${defaults.modelTier}`}
+      key={`${preview.youtubeId}-${defaults.summaryLength}-${defaults.summaryTone}-${defaults.summaryLanguage}-${defaults.familiarity ?? "none"}-${defaults.modelTier}`}
       action={generateAction}
       className="flex w-full flex-col gap-8"
     >
@@ -243,6 +245,14 @@ export function VideoConfiguration({
         </div>
 
         <div className="grid gap-6 sm:grid-cols-2">
+          <SummaryLanguageSelect
+            id="summaryLanguage"
+            name="summaryLanguage"
+            label={t("summaryLanguageLabel")}
+            defaultValue={defaults.summaryLanguage}
+            disabled={isBusy || blocked}
+            className="sm:col-span-2"
+          />
           <PrefSlider
             id="summaryLength"
             name="summaryLength"

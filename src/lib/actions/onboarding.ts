@@ -15,6 +15,7 @@ function formToOnboardingInput(formData: FormData) {
   return onboardingInputSchema.safeParse({
     summaryTone: formData.get("summaryTone") ?? undefined,
     summaryLength: formData.get("summaryLength") ?? undefined,
+    defaultSummaryLanguage: formData.get("defaultSummaryLanguage") ?? undefined,
   });
 }
 

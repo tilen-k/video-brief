@@ -59,7 +59,6 @@ function stubPlayerInfo(overrides?: {
           author: "Channel",
           thumbnail: [],
           duration: 12,
-          // Only WEB returns PlayerMicroformat.category.
           category: isCaptionClient
             ? null
             : (overrides?.category ?? "Education"),
@@ -97,8 +96,9 @@ describe("YoutubeiTranscriptProvider", () => {
     stubPlayerInfo();
     shimFetch.mockResolvedValue(new Response(json3, { status: 200 }));
 
-    const result = await new YoutubeiTranscriptProvider().getEnglishTranscript(
+    const result = await new YoutubeiTranscriptProvider().getTranscript(
       "dQw4w9WgXcQ",
+      { preferredLanguage: "en" },
     );
 
     expect(innertubeCreate).toHaveBeenCalledOnce();
@@ -115,12 +115,38 @@ describe("YoutubeiTranscriptProvider", () => {
     ]);
   });
 
+  it("prefers the requested language when available", async () => {
+    stubPlayerInfo({
+      tracks: [
+        {
+          language_code: "en",
+          base_url: "https://www.youtube.com/api/timedtext?v=en",
+        },
+        {
+          language_code: "de",
+          base_url: "https://www.youtube.com/api/timedtext?v=de",
+        },
+      ],
+    });
+    shimFetch.mockResolvedValue(new Response(json3, { status: 200 }));
+
+    const result = await new YoutubeiTranscriptProvider().getTranscript(
+      "dQw4w9WgXcQ",
+      { preferredLanguage: "de" },
+    );
+
+    expect(result.language).toBe("de");
+    expect(String(shimFetch.mock.calls[0]?.[0])).toContain("v=de");
+  });
+
   it("attaches a proxy dispatcher to caption fetch when configured", async () => {
     vi.stubEnv("YOUTUBE_PROXY_URL", "http://myuser:s3cret@p.webshare.io:80");
     stubPlayerInfo();
     undiciFetchMock.mockResolvedValue(new Response(json3, { status: 200 }));
 
-    await new YoutubeiTranscriptProvider().getEnglishTranscript("dQw4w9WgXcQ");
+    await new YoutubeiTranscriptProvider().getTranscript("dQw4w9WgXcQ", {
+      preferredLanguage: "en",
+    });
 
     expect(shimFetch).not.toHaveBeenCalled();
     expect(undiciFetchMock).toHaveBeenCalledOnce();
@@ -134,15 +160,17 @@ describe("YoutubeiTranscriptProvider", () => {
     expect(typeof createArg.fetch).toBe("function");
   });
 
-  it("does not retry missing English captions", async () => {
+  it("does not retry missing captions", async () => {
     vi.stubEnv("YOUTUBE_PROXY_URL", "http://myuser:s3cret@p.webshare.io:80");
     stubPlayerInfo({ tracks: [] });
 
     await expect(
-      new YoutubeiTranscriptProvider().getEnglishTranscript("dQw4w9WgXcQ"),
+      new YoutubeiTranscriptProvider().getTranscript("dQw4w9WgXcQ", {
+        preferredLanguage: "en",
+      }),
     ).rejects.toMatchObject({
       name: "TranscriptProviderError",
-      code: "missing_english_captions",
+      code: "missing_captions",
       metadata: expect.objectContaining({ youtubeCategoryId: "Education" }),
     });
 
@@ -154,8 +182,9 @@ describe("YoutubeiTranscriptProvider", () => {
     stubPlayerInfo({ webFails: true });
     shimFetch.mockResolvedValue(new Response(json3, { status: 200 }));
 
-    const result = await new YoutubeiTranscriptProvider().getEnglishTranscript(
+    const result = await new YoutubeiTranscriptProvider().getTranscript(
       "dQw4w9WgXcQ",
+      { preferredLanguage: "en" },
     );
 
     expect(result.metadata).toEqual({
@@ -165,6 +194,7 @@ describe("YoutubeiTranscriptProvider", () => {
       thumbnailUrl: null,
       durationSeconds: 12,
       youtubeCategoryId: null,
+      primaryLanguage: "en",
     });
     expect(result.segments).toHaveLength(1);
   });
@@ -178,8 +208,9 @@ describe("YoutubeiTranscriptProvider", () => {
       .mockResolvedValueOnce({ getBasicInfo });
     undiciFetchMock.mockResolvedValue(new Response(json3, { status: 200 }));
 
-    const result = await new YoutubeiTranscriptProvider().getEnglishTranscript(
+    const result = await new YoutubeiTranscriptProvider().getTranscript(
       "dQw4w9WgXcQ",
+      { preferredLanguage: "en" },
     );
 
     expect(innertubeCreate).toHaveBeenCalledTimes(2);
@@ -191,7 +222,9 @@ describe("YoutubeiTranscriptProvider", () => {
     innertubeCreate.mockRejectedValue(new Error("boom"));
 
     await expect(
-      new YoutubeiTranscriptProvider().getEnglishTranscript("dQw4w9WgXcQ"),
+      new YoutubeiTranscriptProvider().getTranscript("dQw4w9WgXcQ", {
+        preferredLanguage: "en",
+      }),
     ).rejects.toBeInstanceOf(TranscriptProviderError);
   });
 
@@ -210,6 +243,7 @@ describe("YoutubeiTranscriptProvider", () => {
       thumbnailUrl: null,
       durationSeconds: 12,
       youtubeCategoryId: "Science & Technology",
+      primaryLanguage: null,
     });
     expect(shimFetch).not.toHaveBeenCalled();
     expect(undiciFetchMock).not.toHaveBeenCalled();

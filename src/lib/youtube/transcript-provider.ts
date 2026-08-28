@@ -7,16 +7,21 @@ export type VideoMetadata = {
   thumbnailUrl: string | null;
   durationSeconds: number | null;
   youtubeCategoryId: string | null;
+  primaryLanguage: string | null;
 };
 
-export type EnglishTranscriptResult = {
+export type TranscriptResult = {
   metadata: VideoMetadata;
-  language: "en";
+  language: string;
   segments: TranscriptSegment[];
 };
 
+export type GetTranscriptOptions = {
+  preferredLanguage: string;
+};
+
 export type TranscriptProviderErrorCode =
-  | "missing_english_captions"
+  | "missing_captions"
   | "provider_error";
 
 export class TranscriptProviderError extends Error {
@@ -38,11 +43,14 @@ export class TranscriptProviderError extends Error {
 }
 
 /**
- * Swappable YouTube metadata + English transcript source.
+ * Swappable YouTube metadata + transcript source.
  * Callers must not import a concrete transport (youtubei, etc.).
  */
 export interface TranscriptProvider {
   /** Metadata only — no captions. Used for library Preview. */
   getVideoMetadata(youtubeId: string): Promise<VideoMetadata>;
-  getEnglishTranscript(youtubeId: string): Promise<EnglishTranscriptResult>;
+  getTranscript(
+    youtubeId: string,
+    options: GetTranscriptOptions,
+  ): Promise<TranscriptResult>;
 }

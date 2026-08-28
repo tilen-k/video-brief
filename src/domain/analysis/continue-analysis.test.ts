@@ -42,6 +42,7 @@ const generatingRow = {
   durationSeconds: 120,
   youtubeCategoryId: "27",
   transcriptSegments: [{ startMs: 0, text: "Hello" }],
+  transcriptLanguage: "en",
   analysisId: "an-1",
   status: "generating" as const,
   errorCode: null,
@@ -51,6 +52,7 @@ const generatingRow = {
   summaryLength: 50,
   summaryTone: 50,
   modelTier: "basic" as const,
+  summaryLanguage: "de",
   runId: RUN_ID,
 };
 
@@ -221,6 +223,8 @@ describe("continueAnalysis", () => {
     expect(ai.generateSections).toHaveBeenCalledTimes(1);
     expect(ai.generateSections).toHaveBeenCalledWith(
       expect.objectContaining({
+        outputLanguage: "de",
+        transcriptLanguage: "en",
         prefs: expect.objectContaining({
           familiarity: 50,
           summaryLength: 50,

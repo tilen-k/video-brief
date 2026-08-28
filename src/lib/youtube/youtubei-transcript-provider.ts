@@ -1,16 +1,22 @@
 import type { TranscriptSegment } from "@/db/schema";
-import {
-  TranscriptProviderError,
-  type EnglishTranscriptResult,
-  type TranscriptProvider,
-  type VideoMetadata,
-} from "@/lib/youtube/transcript-provider";
+import { normalizeLanguageCode } from "@/domain/i18n/summary-language";
 import { parseCaptionJson3 } from "@/lib/youtube/parse-caption-json3";
+import {
+  inferPrimaryCaptionLanguage,
+  pickCaptionTrack,
+} from "@/lib/youtube/pick-caption-track";
 import {
   createYoutubeFetch,
   shouldRetryTranscriptFetch,
   type YoutubeFetchSession,
 } from "@/lib/youtube/proxied-fetch";
+import {
+  TranscriptProviderError,
+  type GetTranscriptOptions,
+  type TranscriptProvider,
+  type TranscriptResult,
+  type VideoMetadata,
+} from "@/lib/youtube/transcript-provider";
 import { getYoutubeProxyConfig } from "@/lib/youtube/youtube-proxy-url";
 
 /**
@@ -25,11 +31,8 @@ const CAPTION_CLIENT = "IOS" as const;
 const CAPTION_USER_AGENT =
   "com.google.ios.youtube/20.10.38 (iPhone16,2; iOS 18.3; en_US)";
 
-type CaptionTrack = {
-  base_url?: string;
-  language_code?: string;
-  kind?: string;
-};
+const MISSING_CAPTIONS_MESSAGE =
+  "This video has no captions in your chosen language or the video's original language.";
 
 type YoutubeiModule = typeof import("youtubei.js");
 type InnertubeInstance = Awaited<
@@ -47,28 +50,6 @@ function pickThumbnail(
   return thumbnails[thumbnails.length - 1]?.url ?? thumbnails[0]?.url ?? null;
 }
 
-function isEnglishLabel(value: string | undefined): boolean {
-  if (!value) {
-    return false;
-  }
-  const normalized = value.toLowerCase().replaceAll("_", "-");
-  return (
-    normalized === "en" ||
-    normalized.startsWith("en-") ||
-    normalized.includes("english")
-  );
-}
-
-function pickEnglishCaptionTrack(
-  tracks: CaptionTrack[],
-): CaptionTrack | undefined {
-  return (
-    tracks.find(
-      (track) => isEnglishLabel(track.language_code) && track.kind !== "asr",
-    ) ?? tracks.find((track) => isEnglishLabel(track.language_code))
-  );
-}
-
 function captionTrackUrl(baseUrl: string): string {
   const withoutFmt = baseUrl.replace(/&fmt=[^&]+/, "");
   return `${withoutFmt}&fmt=json3`;
@@ -77,6 +58,7 @@ function captionTrackUrl(baseUrl: string): string {
 function mapBasicInfoToMetadata(
   youtubeId: string,
   basic: BasicInfoFields,
+  primaryLanguage: string | null = null,
 ): VideoMetadata | null {
   const title = basic.title?.toString()?.trim();
   if (!title) {
@@ -90,16 +72,17 @@ function mapBasicInfoToMetadata(
     thumbnailUrl: pickThumbnail(basic.thumbnail),
     durationSeconds:
       typeof basic.duration === "number" ? basic.duration : null,
-    // English label from PlayerMicroformat (e.g. "Education"), not Data API id.
     youtubeCategoryId: basic.category ?? null,
+    primaryLanguage,
   };
 }
 
 function requireMetadata(
   youtubeId: string,
   basic: BasicInfoFields,
+  primaryLanguage: string | null = null,
 ): VideoMetadata {
-  const metadata = mapBasicInfoToMetadata(youtubeId, basic);
+  const metadata = mapBasicInfoToMetadata(youtubeId, basic, primaryLanguage);
   if (!metadata) {
     throw new TranscriptProviderError(
       "provider_error",
@@ -151,7 +134,7 @@ async function fetchVideoMetadataOnce(
   try {
     const yt = await createInnertube(youtubei, youtubeFetch);
     const info = await yt.getBasicInfo(youtubeId, { client: METADATA_CLIENT });
-    return requireMetadata(youtubeId, info.basic_info);
+    return requireMetadata(youtubeId, info.basic_info, null);
   } catch (error) {
     if (error instanceof TranscriptProviderError) {
       throw error;
@@ -164,17 +147,17 @@ async function fetchVideoMetadataOnce(
   }
 }
 
-async function fetchEnglishTranscriptOnce(
+async function fetchTranscriptOnce(
   youtubeId: string,
+  options: GetTranscriptOptions,
   youtubei: YoutubeiModule,
   youtubeFetch: YoutubeFetchSession,
-): Promise<EnglishTranscriptResult> {
+): Promise<TranscriptResult> {
   let metadata: VideoMetadata | undefined;
 
   try {
     const yt = await createInnertube(youtubei, youtubeFetch);
 
-    // WEB for category + display metadata; IOS for signed caption track URLs.
     const [webResult, iosResult] = await Promise.allSettled([
       yt.getBasicInfo(youtubeId, { client: METADATA_CLIENT }),
       yt.getBasicInfo(youtubeId, { client: CAPTION_CLIENT }),
@@ -185,32 +168,47 @@ async function fetchEnglishTranscriptOnce(
     }
 
     const iosInfo = iosResult.value;
+    const tracks = iosInfo.captions?.caption_tracks ?? [];
+    const primaryLanguage = inferPrimaryCaptionLanguage(iosInfo.captions);
     const webMetadata =
       webResult.status === "fulfilled"
-        ? mapBasicInfoToMetadata(youtubeId, webResult.value.basic_info)
+        ? mapBasicInfoToMetadata(
+            youtubeId,
+            webResult.value.basic_info,
+            primaryLanguage,
+          )
         : null;
     metadata =
-      webMetadata ?? requireMetadata(youtubeId, iosInfo.basic_info);
+      webMetadata ?? requireMetadata(youtubeId, iosInfo.basic_info, primaryLanguage);
 
-    const englishTrack = pickEnglishCaptionTrack(
-      iosInfo.captions?.caption_tracks ?? [],
+    const selectedTrack = pickCaptionTrack(
+      tracks,
+      options.preferredLanguage,
+      primaryLanguage,
     );
-    if (!englishTrack?.base_url) {
+    if (!selectedTrack?.base_url) {
       throw new TranscriptProviderError(
-        "missing_english_captions",
-        "This video has no English captions",
+        "missing_captions",
+        MISSING_CAPTIONS_MESSAGE,
         { metadata },
       );
     }
 
     const segments = await fetchCaptionSegments(
-      englishTrack.base_url,
+      selectedTrack.base_url,
       youtubeFetch.fetch,
     );
 
+    const language =
+      normalizeLanguageCode(selectedTrack.language_code) ??
+      options.preferredLanguage;
+
     return {
-      metadata,
-      language: "en",
+      metadata: {
+        ...metadata,
+        primaryLanguage,
+      },
+      language,
       segments,
     };
   } catch (error) {
@@ -267,7 +265,6 @@ async function withYoutubeSession<T>(
 /**
  * Default TranscriptProvider backed by youtubei.js (Innertube).
  * Dual client: WEB for metadata/category; IOS for caption tracks + timedtext json3.
- * English captions only — missing EN → missing_english_captions.
  * Optional YOUTUBE_PROXY_URL: same proxied fetch for Innertube + captions, one sticky session.
  */
 export class YoutubeiTranscriptProvider implements TranscriptProvider {
@@ -279,12 +276,13 @@ export class YoutubeiTranscriptProvider implements TranscriptProvider {
     );
   }
 
-  async getEnglishTranscript(
+  async getTranscript(
     youtubeId: string,
-  ): Promise<EnglishTranscriptResult> {
+    options: GetTranscriptOptions,
+  ): Promise<TranscriptResult> {
     return withYoutubeSession(
       (youtubei, youtubeFetch) =>
-        fetchEnglishTranscriptOnce(youtubeId, youtubei, youtubeFetch),
+        fetchTranscriptOnce(youtubeId, options, youtubei, youtubeFetch),
       "Could not fetch the video transcript from YouTube",
     );
   }

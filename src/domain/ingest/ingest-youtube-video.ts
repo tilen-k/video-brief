@@ -20,6 +20,7 @@ import {
   refundMonthlyGenerateSlot,
 } from "@/domain/usage";
 import { UsageError } from "@/domain/usage/errors";
+import { resolveSummaryLanguage } from "@/domain/i18n/summary-language";
 import { errorFields, logger } from "@/lib/logger";
 import { getDefaultTranscriptProvider } from "@/lib/youtube/youtubei-transcript-provider";
 
@@ -48,6 +49,7 @@ export type IngestYoutubeVideoInput = {
   summaryLength: number;
   summaryTone: number;
   modelTier: ModelTier;
+  summaryLanguage: string;
   /** Redis key from consumeMonthlyGenerateSlot — persisted for refunds. */
   usageQuotaKey?: string | null;
   /** Optional preview metadata so the library/workspace is not a raw youtubeId stub. */
@@ -242,11 +244,13 @@ export async function startYoutubeIngest(
     summaryLength,
     summaryTone,
     modelTier: requestedModelTier,
+    summaryLanguage,
     usageQuotaKey = null,
     metadata,
   } = input;
   const plan = await getPlan(userId, { db });
   const modelTier = resolveModelTier(plan, requestedModelTier);
+  const resolvedSummaryLanguage = resolveSummaryLanguage(summaryLanguage);
   const runId = crypto.randomUUID();
   const title = metadata?.title?.trim() || youtubeId;
   const channelTitle = metadata?.channelTitle ?? null;
@@ -312,6 +316,7 @@ export async function startYoutubeIngest(
         summaryLength,
         summaryTone,
         modelTier,
+        summaryLanguage: resolvedSummaryLanguage,
         runId,
         usageQuotaKey,
       })
@@ -327,6 +332,7 @@ export async function startYoutubeIngest(
           summaryLength,
           summaryTone,
           modelTier,
+          summaryLanguage: resolvedSummaryLanguage,
           runId,
           usageQuotaKey,
           updatedAt: new Date(),
@@ -406,7 +412,7 @@ export async function failAnalysisRun(
 }
 
 /**
- * Fetch metadata + English transcript and move pending/fetching → generating | failed.
+ * Fetch metadata + transcript and move pending/fetching → generating | failed.
  * Re-running Generate on the same URL always refetches and refreshes the row.
  */
 export async function fetchYoutubeVideo(
@@ -419,12 +425,26 @@ export async function fetchYoutubeVideo(
   const refundSlot = deps.refundSlot ?? refundMonthlyGenerateSlot;
   const { userId, youtubeId, userVideoId, runId } = input;
 
-  let fetchResult: Awaited<
-    ReturnType<TranscriptProvider["getEnglishTranscript"]>
-  >;
+  const [analysisRow] = await db
+    .select({ summaryLanguage: personalizedAnalyses.summaryLanguage })
+    .from(personalizedAnalyses)
+    .where(
+      and(
+        eq(personalizedAnalyses.userVideoId, userVideoId),
+        eq(personalizedAnalyses.userId, userId),
+        eq(personalizedAnalyses.runId, runId),
+      ),
+    )
+    .limit(1);
+
+  const preferredLanguage = analysisRow?.summaryLanguage ?? "en";
+
+  let fetchResult: Awaited<ReturnType<TranscriptProvider["getTranscript"]>>;
 
   try {
-    fetchResult = await provider.getEnglishTranscript(youtubeId);
+    fetchResult = await provider.getTranscript(youtubeId, {
+      preferredLanguage,
+    });
   } catch (error) {
     const providerError =
       error instanceof TranscriptProviderError
@@ -472,7 +492,7 @@ export async function fetchYoutubeVideo(
             youtubeCategoryId: providerError.metadata!.youtubeCategoryId,
           },
           [],
-          "en",
+          providerError.metadata?.primaryLanguage ?? preferredLanguage,
         );
 
         return {
@@ -659,6 +679,7 @@ export type LibraryListItem = {
   errorMessage: string | null;
   summaryLength: number;
   summaryTone: number;
+  summaryLanguage: string;
   familiarity: number | null;
   modelTier: ModelTier;
   addedAt: Date;
@@ -711,6 +732,7 @@ export async function listLibraryForUser(
       errorMessage: personalizedAnalyses.errorMessage,
       summaryLength: personalizedAnalyses.summaryLength,
       summaryTone: personalizedAnalyses.summaryTone,
+      summaryLanguage: personalizedAnalyses.summaryLanguage,
       familiarity: personalizedAnalyses.familiarity,
       modelTier: personalizedAnalyses.modelTier,
       addedAt: userVideos.createdAt,
@@ -736,6 +758,7 @@ export async function listLibraryForUser(
     errorMessage: row.errorMessage,
     summaryLength: row.summaryLength ?? 50,
     summaryTone: row.summaryTone ?? 50,
+    summaryLanguage: row.summaryLanguage ?? "en",
     familiarity: row.familiarity ?? null,
     modelTier: row.modelTier ?? "basic",
     addedAt: row.addedAt,

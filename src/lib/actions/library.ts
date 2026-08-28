@@ -1,12 +1,16 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
 import {
   DEFAULT_LENGTH_SCORE,
   DEFAULT_TONE_SCORE,
 } from "@/domain/analysis/prefs";
+import { getUserProfile } from "@/domain/analysis/get-user-profile";
+import { DEFAULT_SUMMARY_LANGUAGE } from "@/domain/i18n/summary-languages";
+import { resolveSummaryLanguage } from "@/domain/i18n/summary-language";
 import { needsOnboarding } from "@/domain/auth/needs-onboarding";
 import {
   listLibraryForUser,
@@ -147,6 +151,7 @@ export async function generateVideo(
     youtubeId: formData.get("youtubeId"),
     summaryLength: formData.get("summaryLength"),
     summaryTone: formData.get("summaryTone"),
+    summaryLanguage: formData.get("summaryLanguage"),
     familiarity: formData.get("familiarity"),
     modelTier: formData.get("modelTier"),
   });
@@ -227,6 +232,13 @@ export async function generateVideo(
     : null;
   const modelTier = resolveModelTier(plan, parsed.data.modelTier);
 
+  const acceptLanguage = (await headers()).get("accept-language");
+  const profile = await getUserProfile(user.id, { acceptLanguage });
+  const summaryLanguage = resolveSummaryLanguage(
+    parsed.data.summaryLanguage ?? profile?.defaultSummaryLanguage,
+    DEFAULT_SUMMARY_LANGUAGE,
+  );
+
   let result;
   try {
     result = await startYoutubeIngest({
@@ -235,6 +247,7 @@ export async function generateVideo(
       familiarity,
       summaryLength,
       summaryTone,
+      summaryLanguage,
       modelTier,
       usageQuotaKey: slot.redisKey,
       metadata: {

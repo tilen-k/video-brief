@@ -12,10 +12,11 @@ describe("previewYoutubeVideo", () => {
       thumbnailUrl: "https://i.ytimg.com/vi/dQw4w9WgXcQ/hqdefault.jpg",
       durationSeconds: 120,
       youtubeCategoryId: "27",
+      primaryLanguage: null,
     }));
     const provider = {
       getVideoMetadata,
-      getEnglishTranscript: vi.fn(),
+      getTranscript: vi.fn(),
     } as unknown as TranscriptProvider;
 
     const result = await previewYoutubeVideo("dQw4w9WgXcQ", {
@@ -36,8 +37,9 @@ describe("previewYoutubeVideo", () => {
         thumbnailUrl: null,
         durationSeconds: 200,
         youtubeCategoryId: "10",
+        primaryLanguage: null,
       })),
-      getEnglishTranscript: vi.fn(),
+      getTranscript: vi.fn(),
     } as unknown as TranscriptProvider;
 
     const result = await previewYoutubeVideo("dQw4w9WgXcQ", {

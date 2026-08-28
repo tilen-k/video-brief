@@ -7,37 +7,34 @@ import {
 } from "@/lib/ai/openrouter-ai-provider";
 import type { GenerateSectionsInput } from "@/lib/ai/provider";
 
-const base: GenerateSectionsInput = {
-  title: "Lecture",
+const baseInput: GenerateSectionsInput = {
+  title: "Sample",
   channelTitle: "Channel",
-  durationSeconds: 60,
-  transcriptSubset: "hello",
+  durationSeconds: 120,
+  transcriptSubset: "Hello world",
+  outputLanguage: "de",
+  transcriptLanguage: "en",
   prefs: {
-    familiarity: 20,
-    summaryLength: 80,
-    summaryTone: 30,
+    familiarity: 50,
+    summaryLength: 50,
+    summaryTone: 50,
   },
 };
 
 describe("buildGeneratePrompt", () => {
-  it("includes familiarity, length, and tone when familiarity is set", () => {
-    const prompt = buildGeneratePrompt(base);
-    expect(prompt).toContain("Familiarity with topic (0–100, Novice←→Expert): 20");
-    expect(prompt).toContain("Requested length (0–100, Short←→Long): 80");
-    expect(prompt).toContain("Requested tone (0–100, Formal←→Casual): 30");
+  it("includes output and transcript language lines", () => {
+    const prompt = buildGeneratePrompt(baseInput);
+    expect(prompt).toContain("Output language: German (de)");
+    expect(prompt).toContain("Transcript language: English (en)");
+    expect(prompt).toContain("translate while staying faithful");
   });
 
-  it("omits familiarity when null", () => {
+  it("omits translation note when languages match", () => {
     const prompt = buildGeneratePrompt({
-      ...base,
-      prefs: {
-        ...base.prefs,
-        familiarity: null,
-      },
+      ...baseInput,
+      transcriptLanguage: "de",
     });
-    expect(prompt).not.toContain("Familiarity with topic");
-    expect(prompt).toContain("Requested length (0–100, Short←→Long): 80");
-    expect(prompt).toContain("Requested tone (0–100, Formal←→Casual): 30");
+    expect(prompt).not.toContain("translate while staying faithful");
   });
 
   it("instructs synthesis instead of verbatim transcript quoting", () => {
@@ -49,13 +46,16 @@ describe("buildGeneratePrompt", () => {
     expect(summaryParagraphCount(20)).toBe(2);
     expect(summaryParagraphCount(55)).toBe(3);
     expect(summaryParagraphCount(90)).toBe(4);
-    expect(buildGeneratePrompt(base)).toContain(
+    expect(buildGeneratePrompt({
+      ...baseInput,
+      prefs: { ...baseInput.prefs, summaryLength: 90 },
+    })).toContain(
       "Write the summary as 4 short paragraphs",
     );
     expect(
       buildGeneratePrompt({
-        ...base,
-        prefs: { ...base.prefs, summaryLength: 30 },
+        ...baseInput,
+        prefs: { ...baseInput.prefs, summaryLength: 30 },
       }),
     ).toContain("Write the summary as 2 short paragraphs");
   });

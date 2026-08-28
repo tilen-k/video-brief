@@ -3,6 +3,8 @@ import { generateText, Output } from "ai";
 
 import { analysisConfig } from "@/domain/analysis/config";
 import { generateSectionsSchema } from "@/domain/analysis/schemas";
+import { getSummaryLanguageEnglishName } from "@/domain/i18n/summary-languages";
+import { languageCodesMatch } from "@/domain/i18n/summary-language";
 import { llmErrorFields, logger } from "@/lib/logger";
 
 import {
@@ -22,6 +24,8 @@ Write synthesized prose in complete sentences — summarize ideas, arguments, an
 Do not quote the transcript verbatim, reproduce dialogue line-by-line, or list who said what.
 For interviews, debates, or Q&A, explain the main positions and conclusions rather than repeating answers.
 Stay faithful to the transcript — do not invent facts that are not in the source.
+Write the summary and every section title and body in the requested output language.
+When the transcript language differs from the output language, translate faithfully while preserving meaning.
 Use the viewer's per-video prefs only to change depth, framing, formality, and length — not to add unrelated content.
 Return 1–${maxSections} sections that cover the video. Short videos may have a single section.`;
 
@@ -46,6 +50,16 @@ export function summaryParagraphGuidance(summaryLength: number): string {
 
 export function buildGeneratePrompt(input: GenerateSectionsInput): string {
   const { prefs } = input;
+  const outputLanguageName = getSummaryLanguageEnglishName(input.outputLanguage);
+  const transcriptLanguageName = getSummaryLanguageEnglishName(
+    input.transcriptLanguage,
+  );
+  const translationNote = languageCodesMatch(
+    input.transcriptLanguage,
+    input.outputLanguage,
+  )
+    ? null
+    : "The transcript is not in the output language — translate while staying faithful to the source.";
   const familiarityLine =
     prefs.familiarity != null
       ? `Familiarity with topic (0–100, Novice←→Expert): ${prefs.familiarity}`
@@ -54,7 +68,9 @@ export function buildGeneratePrompt(input: GenerateSectionsInput): string {
   return `Title: ${input.title}
 Channel: ${input.channelTitle ?? "unknown"}
 Duration: ${durationLabel(input.durationSeconds)}
-${familiarityLine ? `${familiarityLine}\n` : ""}Requested length (0–100, Short←→Long): ${prefs.summaryLength}
+Output language: ${outputLanguageName} (${input.outputLanguage})
+Transcript language: ${transcriptLanguageName} (${input.transcriptLanguage})
+${translationNote ? `${translationNote}\n` : ""}${familiarityLine ? `${familiarityLine}\n` : ""}Requested length (0–100, Short←→Long): ${prefs.summaryLength}
 Requested tone (0–100, Formal←→Casual): ${prefs.summaryTone}
 ${summaryParagraphGuidance(prefs.summaryLength)}
 
