@@ -46,13 +46,16 @@ describe("buildGeneratePrompt", () => {
     expect(summaryParagraphCount(20)).toBe(2);
     expect(summaryParagraphCount(55)).toBe(3);
     expect(summaryParagraphCount(90)).toBe(4);
-    expect(buildGeneratePrompt(base)).toContain(
+    expect(buildGeneratePrompt({
+      ...baseInput,
+      prefs: { ...baseInput.prefs, summaryLength: 90 },
+    })).toContain(
       "Write the summary as 4 short paragraphs",
     );
     expect(
       buildGeneratePrompt({
-        ...base,
-        prefs: { ...base.prefs, summaryLength: 30 },
+        ...baseInput,
+        prefs: { ...baseInput.prefs, summaryLength: 30 },
       }),
     ).toContain("Write the summary as 2 short paragraphs");
   });
