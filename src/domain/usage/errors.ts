@@ -14,7 +14,7 @@ export class UsageError extends Error {
 
 /** Error codes that refund a monthly paste slot (pre-LLM only). */
 export const REFUNDABLE_ERROR_CODES = [
-  "missing_english_captions",
+  "missing_captions",
   "too_long",
 ] as const;
 

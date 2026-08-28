@@ -3,6 +3,8 @@ import { generateText, Output } from "ai";
 
 import { analysisConfig } from "@/domain/analysis/config";
 import { generateSectionsSchema } from "@/domain/analysis/schemas";
+import { getSummaryLanguageEnglishName } from "@/domain/i18n/summary-languages";
+import { languageCodesMatch } from "@/domain/i18n/summary-language";
 import { llmErrorFields, logger } from "@/lib/logger";
 
 import {
@@ -18,6 +20,8 @@ Respond with a JSON object only: {"summary":"...","sections":[{"title":"...","st
 summary is a standalone overview the viewer can read instead of watching (about 1500–2000 characters).
 Each section needs a title, startTime and endTime in seconds, and a body for seek/highlight.
 Stay faithful to the transcript — do not invent facts that are not in the source.
+Write the summary and every section title and body in the requested output language.
+When the transcript language differs from the output language, translate faithfully while preserving meaning.
 Use the viewer's per-video prefs only to change depth, framing, formality, and length — not to add unrelated content.
 Return 1–${maxSections} sections that cover the video. Short videos may have a single section.`;
 
@@ -27,6 +31,16 @@ function durationLabel(seconds: number | null): string {
 
 export function buildGeneratePrompt(input: GenerateSectionsInput): string {
   const { prefs } = input;
+  const outputLanguageName = getSummaryLanguageEnglishName(input.outputLanguage);
+  const transcriptLanguageName = getSummaryLanguageEnglishName(
+    input.transcriptLanguage,
+  );
+  const translationNote = languageCodesMatch(
+    input.transcriptLanguage,
+    input.outputLanguage,
+  )
+    ? null
+    : "The transcript is not in the output language — translate while staying faithful to the source.";
   const familiarityLine =
     prefs.familiarity != null
       ? `Familiarity with topic (0–100, Novice←→Expert): ${prefs.familiarity}`
@@ -35,7 +49,9 @@ export function buildGeneratePrompt(input: GenerateSectionsInput): string {
   return `Title: ${input.title}
 Channel: ${input.channelTitle ?? "unknown"}
 Duration: ${durationLabel(input.durationSeconds)}
-${familiarityLine ? `${familiarityLine}\n` : ""}Requested length (0–100, Short←→Long): ${prefs.summaryLength}
+Output language: ${outputLanguageName} (${input.outputLanguage})
+Transcript language: ${transcriptLanguageName} (${input.transcriptLanguage})
+${translationNote ? `${translationNote}\n` : ""}${familiarityLine ? `${familiarityLine}\n` : ""}Requested length (0–100, Short←→Long): ${prefs.summaryLength}
 Requested tone (0–100, Formal←→Casual): ${prefs.summaryTone}
 
 Transcript:

@@ -5,6 +5,8 @@ export type GenerateSectionsInput = {
   channelTitle: string | null;
   durationSeconds: number | null;
   transcriptSubset: string;
+  outputLanguage: string;
+  transcriptLanguage: string;
   prefs: {
     summaryLength: number;
     summaryTone: number;

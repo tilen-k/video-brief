@@ -8,11 +8,11 @@ import {
   completeOnboarding,
   type OnboardingActionState,
 } from "@/lib/actions/onboarding";
+import { SummaryLanguageSelect } from "@/components/shared/summary-language-select";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
   Field,
-  FieldDescription,
   FieldGroup,
   FieldLabel,
 } from "@/components/ui/field";
@@ -60,7 +60,11 @@ function PrefSlider({
   );
 }
 
-export function OnboardingForm() {
+export function OnboardingForm({
+  defaultSummaryLanguage,
+}: {
+  defaultSummaryLanguage: string;
+}) {
   const t = useTranslations("Onboarding");
   const [state, action, pending] = useActionState(completeOnboarding, initial);
   useTopLoaderOnPending(pending);
@@ -74,6 +78,13 @@ export function OnboardingForm() {
 
       <form action={action} className="flex flex-col gap-6">
         <FieldGroup>
+          <SummaryLanguageSelect
+            id="defaultSummaryLanguage"
+            name="defaultSummaryLanguage"
+            label={t("summaryLanguageLabel")}
+            defaultValue={defaultSummaryLanguage}
+            disabled={pending}
+          />
           <PrefSlider
             id="summaryTone"
             name="summaryTone"

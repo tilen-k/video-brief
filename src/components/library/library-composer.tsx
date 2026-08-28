@@ -24,12 +24,14 @@ type LibraryComposerProps = {
   initialItems: LibraryListItem[];
   defaultLength: number;
   defaultTone: number;
+  defaultSummaryLanguage: string;
 };
 
 export function LibraryComposer({
   initialItems,
   defaultLength,
   defaultTone,
+  defaultSummaryLanguage,
 }: LibraryComposerProps) {
   const [configure, setConfigure] = useState<ConfigureState | null>(null);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -42,11 +44,12 @@ export function LibraryComposer({
         defaults: {
           summaryLength: defaultLength,
           summaryTone: defaultTone,
+          summaryLanguage: defaultSummaryLanguage,
           familiarity: preview.showFamiliarity ? 50 : null,
         },
       });
     },
-    [defaultLength, defaultTone],
+    [defaultLength, defaultTone, defaultSummaryLanguage],
   );
 
   const handleRefresh = useCallback((item: LibraryListItem) => {
@@ -65,6 +68,7 @@ export function LibraryComposer({
       defaults: {
         summaryLength: item.summaryLength,
         summaryTone: item.summaryTone,
+        summaryLanguage: item.summaryLanguage,
         familiarity: showFamiliarity ? (item.familiarity ?? 50) : null,
       },
     });

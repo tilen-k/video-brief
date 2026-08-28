@@ -46,6 +46,8 @@ export const profiles = pgTable(
     onboardingCompleted: boolean("onboarding_completed").notNull().default(false),
     summaryTone: integer("summary_tone").notNull().default(50),
     summaryLength: integer("summary_length").notNull().default(50),
+    /** ISO 639-1 output language for summaries; null until lazy-seeded for guests. */
+    defaultSummaryLanguage: text("default_summary_language"),
     plan: text("plan").$type<PlanId>().notNull().default("free"),
     stripeCustomerId: text("stripe_customer_id"),
     stripeSubscriptionId: text("stripe_subscription_id"),
@@ -67,7 +69,7 @@ export const profiles = pgTable(
 );
 
 /**
- * Per-user library entry: metadata + English transcript snapshot.
+ * Per-user library entry: metadata + transcript snapshot.
  * Re-running Generate on the same URL refreshes the **active** row (no shared cache).
  * Soft-deleted rows keep history; re-add after delete inserts a new row.
  */
@@ -124,6 +126,8 @@ export const personalizedAnalyses = pgTable(
     familiarity: integer("familiarity"),
     summaryLength: integer("summary_length").notNull().default(50),
     summaryTone: integer("summary_tone").notNull().default(50),
+    /** ISO 639-1 language for generated overview + section bodies. */
+    summaryLanguage: text("summary_language").notNull().default("en"),
     summary: text("summary"),
     runId: uuid("run_id").notNull().defaultRandom(),
     /** Redis monthly counter key consumed at Generate; used for pre-LLM refunds. */

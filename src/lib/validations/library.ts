@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { parseYoutubeId } from "@/lib/youtube/parse-url";
+import { optionalSummaryLanguageSchema } from "@/lib/validations/summary-language";
 
 const prefScoreSchema = z.preprocess((value) => {
   if (value === "" || value === null || value === undefined) {
@@ -41,6 +42,7 @@ export const generateVideoInputSchema = z
     youtubeId: z.string().trim().min(1),
     summaryLength: prefScoreSchema,
     summaryTone: prefScoreSchema,
+    summaryLanguage: optionalSummaryLanguageSchema,
     familiarity: nullableFamiliaritySchema,
   })
   .transform((data, ctx) => {
@@ -58,6 +60,7 @@ export const generateVideoInputSchema = z
       youtubeId,
       summaryLength: data.summaryLength,
       summaryTone: data.summaryTone,
+      summaryLanguage: data.summaryLanguage,
       familiarity: data.familiarity,
     };
   });

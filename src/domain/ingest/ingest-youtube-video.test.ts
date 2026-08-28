@@ -2,8 +2,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   TranscriptProviderError,
-  type EnglishTranscriptResult,
   type TranscriptProvider,
+  type TranscriptResult,
 } from "@/lib/youtube/transcript-provider";
 
 const mocks = vi.hoisted(() => {
@@ -57,7 +57,7 @@ vi.mock("@/db", () => ({
 
 vi.mock("@/lib/youtube/youtubei-transcript-provider", () => ({
   getDefaultTranscriptProvider: () => ({
-    getEnglishTranscript: vi.fn(),
+    getTranscript: vi.fn(),
   }),
 }));
 
@@ -71,7 +71,7 @@ import {
   startYoutubeIngest,
 } from "@/domain/ingest/ingest-youtube-video";
 
-const sampleTranscript: EnglishTranscriptResult = {
+const sampleTranscript: TranscriptResult = {
   metadata: {
     youtubeId: "dQw4w9WgXcQ",
     title: "Sample video",
@@ -79,18 +79,23 @@ const sampleTranscript: EnglishTranscriptResult = {
     thumbnailUrl: "https://i.ytimg.com/vi/dQw4w9WgXcQ/hqdefault.jpg",
     durationSeconds: 120,
     youtubeCategoryId: "27",
+    primaryLanguage: "en",
   },
   language: "en",
   segments: [{ startMs: 0, endMs: 1000, text: "Hello" }],
 };
 
 function mockProvider(
-  impl: TranscriptProvider["getEnglishTranscript"],
+  impl: TranscriptProvider["getTranscript"],
 ): TranscriptProvider {
   return {
     getVideoMetadata: vi.fn(),
-    getEnglishTranscript: impl,
+    getTranscript: impl,
   };
+}
+
+function mockAnalysisLanguage(summaryLanguage = "en") {
+  mocks.limit.mockResolvedValueOnce([{ summaryLanguage }]);
 }
 
 describe("startYoutubeIngest", () => {
@@ -112,6 +117,7 @@ describe("startYoutubeIngest", () => {
         familiarity: 40,
         summaryLength: 75,
         summaryTone: 50,
+        summaryLanguage: "de",
         usageQuotaKey: "vb:usage:videos:user-1:202608",
         metadata: {
           title: "Sample video",
@@ -124,7 +130,7 @@ describe("startYoutubeIngest", () => {
       { transcriptProvider: provider },
     );
 
-    expect(provider.getEnglishTranscript).not.toHaveBeenCalled();
+    expect(provider.getTranscript).not.toHaveBeenCalled();
     expect(result).toEqual({
       userVideoId: "uv-1",
       analysisId: "analysis-1",
@@ -150,6 +156,7 @@ describe("startYoutubeIngest", () => {
       familiarity: 40,
       summaryLength: 75,
       summaryTone: 50,
+      summaryLanguage: "en",
       usageQuotaKey: "vb:usage:videos:user-1:202608",
       metadata: {
         title: "Sample video",
@@ -177,6 +184,7 @@ describe("startYoutubeIngest", () => {
       familiarity: null,
       summaryLength: 50,
       summaryTone: 50,
+      summaryLanguage: "en",
       usageQuotaKey: "vb:usage:videos:user-1:202608",
     });
 
@@ -188,14 +196,15 @@ describe("startYoutubeIngest", () => {
 describe("fetchYoutubeVideo", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.limit.mockResolvedValue([
+    mockAnalysisLanguage("de");
+    mocks.limit.mockResolvedValueOnce([
       { usageQuotaKey: "vb:usage:videos:user-1:202608" },
     ]);
   });
 
   it("always fetches from provider and lands on generating", async () => {
-    const getEnglishTranscript = vi.fn(async () => sampleTranscript);
-    const provider = mockProvider(getEnglishTranscript);
+    const getTranscript = vi.fn(async () => sampleTranscript);
+    const provider = mockProvider(getTranscript);
 
     mocks.updateReturning
       .mockResolvedValueOnce([
@@ -208,20 +217,27 @@ describe("fetchYoutubeVideo", () => {
       { transcriptProvider: provider },
     );
 
-    expect(getEnglishTranscript).toHaveBeenCalledTimes(1);
+    expect(getTranscript).toHaveBeenCalledWith("dQw4w9WgXcQ", {
+      preferredLanguage: "de",
+    });
     expect(result.status).toBe("generating");
     expect(result.userVideoId).toBe("uv-1");
   });
 
   it("calls provider again on re-paste (no shared cache skip)", async () => {
-    const getEnglishTranscript = vi.fn(async () => sampleTranscript);
-    const provider = mockProvider(getEnglishTranscript);
+    const getTranscript = vi.fn(async () => sampleTranscript);
+    const provider = mockProvider(getTranscript);
 
     mocks.updateReturning
       .mockResolvedValueOnce([{ id: "analysis-1", status: "generating", runId: "run-1" }])
       .mockResolvedValueOnce([{ id: "uv-1" }])
       .mockResolvedValueOnce([{ id: "analysis-1", status: "generating", runId: "run-1" }])
       .mockResolvedValueOnce([{ id: "uv-1" }]);
+
+    mockAnalysisLanguage("de");
+    mocks.limit.mockResolvedValueOnce([
+      { usageQuotaKey: "vb:usage:videos:user-1:202608" },
+    ]);
 
     const input = {
       userId: "user-1",
@@ -230,9 +246,13 @@ describe("fetchYoutubeVideo", () => {
       runId: "run-1",
     };
     await fetchYoutubeVideo(input, { transcriptProvider: provider });
+    mockAnalysisLanguage("de");
+    mocks.limit.mockResolvedValueOnce([
+      { usageQuotaKey: "vb:usage:videos:user-1:202608" },
+    ]);
     await fetchYoutubeVideo(input, { transcriptProvider: provider });
 
-    expect(getEnglishTranscript).toHaveBeenCalledTimes(2);
+    expect(getTranscript).toHaveBeenCalledTimes(2);
   });
 
   it("only promotes fetching analyses and clears summary/sections", async () => {
@@ -259,11 +279,11 @@ describe("fetchYoutubeVideo", () => {
     expect(mocks.update).toHaveBeenCalled();
   });
 
-  it("returns failed when English captions are missing but metadata exists", async () => {
+  it("returns failed when captions are missing but metadata exists", async () => {
     const provider = mockProvider(async () => {
       throw new TranscriptProviderError(
-        "missing_english_captions",
-        "This video has no English captions",
+        "missing_captions",
+        "This video has no captions in your chosen language or the video's original language.",
         { metadata: sampleTranscript.metadata },
       );
     });
@@ -300,8 +320,8 @@ describe("fetchYoutubeVideo", () => {
   it("marks the stub failed when metadata is unavailable", async () => {
     const provider = mockProvider(async () => {
       throw new TranscriptProviderError(
-        "missing_english_captions",
-        "This video has no English captions",
+        "missing_captions",
+        "This video has no captions in your chosen language or the video's original language.",
       );
     });
     const refundSlot = vi.fn(async () => undefined);

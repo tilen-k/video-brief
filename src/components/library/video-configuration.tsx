@@ -9,6 +9,7 @@ import {
   generateVideo,
   type GenerateVideoActionState,
 } from "@/lib/actions/library";
+import { SummaryLanguageSelect } from "@/components/shared/summary-language-select";
 import { useTopLoaderOnPending } from "@/components/shared/layout/use-top-loader-on-pending";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -30,6 +31,7 @@ export type VideoConfigurationPreview = {
 export type VideoConfigurationDefaults = {
   summaryLength: number;
   summaryTone: number;
+  summaryLanguage: string;
   familiarity: number | null;
 };
 
@@ -108,7 +110,7 @@ export function VideoConfiguration({
 
   return (
     <form
-      key={`${preview.youtubeId}-${defaults.summaryLength}-${defaults.summaryTone}-${defaults.familiarity ?? "none"}`}
+      key={`${preview.youtubeId}-${defaults.summaryLength}-${defaults.summaryTone}-${defaults.summaryLanguage}-${defaults.familiarity ?? "none"}`}
       action={generateAction}
       className="flex w-full flex-col gap-5 border-t border-border pt-5"
     >
@@ -144,6 +146,14 @@ export function VideoConfiguration({
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
+        <SummaryLanguageSelect
+          id="summaryLanguage"
+          name="summaryLanguage"
+          label={t("summaryLanguageLabel")}
+          defaultValue={defaults.summaryLanguage}
+          disabled={generatePending || blocked}
+          className="sm:col-span-2"
+        />
         <PrefSlider
           id="summaryLength"
           name="summaryLength"

@@ -10,6 +10,7 @@ import {
 } from "@/db/schema";
 import { clampSectionTimes } from "@/domain/analysis/clamp-section-times";
 import { DEFAULT_LENGTH_SCORE, DEFAULT_TONE_SCORE } from "@/domain/analysis/prefs";
+import { resolveSummaryLanguage } from "@/domain/i18n/summary-language";
 import { generateSectionsSchema } from "@/domain/analysis/schemas";
 import { selectTranscriptSubset } from "@/domain/analysis/select-transcript-subset";
 import { fetchYoutubeVideo } from "@/domain/ingest/ingest-youtube-video";
@@ -72,6 +73,8 @@ type LoadedRow = {
   familiarity: number | null;
   summaryLength: number;
   summaryTone: number;
+  summaryLanguage: string;
+  transcriptLanguage: string;
   runId: string;
 };
 
@@ -181,6 +184,7 @@ async function runContinueAnalysis(
       durationSeconds: userVideos.durationSeconds,
       youtubeCategoryId: userVideos.youtubeCategoryId,
       transcriptSegments: userVideos.transcriptSegments,
+      transcriptLanguage: userVideos.transcriptLanguage,
       analysisId: personalizedAnalyses.id,
       status: personalizedAnalyses.status,
       errorCode: personalizedAnalyses.errorCode,
@@ -189,6 +193,7 @@ async function runContinueAnalysis(
       familiarity: personalizedAnalyses.familiarity,
       summaryLength: personalizedAnalyses.summaryLength,
       summaryTone: personalizedAnalyses.summaryTone,
+      summaryLanguage: personalizedAnalyses.summaryLanguage,
       runId: personalizedAnalyses.runId,
     })
     .from(userVideos)
@@ -384,6 +389,11 @@ async function runGenerate(
   const transcriptSubset = selectTranscriptSubset(segments, row.durationSeconds);
   const summaryLength = row.summaryLength ?? DEFAULT_LENGTH_SCORE;
   const summaryTone = row.summaryTone ?? DEFAULT_TONE_SCORE;
+  const outputLanguage = resolveSummaryLanguage(row.summaryLanguage);
+  const transcriptLanguage = resolveSummaryLanguage(
+    row.transcriptLanguage,
+    outputLanguage,
+  );
 
   let parsed;
   try {
@@ -392,6 +402,8 @@ async function runGenerate(
       channelTitle: row.channelTitle,
       durationSeconds: row.durationSeconds,
       transcriptSubset,
+      outputLanguage,
+      transcriptLanguage,
       prefs: {
         familiarity: row.familiarity,
         summaryLength,

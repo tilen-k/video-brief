@@ -84,12 +84,12 @@ describe("shouldRetryTranscriptFetch", () => {
     expect(shouldRetryTranscriptFetch(new Error("blocked"), false)).toBe(false);
   });
 
-  it("does not retry missing English captions", () => {
+  it("does not retry missing captions", () => {
     expect(
       shouldRetryTranscriptFetch(
         new TranscriptProviderError(
-          "missing_english_captions",
-          "This video has no English captions",
+          "missing_captions",
+          "This video has no captions in your chosen language or the video's original language.",
         ),
         true,
       ),
