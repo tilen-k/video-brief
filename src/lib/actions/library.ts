@@ -122,6 +122,7 @@ export async function previewYoutube(
 export type GenerateVideoActionState = {
   error?: string;
   errorCode?: string;
+  redirectTo?: string;
 };
 
 export async function generateVideo(
@@ -294,7 +295,7 @@ export async function generateVideo(
   }
 
   revalidatePath("/");
-  redirect(`/v/${result.userVideoId}`);
+  return { redirectTo: `/v/${result.userVideoId}` };
 }
 
 export type GetLibraryStatusResult =

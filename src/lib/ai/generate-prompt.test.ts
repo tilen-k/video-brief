@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { buildGeneratePrompt } from "@/lib/ai/openrouter-ai-provider";
+import {
+  buildGeneratePrompt,
+  GENERATE_SYSTEM,
+  summaryParagraphCount,
+} from "@/lib/ai/openrouter-ai-provider";
 import type { GenerateSectionsInput } from "@/lib/ai/provider";
 
 const base: GenerateSectionsInput = {
@@ -34,5 +38,25 @@ describe("buildGeneratePrompt", () => {
     expect(prompt).not.toContain("Familiarity with topic");
     expect(prompt).toContain("Requested length (0–100, Short←→Long): 80");
     expect(prompt).toContain("Requested tone (0–100, Formal←→Casual): 30");
+  });
+
+  it("instructs synthesis instead of verbatim transcript quoting", () => {
+    expect(GENERATE_SYSTEM).toContain("Do not quote the transcript verbatim");
+    expect(GENERATE_SYSTEM).toContain("interviews, debates, or Q&A");
+  });
+
+  it("requests more paragraphs when summary length is higher", () => {
+    expect(summaryParagraphCount(20)).toBe(2);
+    expect(summaryParagraphCount(55)).toBe(3);
+    expect(summaryParagraphCount(90)).toBe(4);
+    expect(buildGeneratePrompt(base)).toContain(
+      "Write the summary as 4 short paragraphs",
+    );
+    expect(
+      buildGeneratePrompt({
+        ...base,
+        prefs: { ...base.prefs, summaryLength: 30 },
+      }),
+    ).toContain("Write the summary as 2 short paragraphs");
   });
 });

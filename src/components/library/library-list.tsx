@@ -2,17 +2,31 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { AlertCircleIcon, RefreshCw, Trash2 } from "lucide-react";
+import {
+  AlertCircleIcon,
+  MoreHorizontal,
+  RefreshCw,
+  Trash2,
+} from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { useState, useTransition } from "react";
 
+import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { AnalysisStatusBadge } from "@/components/shared/status/analysis-status-badge";
 import { EmptyState } from "@/components/shared/list/empty-state";
 import { Panel } from "@/components/shared/list/panel";
+import { TimeAgo } from "@/components/shared/time-ago";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import type { LibraryListItem } from "@/domain/ingest/ingest-youtube-video";
 import {
   analysisUiPhase,
@@ -26,6 +40,11 @@ type LibraryListProps = {
   onRefresh: (item: LibraryListItem) => void;
 };
 
+type PendingDelete = {
+  userVideoId: string;
+  title: string;
+};
+
 export function LibraryList({ initialItems, onRefresh }: LibraryListProps) {
   const t = useTranslations("Library");
   const statusT = useTranslations("AnalysisStatus");
@@ -34,6 +53,28 @@ export function LibraryList({ initialItems, onRefresh }: LibraryListProps) {
   const queryClient = useQueryClient();
   const [deletePending, startDelete] = useTransition();
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<PendingDelete | null>(null);
+
+  const confirmDelete = () => {
+    if (!pendingDelete) {
+      return;
+    }
+    const { userVideoId } = pendingDelete;
+    setDeleteError(null);
+    startDelete(async () => {
+      const result = await softDeleteLibraryVideo({ userVideoId });
+      if (!result.ok) {
+        setDeleteError(result.error);
+        return;
+      }
+      queryClient.setQueryData<LibraryListItem[]>(["library"], (prev) =>
+        (prev ?? items).filter((row) => row.userVideoId !== userVideoId),
+      );
+      setPendingDelete(null);
+      setDeleteError(null);
+      router.refresh();
+    });
+  };
 
   if (items.length === 0) {
     return (
@@ -49,7 +90,7 @@ export function LibraryList({ initialItems, onRefresh }: LibraryListProps) {
   return (
     <section className="space-y-3">
       <h2 className="text-sm font-medium text-foreground">{t("yourVideos")}</h2>
-      {deleteError ? (
+      {deleteError && !pendingDelete ? (
         <Alert variant="destructive">
           <AlertCircleIcon />
           <AlertTitle>{t("deleteErrorTitle")}</AlertTitle>
@@ -65,57 +106,11 @@ export function LibraryList({ initialItems, onRefresh }: LibraryListProps) {
           return (
             <div
               key={item.userVideoId}
-              className="flex gap-3 px-4 py-3.5 sm:gap-4"
+              className="flex items-center gap-2 px-4 py-3.5 transition-colors hover:bg-muted/50 sm:gap-3"
             >
-              <div className="flex shrink-0 flex-col justify-center gap-1">
-              <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon-sm"
-                  className="text-muted-foreground"
-                  aria-label={t("refreshVideo", { title: item.title })}
-                  onClick={() => onRefresh(item)}
-                >
-                  <RefreshCw className="size-4" />
-                </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon-sm"
-                  className="text-muted-foreground hover:text-destructive"
-                  aria-label={t("deleteVideo", { title: item.title })}
-                  disabled={deletePending}
-                  onClick={() => {
-                    if (!window.confirm(t("deleteConfirm", { title: item.title }))) {
-                      return;
-                    }
-                    setDeleteError(null);
-                    startDelete(async () => {
-                      const result = await softDeleteLibraryVideo({
-                        userVideoId: item.userVideoId,
-                      });
-                      if (!result.ok) {
-                        setDeleteError(result.error);
-                        return;
-                      }
-                      queryClient.setQueryData<LibraryListItem[]>(
-                        ["library"],
-                        (prev) =>
-                          (prev ?? items).filter(
-                            (row) => row.userVideoId !== item.userVideoId,
-                          ),
-                      );
-                      router.refresh();
-                    });
-                  }}
-                >
-                  <Trash2 className="size-4" />
-                </Button>
-              </div>
-
               <Link
                 href={href}
-                className="group flex min-w-0 flex-1 cursor-pointer gap-4 rounded-md transition-colors hover:bg-muted/50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring/50"
+                className="flex min-w-0 flex-1 cursor-pointer gap-4 rounded-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring/50"
                 aria-label={t("openVideo", { title: item.title })}
               >
                 {item.thumbnailUrl ? (
@@ -124,7 +119,7 @@ export function LibraryList({ initialItems, onRefresh }: LibraryListProps) {
                     alt=""
                     width={120}
                     height={68}
-                    className="h-[4.25rem] w-[7.5rem] shrink-0 rounded-md object-cover bg-muted"
+                    className="h-[4.25rem] w-[7.5rem] shrink-0 rounded-md bg-muted object-cover"
                   />
                 ) : (
                   <div className="h-[4.25rem] w-[7.5rem] shrink-0 rounded-md bg-muted" />
@@ -155,10 +150,72 @@ export function LibraryList({ initialItems, onRefresh }: LibraryListProps) {
                   </div>
                 </div>
               </Link>
+
+              <div className="flex shrink-0 items-center gap-3 self-center">
+                <TimeAgo
+                  date={item.refreshedAt}
+                  className="text-xs tabular-nums text-muted-foreground"
+                />
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon-sm"
+                      className="text-muted-foreground"
+                      aria-label={t("moreActions", { title: item.title })}
+                    >
+                      <MoreHorizontal className="size-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={() => onRefresh(item)}>
+                      <RefreshCw className="size-4" />
+                      {t("generateAgain")}
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      variant="destructive"
+                      disabled={deletePending}
+                      onClick={() =>
+                        setPendingDelete({
+                          userVideoId: item.userVideoId,
+                          title: item.title,
+                        })
+                      }
+                    >
+                      <Trash2 className="size-4" />
+                      {t("removeVideo")}
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
             </div>
           );
         })}
       </Panel>
+
+      <ConfirmDialog
+        open={pendingDelete != null}
+        onOpenChange={(open) => {
+          if (!open && !deletePending) {
+            setPendingDelete(null);
+            setDeleteError(null);
+          }
+        }}
+        title={t("deleteDialogTitle")}
+        description={
+          pendingDelete
+            ? t("deleteDialogBody", { title: pendingDelete.title })
+            : ""
+        }
+        confirmLabel={t("deleteDialogConfirm")}
+        cancelLabel={t("deleteDialogCancel")}
+        onConfirm={confirmDelete}
+        confirmPending={deletePending}
+        destructive
+        error={deleteError}
+      />
     </section>
   );
 }

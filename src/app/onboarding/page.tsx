@@ -25,7 +25,11 @@ export default async function OnboardingPage() {
   }
 
   return (
-    <AppShell userEmail={user.email} showLogout={false}>
+    <AppShell
+      userEmail={user.email}
+      showLogout={false}
+      contentClassName="flex flex-1 items-center justify-center"
+    >
       <OnboardingForm />
     </AppShell>
   );
