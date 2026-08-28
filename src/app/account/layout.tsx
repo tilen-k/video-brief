@@ -36,7 +36,7 @@ export default async function AccountLayout({
       userEmailHref="/account"
       sectionLabel={t("title")}
     >
-      <div className="flex flex-col gap-8">
+      <div className="mx-auto flex w-full max-w-lg flex-col gap-8">
         <div className="space-y-2">
           <h1 className="font-heading text-3xl tracking-tight">{t("title")}</h1>
         </div>

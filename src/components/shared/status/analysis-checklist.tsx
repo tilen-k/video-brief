@@ -1,4 +1,5 @@
 import type { ChecklistStep } from "@/domain/workspace/analysis-ui";
+import { LoadingDots } from "@/components/shared/status/loading-dots";
 import { cn } from "@/lib/utils";
 
 type AnalysisChecklistProps = {
@@ -41,21 +42,29 @@ export function AnalysisChecklist({
               className={cn(
                 "absolute top-1/2 -translate-y-1/2 rounded-full",
                 isCurrent &&
-                  "left-0 size-2 bg-sync ring-2 ring-background sync-marker-pulse",
+                  "left-0 size-2 bg-sync ring-2 ring-background",
                 isDone && "left-0.5 size-1.5 bg-sync/80",
                 step.state === "upcoming" && "left-0.5 size-1.5 bg-border",
               )}
             />
-            <p
-              className={cn(
-                "text-sm leading-snug",
-                isCurrent && "text-foreground",
-                isDone && "text-foreground/85",
-                step.state === "upcoming" && "text-muted-foreground",
-              )}
-            >
-              {getLabel(step.id)}
-            </p>
+            <div className="flex items-center gap-2">
+              <p
+                className={cn(
+                  "text-sm leading-snug",
+                  isCurrent && "text-foreground",
+                  isDone && "text-foreground/85",
+                  step.state === "upcoming" && "text-muted-foreground",
+                )}
+              >
+                {getLabel(step.id)}
+              </p>
+              {isCurrent ? (
+                <LoadingDots
+                  className="shrink-0 text-muted-foreground"
+                  label={getLabel(step.id)}
+                />
+              ) : null}
+            </div>
           </li>
         );
       })}

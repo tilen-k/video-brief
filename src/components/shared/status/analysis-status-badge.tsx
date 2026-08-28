@@ -4,7 +4,6 @@ import {
 } from "@/domain/workspace/analysis-ui";
 import type { AnalysisStatus } from "@/db/schema";
 import { Badge } from "@/components/ui/badge";
-import { cn } from "@/lib/utils";
 
 type AnalysisStatusBadgeProps = {
   status: AnalysisStatus;
@@ -25,23 +24,18 @@ function badgeVariantForPhase(
   }
 }
 
-function shouldPulse(phase: AnalysisUiPhase): boolean {
-  return phase === "fetching" || phase === "generating";
-}
-
 export function AnalysisStatusBadge({
   status,
   label,
   className,
 }: AnalysisStatusBadgeProps) {
   const phase = analysisUiPhase(status);
-  const pulse = shouldPulse(phase);
 
   return (
     <Badge
       variant={badgeVariantForPhase(phase)}
       size="status"
-      className={cn(pulse && "sync-marker-pulse", className)}
+      className={className}
     >
       {label}
     </Badge>

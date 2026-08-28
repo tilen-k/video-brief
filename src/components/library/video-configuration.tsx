@@ -16,6 +16,7 @@ import { SummaryLanguageSelect } from "@/components/shared/summary-language-sele
 import { LoadingDots } from "@/components/shared/status/loading-dots";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 const generateInitial: GenerateVideoActionState = {};
 
@@ -101,6 +102,7 @@ function ModelTierSelector({
   basicLabel,
   advancedLabel,
   advancedHint,
+  advancedUnavailableHint,
   upgradeHint,
   upgradeAccountLabel,
   defaultValue,
@@ -112,6 +114,7 @@ function ModelTierSelector({
   basicLabel: string;
   advancedLabel: string;
   advancedHint: string;
+  advancedUnavailableHint: string;
   upgradeHint: string;
   upgradeAccountLabel: string;
   defaultValue: ModelTier;
@@ -136,19 +139,22 @@ function ModelTierSelector({
           />
           <span>{basicLabel}</span>
         </label>
-        {advancedModelEnabled ? (
-          <label className="inline-flex cursor-pointer items-center gap-2 rounded-md border border-border px-3 py-2 text-sm has-disabled:cursor-not-allowed has-disabled:opacity-50">
-            <input
-              type="radio"
-              name="modelTier"
-              value="advanced"
-              defaultChecked={defaultValue === "advanced" && canChooseAdvanced}
-              disabled={disabled || !canChooseAdvanced}
-              className="accent-foreground"
-            />
-            <span>{advancedLabel}</span>
-          </label>
-        ) : null}
+        <label
+          className={cn(
+            "inline-flex cursor-pointer items-center gap-2 rounded-md border border-border px-3 py-2 text-sm has-disabled:cursor-not-allowed has-disabled:opacity-50",
+            !advancedModelEnabled && "opacity-50",
+          )}
+        >
+          <input
+            type="radio"
+            name="modelTier"
+            value="advanced"
+            defaultChecked={defaultValue === "advanced" && canChooseAdvanced}
+            disabled={disabled || !canChooseAdvanced}
+            className="accent-foreground"
+          />
+          <span>{advancedLabel}</span>
+        </label>
       </div>
       {canChooseAdvanced ? (
         <p className="text-xs text-muted-foreground">{advancedHint}</p>
@@ -159,6 +165,8 @@ function ModelTierSelector({
             {upgradeAccountLabel}
           </a>
         </p>
+      ) : !advancedModelEnabled ? (
+        <p className="text-xs text-muted-foreground">{advancedUnavailableHint}</p>
       ) : null}
     </fieldset>
   );
@@ -206,12 +214,9 @@ export function VideoConfiguration({
           isBusy ? "pointer-events-none space-y-8 opacity-50" : "space-y-8"
         }
       >
-        <div className="space-y-1">
-          <h2 className="font-heading text-base tracking-tight">
-            {t("configureTitle")}
-          </h2>
-          <p className="text-sm text-muted-foreground">{t("generateHint")}</p>
-        </div>
+        <h2 className="font-heading text-base tracking-tight">
+          {t("configureTitle")}
+        </h2>
 
         <input type="hidden" name="youtubeId" value={preview.youtubeId} />
 
@@ -287,6 +292,7 @@ export function VideoConfiguration({
             basicLabel={t("modelBasic")}
             advancedLabel={t("modelAdvanced")}
             advancedHint={t("modelAdvancedHint")}
+            advancedUnavailableHint={t("modelAdvancedUnavailableHint")}
             upgradeHint={t("modelUpgradeHint")}
             upgradeAccountLabel={t("modelUpgradeAccount")}
             defaultValue={defaults.modelTier}

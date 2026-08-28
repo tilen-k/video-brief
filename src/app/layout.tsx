@@ -5,6 +5,7 @@ import { getLocale, getMessages } from "next-intl/server";
 
 import { Providers } from "@/components/providers";
 import { SiteFooter } from "@/components/shared/layout/site-footer";
+import { SiteFooterShell } from "@/components/shared/layout/site-footer-shell";
 
 import "./globals.css";
 
@@ -45,7 +46,9 @@ export default async function RootLayout({
           <Providers>
             <div className="flex min-h-full flex-1 flex-col">{children}</div>
           </Providers>
-          <SiteFooter />
+          <SiteFooterShell>
+            <SiteFooter />
+          </SiteFooterShell>
         </NextIntlClientProvider>
       </body>
     </html>

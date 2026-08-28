@@ -10,6 +10,7 @@ import {
   isPastDueStatus,
 } from "@/domain/billing";
 import { getUsageSnapshot, UsageError } from "@/domain/usage";
+import { isDemoMode } from "@/lib/demo-mode";
 import { createClient } from "@/lib/supabase/server";
 
 function formatResetDate(date: Date, locale: string): string {
@@ -64,6 +65,7 @@ export default async function AccountUsagePage({
         });
 
   const showPastDue = isPastDueStatus(billing.stripeSubscriptionStatus);
+  const showDemoDisclaimer = isDemoMode();
   const checkoutBanner =
     params.checkout === "success"
       ? t("checkoutSuccess")
@@ -72,14 +74,15 @@ export default async function AccountUsagePage({
         : null;
 
   return (
-    <Panel className="max-w-lg space-y-4">
-      <div className="space-y-1">
-        <h2 className="text-sm font-medium text-foreground">{t("usageTitle")}</h2>
-        <p className="text-sm text-muted-foreground">
-          {t("usagePlan", { plan: planLabel })}
-        </p>
-      </div>
-      {checkoutBanner ? (
+    <div className="flex w-full flex-col gap-4">
+      <Panel className="space-y-4">
+        <div className="space-y-1">
+          <h2 className="text-sm font-medium text-foreground">{t("usageTitle")}</h2>
+          <p className="text-sm text-muted-foreground">
+            {t("usagePlan", { plan: planLabel })}
+          </p>
+        </div>
+        {checkoutBanner ? (
         <p className="text-sm text-muted-foreground" role="status">
           {checkoutBanner}
         </p>
@@ -119,6 +122,14 @@ export default async function AccountUsagePage({
           />
         </div>
       )}
-    </Panel>
+      </Panel>
+      {showDemoDisclaimer ? (
+        <Panel>
+          <p className="text-sm text-muted-foreground" role="status">
+            {t("demoModeDisclaimer")}
+          </p>
+        </Panel>
+      ) : null}
+    </div>
   );
 }

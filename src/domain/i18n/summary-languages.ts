@@ -73,6 +73,11 @@ export const SUMMARY_LANGUAGES = [
   { code: "zh", name: "Chinese" },
 ] as const;
 
+/** Picker order: English display names A→Z. */
+export const SUMMARY_LANGUAGES_FOR_SELECT = [...SUMMARY_LANGUAGES].sort(
+  (a, b) => a.name.localeCompare(b.name, "en"),
+);
+
 export type SummaryLanguageCode = (typeof SUMMARY_LANGUAGES)[number]["code"];
 
 export const SUMMARY_LANGUAGE_CODES = SUMMARY_LANGUAGES.map(

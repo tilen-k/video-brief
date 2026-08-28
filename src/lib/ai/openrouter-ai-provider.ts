@@ -27,7 +27,7 @@ Stay faithful to the transcript — do not invent facts that are not in the sour
 Write the summary and every section title and body in the requested output language.
 When the transcript language differs from the output language, translate faithfully while preserving meaning.
 Use the viewer's per-video prefs only to change depth, framing, formality, and length — not to add unrelated content.
-Return 1–${maxSections} sections that cover the video. Short videos may have a single section.`;
+Return 1–${maxSections} sections that cover the video in chronological order by startTime. Short videos may have a single section.`;
 
 function durationLabel(seconds: number | null): string {
   return seconds != null ? `${seconds} seconds` : "unknown";
