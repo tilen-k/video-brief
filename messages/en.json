@@ -62,7 +62,7 @@
     "yourVideos": "Your videos",
     "openVideo": "Open {title}",
     "moreActions": "Actions for {title}",
-    "generateAgain": "Generate again",
+    "generateAgain": "Regenerate",
     "removeVideo": "Remove",
     "deleteDialogTitle": "Remove from library?",
     "deleteDialogBody": "Remove “{title}” from your library? You can add it again later.",
