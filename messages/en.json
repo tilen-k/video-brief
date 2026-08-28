@@ -21,24 +21,7 @@
     "noAccount": "Need an account?",
     "hasAccount": "Already have an account?",
     "googleLinkedError": "That Google account is already linked to another user. Log in with it instead — this browser’s guest library won’t move over.",
-    "googleError": "Couldn't continue with Google. Try again.",
-    "previewVideoTitle": "Introduction to neural networks",
-    "previewSubtitle": "Paste a YouTube link. Preview, set prefs, and get a sectioned summary synced as you watch.",
-    "previewActive": "Now playing",
-    "previewSections": {
-      "s1": {
-        "time": "0:00",
-        "title": "Why depth helps generalization"
-      },
-      "s2": {
-        "time": "4:12",
-        "title": "Backpropagation in plain terms"
-      },
-      "s3": {
-        "time": "9:38",
-        "title": "Common pitfalls for beginners"
-      }
-    }
+    "googleError": "Couldn't continue with Google. Try again."
   },
   "Onboarding": {
     "title": "Default summary style",
@@ -61,9 +44,10 @@
     "addTitle": "Add a video",
     "pasteLabel": "YouTube URL",
     "pastePlaceholder": "Paste a YouTube link…",
-    "pasteHint": "English captions required. Preview loads metadata only — Generate starts analysis.",
+    "pasteHint": "English captions required. Paste a link and continue to load metadata — Generate starts analysis.",
+    "configureTitle": "Configure summary",
     "continue": "Continue",
-    "previewing": "Loading…",
+    "previewing": "Loading video…",
     "previewErrorTitle": "Couldn't preview video",
     "generate": "Generate",
     "generating": "Starting…",
@@ -76,9 +60,13 @@
     "usageUnavailable": "Couldn't check your usage limit. Try again in a moment.",
     "yourVideos": "Your videos",
     "openVideo": "Open {title}",
-    "refreshVideo": "Refresh {title}",
-    "deleteVideo": "Delete {title}",
-    "deleteConfirm": "Remove “{title}” from your library? You can add it again later.",
+    "moreActions": "Actions for {title}",
+    "generateAgain": "Generate again",
+    "removeVideo": "Remove",
+    "deleteDialogTitle": "Remove from library?",
+    "deleteDialogBody": "Remove “{title}” from your library? You can add it again later.",
+    "deleteDialogConfirm": "Remove",
+    "deleteDialogCancel": "Cancel",
     "deleteErrorTitle": "Couldn't delete video",
     "familiarityLabel": "How familiar are you with this topic?",
     "familiarityLow": "Novice",
@@ -141,6 +129,8 @@
     "completePlaceholder": "Sections will appear here.",
     "summaryLabel": "Summary",
     "summaryEmpty": "The overview will appear here.",
+    "copySummary": "Copy summary",
+    "copiedSummary": "Copied",
     "sectionsLabel": "Sections",
     "failedTitle": "Couldn't analyze this video",
     "failedFallback": "Something went wrong while reading this video.",
@@ -151,5 +141,8 @@
   },
   "Theme": {
     "toggle": "Toggle color theme"
+  },
+  "Footer": {
+    "github": "GitHub"
   }
 }

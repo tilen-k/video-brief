@@ -230,7 +230,7 @@ describe("continueAnalysis", () => {
     expect(set).toHaveBeenCalledWith(
       expect.objectContaining({
         status: "complete",
-        sections: generateOutput.sections,
+        sections: [{ ...generateOutput.sections[0], endTime: 120 }],
         summary: generateOutput.summary,
       }),
     );

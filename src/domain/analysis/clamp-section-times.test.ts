@@ -20,4 +20,13 @@ describe("clampSectionTimes", () => {
       ),
     ).toEqual([{ title: "A", startTime: 1, endTime: 2, body: "x" }]);
   });
+
+  it("extends the last section end time to the video duration", () => {
+    expect(
+      clampSectionTimes(
+        [{ title: "A", startTime: 0, endTime: 50, body: "x" }],
+        120,
+      ),
+    ).toEqual([{ title: "A", startTime: 0, endTime: 120, body: "x" }]);
+  });
 });

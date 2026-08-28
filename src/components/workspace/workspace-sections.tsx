@@ -1,3 +1,7 @@
+"use client";
+
+import { useEffect, useRef } from "react";
+
 import type { GeneratedSection } from "@/db/schema";
 import { EmptyState } from "@/components/shared/list/empty-state";
 import { cn } from "@/lib/utils";
@@ -31,36 +35,65 @@ export function WorkspaceSections({
   currentTime,
   onSeek,
 }: WorkspaceSectionsProps) {
+  const itemRefs = useRef<(HTMLLIElement | null)[]>([]);
+  const activeIndex = sections.findIndex((section) =>
+    isActiveSection(section, currentTime),
+  );
+
+  useEffect(() => {
+    if (activeIndex < 0) {
+      return;
+    }
+    const node = itemRefs.current[activeIndex];
+    if (!node) {
+      return;
+    }
+    const reducedMotion = window.matchMedia(
+      "(prefers-reduced-motion: reduce)",
+    ).matches;
+    node.scrollIntoView({
+      block: "nearest",
+      behavior: reducedMotion ? "auto" : "smooth",
+    });
+  }, [activeIndex]);
+
   if (sections.length === 0) {
     return <EmptyState>{emptyLabel}</EmptyState>;
   }
 
   return (
     <ol className="flex flex-col" aria-label={listLabel}>
-      {sections.map((section) => {
-        const active = isActiveSection(section, currentTime);
+      {sections.map((section, index) => {
+        const active = index === activeIndex;
         return (
-          <li key={`${section.startTime}-${section.title}`}>
+          <li
+            key={`${section.startTime}-${section.title}`}
+            ref={(node) => {
+              itemRefs.current[index] = node;
+            }}
+            className={cn(
+              "border-b border-border last:border-b-0",
+              active && "bg-muted/60",
+            )}
+          >
             <button
               type="button"
               onClick={() => onSeek(section.startTime)}
-              className={cn(
-                "w-full cursor-pointer border-b border-border py-3 text-left last:border-b-0",
-                active && "bg-muted/60",
-              )}
+              className="w-full cursor-pointer px-1 py-3 text-left"
             >
-              <p className="text-xs tabular-nums text-muted-foreground">
-                {formatSectionTime(section.startTime)}
-                <span aria-hidden> – </span>
-                {formatSectionTime(section.endTime)}
-              </p>
               <p className="text-sm leading-snug text-foreground">
+                <span className="tabular-nums text-muted-foreground">
+                  {formatSectionTime(section.startTime)}
+                </span>
+                <span aria-hidden className="text-muted-foreground">
+                  {" · "}
+                </span>
                 {section.title}
               </p>
-              <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
-                {section.body}
-              </p>
             </button>
+            <div className="select-text px-1 pb-3 text-sm leading-relaxed text-muted-foreground">
+              {section.body}
+            </div>
           </li>
         );
       })}

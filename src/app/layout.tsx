@@ -4,6 +4,7 @@ import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages } from "next-intl/server";
 
 import { Providers } from "@/components/providers";
+import { SiteFooter } from "@/components/shared/layout/site-footer";
 
 import "./globals.css";
 
@@ -39,9 +40,12 @@ export default async function RootLayout({
       className={`${nunito.variable} h-full`}
       suppressHydrationWarning
     >
-      <body className="min-h-full flex flex-col bg-background font-sans text-foreground antialiased" suppressHydrationWarning>
+      <body className="flex min-h-full flex-col bg-background font-sans text-foreground antialiased" suppressHydrationWarning>
         <NextIntlClientProvider messages={messages}>
-          <Providers>{children}</Providers>
+          <Providers>
+            <div className="flex min-h-full flex-1 flex-col">{children}</div>
+          </Providers>
+          <SiteFooter />
         </NextIntlClientProvider>
       </body>
     </html>

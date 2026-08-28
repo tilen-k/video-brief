@@ -3,16 +3,17 @@
 import Image from "next/image";
 import { AlertCircleIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useActionState } from "react";
+import { useRouter } from "next/navigation";
+import { useTopLoader } from "nextjs-toploader";
+import { useActionState, useEffect } from "react";
 
 import {
   generateVideo,
   type GenerateVideoActionState,
 } from "@/lib/actions/library";
-import { useTopLoaderOnPending } from "@/components/shared/layout/use-top-loader-on-pending";
+import { LoadingDots } from "@/components/shared/status/loading-dots";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { Spinner } from "@/components/ui/spinner";
 
 const generateInitial: GenerateVideoActionState = {};
 
@@ -95,11 +96,23 @@ export function VideoConfiguration({
   onClear,
 }: VideoConfigurationProps) {
   const t = useTranslations("Library");
+  const router = useRouter();
+  const loader = useTopLoader();
   const [generateState, generateAction, generatePending] = useActionState(
     generateVideo,
     generateInitial,
   );
-  useTopLoaderOnPending(generatePending);
+
+  const isBusy =
+    generatePending || Boolean(generateState.redirectTo);
+
+  useEffect(() => {
+    if (!generateState.redirectTo) {
+      return;
+    }
+    loader.start();
+    router.push(generateState.redirectTo);
+  }, [generateState.redirectTo, loader, router]);
 
   const durationLabel = formatDuration(preview.durationSeconds);
   const generateError = generateState.error ?? null;
@@ -110,112 +123,133 @@ export function VideoConfiguration({
     <form
       key={`${preview.youtubeId}-${defaults.summaryLength}-${defaults.summaryTone}-${defaults.familiarity ?? "none"}`}
       action={generateAction}
-      className="flex w-full flex-col gap-5 border-t border-border pt-5"
+      className="flex w-full flex-col gap-8"
     >
-      <input type="hidden" name="youtubeId" value={preview.youtubeId} />
+      <div
+        className={
+          isBusy ? "pointer-events-none space-y-8 opacity-50" : "space-y-8"
+        }
+      >
+        <div className="space-y-1">
+          <h2 className="font-heading text-base tracking-tight">
+            {t("configureTitle")}
+          </h2>
+          <p className="text-sm text-muted-foreground">{t("generateHint")}</p>
+        </div>
 
-      <div className="flex gap-4">
-        {preview.thumbnailUrl ? (
-          <div className="relative h-20 w-36 shrink-0 overflow-hidden bg-muted">
-            <Image
-              src={preview.thumbnailUrl}
-              alt=""
-              fill
-              className="object-cover"
-              sizes="144px"
-            />
-          </div>
-        ) : (
-          <div className="h-20 w-36 shrink-0 bg-muted" />
-        )}
-        <div className="min-w-0 flex-1 space-y-1">
-          <p className="truncate font-heading text-base tracking-tight">
-            {preview.title}
-          </p>
-          {preview.channelTitle ? (
-            <p className="truncate text-sm text-muted-foreground">
-              {preview.channelTitle}
+        <input type="hidden" name="youtubeId" value={preview.youtubeId} />
+
+        <div className="flex gap-4">
+          {preview.thumbnailUrl ? (
+            <div className="relative h-20 w-36 shrink-0 overflow-hidden bg-muted">
+              <Image
+                src={preview.thumbnailUrl}
+                alt=""
+                fill
+                className="object-cover"
+                sizes="144px"
+              />
+            </div>
+          ) : (
+            <div className="h-20 w-36 shrink-0 bg-muted" />
+          )}
+          <div className="min-w-0 flex-1 space-y-1">
+            <p className="truncate font-heading text-base tracking-tight">
+              {preview.title}
             </p>
-          ) : null}
-          {durationLabel ? (
-            <p className="text-xs text-muted-foreground">{durationLabel}</p>
+            {preview.channelTitle ? (
+              <p className="truncate text-sm text-muted-foreground">
+                {preview.channelTitle}
+              </p>
+            ) : null}
+            {durationLabel ? (
+              <p className="text-xs text-muted-foreground">{durationLabel}</p>
+            ) : null}
+          </div>
+        </div>
+
+        <div className="grid gap-6 sm:grid-cols-2">
+          <PrefSlider
+            id="summaryLength"
+            name="summaryLength"
+            label={t("lengthLabel")}
+            minLabel={t("lengthLow")}
+            maxLabel={t("lengthHigh")}
+            defaultValue={defaults.summaryLength}
+            disabled={isBusy || blocked}
+          />
+          <PrefSlider
+            id="summaryTone"
+            name="summaryTone"
+            label={t("toneLabel")}
+            minLabel={t("toneLow")}
+            maxLabel={t("toneHigh")}
+            defaultValue={defaults.summaryTone}
+            disabled={isBusy || blocked}
+          />
+          {preview.showFamiliarity ? (
+            <PrefSlider
+              id="familiarity"
+              name="familiarity"
+              label={t("familiarityLabel")}
+              minLabel={t("familiarityLow")}
+              maxLabel={t("familiarityHigh")}
+              defaultValue={defaults.familiarity ?? 50}
+              disabled={isBusy || blocked}
+            />
           ) : null}
         </div>
-      </div>
 
-      <div className="grid gap-4 sm:grid-cols-2">
-        <PrefSlider
-          id="summaryLength"
-          name="summaryLength"
-          label={t("lengthLabel")}
-          minLabel={t("lengthLow")}
-          maxLabel={t("lengthHigh")}
-          defaultValue={defaults.summaryLength}
-          disabled={generatePending || blocked}
-        />
-        <PrefSlider
-          id="summaryTone"
-          name="summaryTone"
-          label={t("toneLabel")}
-          minLabel={t("toneLow")}
-          maxLabel={t("toneHigh")}
-          defaultValue={defaults.summaryTone}
-          disabled={generatePending || blocked}
-        />
-        {preview.showFamiliarity ? (
-          <PrefSlider
-            id="familiarity"
-            name="familiarity"
-            label={t("familiarityLabel")}
-            minLabel={t("familiarityLow")}
-            maxLabel={t("familiarityHigh")}
-            defaultValue={defaults.familiarity ?? 50}
-            disabled={generatePending || blocked}
-          />
+        {preview.tooLong ? (
+          <Alert variant="destructive">
+            <AlertCircleIcon />
+            <AlertTitle>{t("tooLongTitle")}</AlertTitle>
+            <AlertDescription>{t("tooLongBody")}</AlertDescription>
+          </Alert>
         ) : null}
-      </div>
-      {preview.tooLong ? (
-        <Alert variant="destructive">
-          <AlertCircleIcon />
-          <AlertTitle>{t("tooLongTitle")}</AlertTitle>
-          <AlertDescription>{t("tooLongBody")}</AlertDescription>
-        </Alert>
-      ) : null}
 
-      {generateError ? (
-        <Alert variant="destructive">
-          <AlertCircleIcon />
-          <AlertTitle>{t("generateErrorTitle")}</AlertTitle>
-          <AlertDescription>
-            {generateErrorCode === "quota_exceeded"
-              ? t("quotaExceeded")
-              : generateErrorCode === "usage_unavailable"
-                ? t("usageUnavailable")
-                : generateErrorCode === "too_long"
-                  ? t("tooLongBody")
-                  : generateError}
-          </AlertDescription>
-        </Alert>
-      ) : null}
+        {generateError ? (
+          <Alert variant="destructive">
+            <AlertCircleIcon />
+            <AlertTitle>{t("generateErrorTitle")}</AlertTitle>
+            <AlertDescription>
+              {generateErrorCode === "quota_exceeded"
+                ? t("quotaExceeded")
+                : generateErrorCode === "usage_unavailable"
+                  ? t("usageUnavailable")
+                  : generateErrorCode === "too_long"
+                    ? t("tooLongBody")
+                    : generateError}
+            </AlertDescription>
+          </Alert>
+        ) : null}
 
-      <div className="flex flex-wrap gap-2">
-        <Button
-          type="submit"
-          disabled={generatePending || blocked}
-          size="lg"
-          className="h-11 px-6"
-        >
-          {generatePending ? <Spinner /> : null}
-          {generatePending ? t("generating") : t("generate")}
-        </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          disabled={generatePending}
-          onClick={onClear}
-        >
-          {t("clearPreview")}
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            type="submit"
+            disabled={isBusy || blocked}
+            size="lg"
+            className="h-11 min-w-[7rem] px-6"
+          >
+            {isBusy ? t("generating") : t("generate")}
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="lg"
+            disabled={isBusy}
+            className="h-11 px-6"
+            onClick={onClear}
+          >
+            {t("clearPreview")}
+          </Button>
+          {isBusy ? (
+            <LoadingDots
+              label={t("generating")}
+              className="text-muted-foreground"
+            />
+          ) : null}
+        </div>
       </div>
     </form>
   );
