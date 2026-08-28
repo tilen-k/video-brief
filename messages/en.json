@@ -67,7 +67,7 @@
     "previewErrorTitle": "Couldn't preview video",
     "generate": "Generate",
     "generating": "Starting…",
-    "generateHint": "Generate creates a library entry, counts toward your monthly limit, and opens the workspace.",
+    "generateHint": "Generate counts toward your monthly limit.",
     "generateErrorTitle": "Couldn't generate",
     "clearPreview": "Cancel",
     "tooLongTitle": "Video too long",
