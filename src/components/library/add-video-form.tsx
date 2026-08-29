@@ -2,7 +2,7 @@
 
 import { AlertCircleIcon, Link2 } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useActionState, useEffect, useSyncExternalStore, useState } from "react";
+import { useActionState, useEffect, useState } from "react";
 
 import {
   previewYoutube,
@@ -35,14 +35,8 @@ export function AddVideoForm({
     previewInitial,
   );
   const [urlDraft, setUrlDraft] = useState("");
-  const hydrated = useSyncExternalStore(
-    () => () => {},
-    () => true,
-    () => false,
-  );
-  const canContinue =
-    hydrated && parseYoutubeId(urlDraft) != null;
-  const continueDisabled = previewPending || !canContinue;
+  const continueDisabled =
+    previewPending || parseYoutubeId(urlDraft) == null;
 
   useEffect(() => {
     onPreviewPendingChange?.(previewPending);

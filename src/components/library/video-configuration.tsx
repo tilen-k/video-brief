@@ -324,17 +324,7 @@ export function VideoConfiguration({
             basicUsed: usageTiers.basic.used,
             basicLimit: usageTiers.basic.limit,
           })}
-          {isGuest ? (
-            <>
-              {" "}
-              <Link
-                href="/signup"
-                className="underline-offset-4 hover:underline"
-              >
-                {t("guestSignUp")}
-              </Link>
-            </>
-          ) : null}
+
         </p>
 
         {preview.tooLong ? (

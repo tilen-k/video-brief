@@ -52,8 +52,8 @@ export const analysisConfig = {
       advanced: { hourly: 20, daily: 30 },
     },
     ip: {
-      basic: { daily: 15 },
-      advanced: { daily: 8 },
+      basic: { daily: 100 },
+      advanced: { daily: 15 },
     },
   },
   transcript: {

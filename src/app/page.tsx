@@ -93,13 +93,6 @@ export default async function HomePage() {
             {guestT("persistCtaSignUp")}
           </Link>
           {guestT("persistCtaRest")}
-          {" · "}
-          {libraryT("usageToday", {
-            advancedUsed: usageTiers.advanced.used,
-            advancedLimit: usageTiers.advanced.limit,
-            basicUsed: usageTiers.basic.used,
-            basicLimit: usageTiers.basic.limit,
-          })}
         </p>
       ) : null}
     </AppShell>

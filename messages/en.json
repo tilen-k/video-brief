@@ -83,10 +83,10 @@
     "modelLabel": "Model",
     "modelBasic": "Basic",
     "modelAdvanced": "Advanced",
-    "modelAdvancedHint": "Stronger summaries",
+    "modelAdvancedHint": "",
     "modelAdvancedExhaustedHint": "Advanced limit reached for today — resets midnight UTC.",
     "modelAdvancedUnavailableHint": "Advanced model is temporarily unavailable.",
-    "modelUpgradeHint": "Pro: higher daily limits and videos up to 5 hours.",
+    "modelUpgradeHint": "",
     "modelUpgradeAccount": "Account",
     "modelTierBasic": "Basic model",
     "modelTierAdvanced": "Advanced model"
@@ -121,10 +121,10 @@
     "usageTierBasic": "Basic",
     "usageTierAdvanced": "Advanced",
     "usageResetsOn": "Resets {date} (UTC)",
-    "usageDurationMinutes": "Videos up to {minutes} minutes on your plan.",
-    "usageDurationHours": "Videos up to {hours} hours on your plan.",
-    "usageDurationUnlimited": "No video length limit on your plan.",
-    "upgradeHint": "Pro: higher daily limits and videos up to 5 hours.",
+    "usageDurationMinutes": "",
+    "usageDurationHours": "",
+    "usageDurationUnlimited": "",
+    "upgradeHint": "",
     "upgradeToPro": "Upgrade to Pro — $10/month",
     "upgradePending": "Starting checkout…",
     "manageBilling": "Manage billing",
@@ -135,7 +135,7 @@
     "checkoutSuccess": "Thanks — Pro unlocks once payment confirms (usually a few seconds).",
     "checkoutCanceled": "Checkout canceled. You can upgrade anytime.",
     "billingPastDue": "Payment is past due. Pro stays active while we retry; update your card in Manage billing.",
-    "demoModeDisclaimer": "Demo mode is enabled: use card number \"4242 4242 4242 4242\" and any expiration date/CVC to enable Pro plan for free."
+    "demoModeDisclaimer": "Demo mode is enabled: use card number 4242 4242 4242 4242 and any expiration date/CVC to enable Pro plan for free."
   },
   "AnalysisStatus": {
     "fetching": "Loading captions",
