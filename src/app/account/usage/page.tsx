@@ -88,6 +88,9 @@ export default async function AccountUsagePage({
       <Panel className="space-y-4">
         <div className="space-y-1">
           <h2 className="text-sm font-medium text-foreground">{t("usageTitle")}</h2>
+          <p className="text-sm text-muted-foreground">
+            {t("usagePlan", { plan: planLabel })}
+          </p>
         </div>
         {checkoutBanner ? (
           <p className="text-sm text-muted-foreground" role="status">
@@ -125,6 +128,7 @@ export default async function AccountUsagePage({
             })}
           </p>
         </div>
+        <p className="text-sm text-muted-foreground">{durationLabel}</p>
         {billing.showCompletePayment ? (
           <div className="space-y-2 border-t border-border pt-4">
             <CompletePaymentButton
