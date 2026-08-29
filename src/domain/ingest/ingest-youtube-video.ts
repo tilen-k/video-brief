@@ -13,11 +13,10 @@ import {
   type TranscriptProvider,
 } from "@/lib/youtube/transcript-provider";
 import { getPlanForUser } from "@/domain/usage/plan";
-import { resolveModelTier } from "@/domain/analysis/model-tier";
 import {
   assertDurationAllowed,
   isRefundableErrorCode,
-  refundMonthlyGenerateSlot,
+  refundGenerateSlot,
 } from "@/domain/usage";
 import { UsageError } from "@/domain/usage/errors";
 import { resolveSummaryLanguage } from "@/domain/i18n/summary-language";
@@ -50,7 +49,7 @@ export type IngestYoutubeVideoInput = {
   summaryTone: number;
   modelTier: ModelTier;
   summaryLanguage: string;
-  /** Redis key from consumeMonthlyGenerateSlot — persisted for refunds. */
+  /** Redis keys from reserveGenerateSlot — persisted for refunds. */
   usageQuotaKey?: string | null;
   /** Optional preview metadata so the library/workspace is not a raw youtubeId stub. */
   metadata?: {
@@ -82,7 +81,7 @@ export type IngestYoutubeVideoDeps = {
   db?: Db;
   transcriptProvider?: TranscriptProvider;
   getPlan?: typeof getPlanForUser;
-  refundSlot?: typeof refundMonthlyGenerateSlot;
+  refundSlot?: typeof refundGenerateSlot;
 };
 
 type MetadataFields = {
@@ -186,13 +185,13 @@ async function maybeRefundGenerateSlot(
   userId: string,
   errorCode: string,
   refundedViaCas: boolean,
-  refundSlot: typeof refundMonthlyGenerateSlot,
-  redisKey: string | null,
+  refundSlot: typeof refundGenerateSlot,
+  usageQuotaKey: string | null,
 ): Promise<void> {
-  if (!refundedViaCas || !isRefundableErrorCode(errorCode) || !redisKey) {
+  if (!refundedViaCas || !isRefundableErrorCode(errorCode) || !usageQuotaKey) {
     return;
   }
-  await refundSlot(userId, { redisKey });
+  await refundSlot(userId, { usageQuotaKey });
 }
 
 async function currentIngestResult(
@@ -236,20 +235,17 @@ export async function startYoutubeIngest(
   deps: IngestYoutubeVideoDeps = {},
 ): Promise<IngestYoutubeVideoResult> {
   const db = deps.db ?? createDb();
-  const getPlan = deps.getPlan ?? getPlanForUser;
   const {
     userId,
     youtubeId,
     familiarity,
     summaryLength,
     summaryTone,
-    modelTier: requestedModelTier,
+    modelTier,
     summaryLanguage,
     usageQuotaKey = null,
     metadata,
   } = input;
-  const plan = await getPlan(userId, { db });
-  const modelTier = resolveModelTier(plan, requestedModelTier);
   const resolvedSummaryLanguage = resolveSummaryLanguage(summaryLanguage);
   const runId = crypto.randomUUID();
   const title = metadata?.title?.trim() || youtubeId;
@@ -422,7 +418,7 @@ export async function fetchYoutubeVideo(
   const db = deps.db ?? createDb();
   const provider = deps.transcriptProvider ?? getDefaultTranscriptProvider();
   const getPlan = deps.getPlan ?? getPlanForUser;
-  const refundSlot = deps.refundSlot ?? refundMonthlyGenerateSlot;
+  const refundSlot = deps.refundSlot ?? refundGenerateSlot;
   const { userId, youtubeId, userVideoId, runId } = input;
 
   const [analysisRow] = await db
@@ -618,7 +614,7 @@ export async function fetchYoutubeVideo(
     });
 
     if (result._refunded && result.redisKey) {
-      await refundSlot(userId, { redisKey: result.redisKey });
+      await refundSlot(userId, { usageQuotaKey: result.redisKey });
     }
     return {
       userVideoId: result.userVideoId,

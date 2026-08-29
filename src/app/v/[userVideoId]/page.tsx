@@ -10,6 +10,7 @@ import { userVideoIdSchema } from "@/lib/validations/workspace";
 
 type WorkspacePageProps = {
   params: Promise<{ userVideoId: string }>;
+  searchParams: Promise<{ notice?: string }>;
 };
 
 const resolveWorkspace = cache(async (userVideoId: string) => {
@@ -50,8 +51,12 @@ export async function generateMetadata({
   return { title: result.video.title };
 }
 
-export default async function WorkspacePage({ params }: WorkspacePageProps) {
+export default async function WorkspacePage({
+  params,
+  searchParams,
+}: WorkspacePageProps) {
   const { userVideoId } = await params;
+  const { notice } = await searchParams;
   const result = await resolveWorkspace(userVideoId);
 
   if (result.kind === "unauthenticated") {
@@ -67,5 +72,5 @@ export default async function WorkspacePage({ params }: WorkspacePageProps) {
     notFound();
   }
 
-  return <WorkspaceShell initial={result.video} />;
+  return <WorkspaceShell initial={result.video} notice={notice} />;
 }

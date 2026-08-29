@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { AlertCircleIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
@@ -12,6 +13,7 @@ import {
   type GenerateVideoActionState,
 } from "@/lib/actions/library";
 import type { ModelTier, PlanId } from "@/db/schema";
+import type { TierUsage } from "@/domain/usage";
 import { SummaryLanguageSelect } from "@/components/shared/summary-language-select";
 import { LoadingDots } from "@/components/shared/status/loading-dots";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -39,11 +41,18 @@ export type VideoConfigurationDefaults = {
   modelTier: ModelTier;
 };
 
+type UsageTiers = {
+  basic: TierUsage;
+  advanced: TierUsage;
+};
+
 type VideoConfigurationProps = {
   preview: VideoConfigurationPreview;
   defaults: VideoConfigurationDefaults;
   plan: PlanId;
   advancedModelEnabled: boolean;
+  usageTiers: UsageTiers;
+  isGuest: boolean;
   onClear: () => void;
 };
 
@@ -102,27 +111,29 @@ function ModelTierSelector({
   basicLabel,
   advancedLabel,
   advancedHint,
+  advancedExhaustedHint,
   advancedUnavailableHint,
   upgradeHint,
-  upgradeAccountLabel,
   defaultValue,
   plan,
   advancedModelEnabled,
+  advancedAvailable,
   disabled,
 }: {
   label: string;
   basicLabel: string;
   advancedLabel: string;
   advancedHint: string;
+  advancedExhaustedHint: string;
   advancedUnavailableHint: string;
   upgradeHint: string;
-  upgradeAccountLabel: string;
   defaultValue: ModelTier;
   plan: PlanId;
   advancedModelEnabled: boolean;
+  advancedAvailable: boolean;
   disabled: boolean;
 }) {
-  const canChooseAdvanced = plan === "pro" && advancedModelEnabled;
+  const canSelectAdvanced = advancedModelEnabled && advancedAvailable;
 
   return (
     <fieldset className="flex flex-col gap-2 border-0 p-0">
@@ -133,7 +144,7 @@ function ModelTierSelector({
             type="radio"
             name="modelTier"
             value="basic"
-            defaultChecked={defaultValue === "basic" || !canChooseAdvanced}
+            defaultChecked={defaultValue === "basic" || !canSelectAdvanced}
             disabled={disabled}
             className="accent-foreground"
           />
@@ -149,24 +160,22 @@ function ModelTierSelector({
             type="radio"
             name="modelTier"
             value="advanced"
-            defaultChecked={defaultValue === "advanced" && canChooseAdvanced}
-            disabled={disabled || !canChooseAdvanced}
+            defaultChecked={defaultValue === "advanced" && canSelectAdvanced}
+            disabled={disabled || !canSelectAdvanced}
             className="accent-foreground"
           />
           <span>{advancedLabel}</span>
         </label>
       </div>
-      {canChooseAdvanced ? (
+      {canSelectAdvanced ? (
         <p className="text-xs text-muted-foreground">{advancedHint}</p>
-      ) : plan === "free" && advancedModelEnabled ? (
-        <p className="text-xs text-muted-foreground">
-          {upgradeHint}{" "}
-          <a href="/account" className="underline-offset-4 hover:underline">
-            {upgradeAccountLabel}
-          </a>
-        </p>
+      ) : advancedModelEnabled && !advancedAvailable ? (
+        <p className="text-xs text-muted-foreground">{advancedExhaustedHint}</p>
       ) : !advancedModelEnabled ? (
         <p className="text-xs text-muted-foreground">{advancedUnavailableHint}</p>
+      ) : null}
+      {plan === "free" ? (
+        <p className="text-xs text-muted-foreground">{upgradeHint}</p>
       ) : null}
     </fieldset>
   );
@@ -177,6 +186,8 @@ export function VideoConfiguration({
   defaults,
   plan,
   advancedModelEnabled,
+  usageTiers,
+  isGuest,
   onClear,
 }: VideoConfigurationProps) {
   const t = useTranslations("Library");
@@ -202,6 +213,9 @@ export function VideoConfiguration({
   const generateError = generateState.error ?? null;
   const generateErrorCode = generateError ? generateState.errorCode : undefined;
   const blocked = Boolean(preview.tooLong);
+  const advancedAvailable =
+    advancedModelEnabled &&
+    usageTiers.advanced.used < usageTiers.advanced.limit;
 
   return (
     <form
@@ -292,15 +306,36 @@ export function VideoConfiguration({
             basicLabel={t("modelBasic")}
             advancedLabel={t("modelAdvanced")}
             advancedHint={t("modelAdvancedHint")}
+            advancedExhaustedHint={t("modelAdvancedExhaustedHint")}
             advancedUnavailableHint={t("modelAdvancedUnavailableHint")}
             upgradeHint={t("modelUpgradeHint")}
-            upgradeAccountLabel={t("modelUpgradeAccount")}
             defaultValue={defaults.modelTier}
             plan={plan}
             advancedModelEnabled={advancedModelEnabled}
+            advancedAvailable={advancedAvailable}
             disabled={isBusy || blocked}
           />
         </div>
+
+        <p className="text-xs text-muted-foreground">
+          {t("usageToday", {
+            advancedUsed: usageTiers.advanced.used,
+            advancedLimit: usageTiers.advanced.limit,
+            basicUsed: usageTiers.basic.used,
+            basicLimit: usageTiers.basic.limit,
+          })}
+          {isGuest ? (
+            <>
+              {" "}
+              <Link
+                href="/signup"
+                className="underline-offset-4 hover:underline"
+              >
+                {t("guestSignUp")}
+              </Link>
+            </>
+          ) : null}
+        </p>
 
         {preview.tooLong ? (
           <Alert variant="destructive">
@@ -317,7 +352,9 @@ export function VideoConfiguration({
             <AlertDescription>
               {generateErrorCode === "quota_exceeded"
                 ? t("quotaExceeded")
-                : generateErrorCode === "usage_unavailable"
+                : generateErrorCode === "rate_limit_exceeded"
+                  ? t("rateLimitExceeded")
+                  : generateErrorCode === "usage_unavailable"
                   ? t("usageUnavailable")
                   : generateErrorCode === "too_long"
                     ? t("tooLongBody")

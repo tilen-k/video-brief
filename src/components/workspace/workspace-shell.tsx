@@ -26,9 +26,10 @@ const WorkspacePlayer = dynamic(
 
 type WorkspaceShellProps = {
   initial: WorkspaceVideo;
+  notice?: string;
 };
 
-export function WorkspaceShell({ initial }: WorkspaceShellProps) {
+export function WorkspaceShell({ initial, notice }: WorkspaceShellProps) {
   const video = useWorkspaceStatus(initial);
   const { currentTime, onReady, seekTo } = usePlayerSync();
   const t = useTranslations("Workspace");
@@ -68,6 +69,15 @@ export function WorkspaceShell({ initial }: WorkspaceShellProps) {
           </div>
         </div>
       </header>
+
+      {notice === "model_fallback" ? (
+        <p
+          className="shrink-0 border-b border-border bg-muted/40 px-4 py-2 text-center text-sm text-muted-foreground sm:px-6"
+          role="status"
+        >
+          {t("modelFallbackNotice")}
+        </p>
+      ) : null}
 
       <div className="flex min-h-0 flex-1 flex-col lg:h-full lg:min-h-0 lg:overflow-hidden lg:grid lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)] lg:grid-rows-[auto_minmax(0,1fr)]">
         <div className="order-1 mx-auto w-full max-w-3xl px-4 sm:px-6 lg:col-start-1 lg:row-start-1 lg:border-r lg:border-border lg:px-6">

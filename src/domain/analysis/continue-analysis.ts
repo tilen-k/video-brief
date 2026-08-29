@@ -14,9 +14,8 @@ import { DEFAULT_LENGTH_SCORE, DEFAULT_TONE_SCORE } from "@/domain/analysis/pref
 import { resolveSummaryLanguage } from "@/domain/i18n/summary-language";
 import { generateSectionsSchema } from "@/domain/analysis/schemas";
 import { selectTranscriptSubset } from "@/domain/analysis/select-transcript-subset";
-import { resolveModelTier } from "@/domain/analysis/model-tier";
+import { assertRunnableModelTier } from "@/domain/analysis/model-tier";
 import { fetchYoutubeVideo } from "@/domain/ingest/ingest-youtube-video";
-import { getPlanForUser } from "@/domain/usage/plan";
 import {
   getWorkspaceVideo,
   type WorkspaceVideo,
@@ -245,10 +244,7 @@ async function runContinueAnalysis(
     "continueAnalysis.start",
   );
 
-  const effectiveTier = resolveModelTier(
-    await getPlanForUser(userId, { db }),
-    loaded.modelTier ?? "basic",
-  );
+  const effectiveTier = assertRunnableModelTier(loaded.modelTier);
   const ai = deps.ai ?? getAIProviderForTier(effectiveTier);
 
   if (loaded.status === "pending" || loaded.status === "fetching") {

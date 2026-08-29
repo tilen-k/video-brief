@@ -1,17 +1,29 @@
 export { UsageError, isRefundableErrorCode, REFUNDABLE_ERROR_CODES } from "./errors";
+export type { RefundableErrorCode, UsageErrorCode, UsageLimitScope } from "./errors";
 export { assertDurationAllowed } from "./duration";
+export { getClientIpFromHeaders } from "./client-ip";
+export { hashClientIp } from "./ip-hash";
 export { getPlanForUser, planLimitsFor } from "./plan";
 export {
   consumeMonthlyGenerateSlot,
-  refundMonthlyGenerateSlot,
-  getUsageSnapshot,
-  monthlyUsageKey,
-  utcMonthPeriodKey,
-  utcPeriodEndsAt,
-  monthlyKeyTtlSeconds,
   createRedisUsageCounterStore,
-  type UsageSnapshot,
+  dailyKeyTtlSeconds,
+  decodeUsageQuotaKeys,
+  encodeUsageQuotaKeys,
+  getUsageSnapshot,
+  globalDailyUsageKey,
+  globalHourlyUsageKey,
+  ipDailyUsageKey,
+  refundGenerateSlot,
+  refundMonthlyGenerateSlot,
+  reserveGenerateSlot,
+  userDailyUsageKey,
+  utcDayPeriodEndsAt,
+  utcDayPeriodKey,
+  type ConsumeResult,
+  type ReserveGenerateSlotResult,
+  type TierUsage,
   type UsageCounterStore,
   type UsageQuotaDeps,
-  type ConsumeResult,
+  type UsageSnapshot,
 } from "./quota";

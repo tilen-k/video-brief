@@ -4,9 +4,14 @@ import { useCallback, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 
 import { showFamiliaritySlider } from "@/domain/analysis/familiarity-categories";
-import { defaultModelTierForPlan, resolveModelTier } from "@/domain/analysis/model-tier";
+import {
+  isAdvancedTierAvailable,
+  preferredModelTierFromUsage,
+  resolveModelTier,
+} from "@/domain/analysis/model-tier";
 import type { LibraryListItem } from "@/domain/ingest/ingest-youtube-video";
 import type { PlanId } from "@/db/schema";
+import type { TierUsage } from "@/domain/usage";
 import { LoadingPanel } from "@/components/shared/status/loading-dots";
 import { Panel } from "@/components/shared/list/panel";
 
@@ -24,6 +29,11 @@ type ConfigureState = {
   defaults: VideoConfigurationDefaults;
 };
 
+type UsageTiers = {
+  basic: TierUsage;
+  advanced: TierUsage;
+};
+
 type LibraryComposerProps = {
   initialItems: LibraryListItem[];
   defaultLength: number;
@@ -31,6 +41,8 @@ type LibraryComposerProps = {
   defaultSummaryLanguage: string;
   plan: PlanId;
   advancedModelEnabled: boolean;
+  usageTiers: UsageTiers;
+  isGuest: boolean;
 };
 
 export function LibraryComposer({
@@ -40,12 +52,19 @@ export function LibraryComposer({
   defaultSummaryLanguage,
   plan,
   advancedModelEnabled,
+  usageTiers,
+  isGuest,
 }: LibraryComposerProps) {
   const t = useTranslations("Library");
   const [configure, setConfigure] = useState<ConfigureState | null>(null);
   const [previewPending, setPreviewPending] = useState(false);
   const [pasteFormKey, setPasteFormKey] = useState(0);
   const composerRef = useRef<HTMLDivElement>(null);
+
+  const defaultModelTier = preferredModelTierFromUsage(
+    advancedModelEnabled,
+    usageTiers.advanced,
+  );
 
   const handlePreview = useCallback(
     (preview: VideoConfigurationPreview) => {
@@ -57,16 +76,27 @@ export function LibraryComposer({
           summaryTone: defaultTone,
           summaryLanguage: defaultSummaryLanguage,
           familiarity: preview.showFamiliarity ? 50 : null,
-          modelTier: defaultModelTierForPlan(plan),
+          modelTier: defaultModelTier,
         },
       });
     },
-    [defaultLength, defaultTone, defaultSummaryLanguage, plan],
+    [
+      defaultLength,
+      defaultTone,
+      defaultSummaryLanguage,
+      defaultModelTier,
+    ],
   );
 
   const handleRefresh = useCallback(
     (item: LibraryListItem) => {
       const showFamiliarity = showFamiliaritySlider(item.youtubeCategoryId);
+      const preferredTier = isAdvancedTierAvailable(
+        advancedModelEnabled,
+        usageTiers.advanced,
+      )
+        ? resolveModelTier(plan, item.modelTier)
+        : "basic";
       setConfigure({
         source: "refresh",
         preview: {
@@ -83,12 +113,12 @@ export function LibraryComposer({
           summaryTone: item.summaryTone,
           summaryLanguage: item.summaryLanguage,
           familiarity: showFamiliarity ? (item.familiarity ?? 50) : null,
-          modelTier: resolveModelTier(plan, item.modelTier),
+          modelTier: preferredTier,
         },
       });
       composerRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
     },
-    [plan],
+    [advancedModelEnabled, plan, usageTiers.advanced],
   );
 
   const clearConfigure = useCallback(() => {
@@ -137,6 +167,8 @@ export function LibraryComposer({
               defaults={configure.defaults}
               plan={plan}
               advancedModelEnabled={advancedModelEnabled}
+              usageTiers={usageTiers}
+              isGuest={isGuest}
               onClear={dismissConfigure}
             />
           </Panel>

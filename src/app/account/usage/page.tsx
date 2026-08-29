@@ -20,6 +20,23 @@ function formatResetDate(date: Date, locale: string): string {
   }).format(date);
 }
 
+function formatDurationLimit(
+  maxDurationSeconds: number | null,
+  t: Awaited<ReturnType<typeof getTranslations>>,
+): string {
+  if (maxDurationSeconds == null) {
+    return t("usageDurationUnlimited");
+  }
+  if (maxDurationSeconds >= 3600 && maxDurationSeconds % 3600 === 0) {
+    return t("usageDurationHours", {
+      hours: maxDurationSeconds / 3600,
+    });
+  }
+  return t("usageDurationMinutes", {
+    minutes: Math.round(maxDurationSeconds / 60),
+  });
+}
+
 type AccountUsagePageProps = {
   searchParams: Promise<{ checkout?: string }>;
 };
@@ -57,12 +74,7 @@ export default async function AccountUsagePage({
   const billing = await getBillingProfileState(user.id);
   const planLabel =
     snapshot.plan === "pro" ? t("planPro") : t("planFree");
-  const durationLabel =
-    snapshot.maxDurationSeconds == null
-      ? t("usageDurationUnlimited")
-      : t("usageDurationMinutes", {
-          minutes: Math.round(snapshot.maxDurationSeconds / 60),
-        });
+  const durationLabel = formatDurationLimit(snapshot.maxDurationSeconds, t);
 
   const showPastDue = isPastDueStatus(billing.stripeSubscriptionStatus);
   const showDemoDisclaimer = isDemoMode();
@@ -94,9 +106,17 @@ export default async function AccountUsagePage({
       ) : null}
       <div className="space-y-1">
         <p className="text-sm text-foreground">
-          {t("usageUsedOfLimit", {
-            used: snapshot.used,
-            limit: snapshot.limit,
+          {t("usageTierLine", {
+            tier: t("usageTierAdvanced"),
+            used: snapshot.tiers.advanced.used,
+            limit: snapshot.tiers.advanced.limit,
+          })}
+        </p>
+        <p className="text-sm text-foreground">
+          {t("usageTierLine", {
+            tier: t("usageTierBasic"),
+            used: snapshot.tiers.basic.used,
+            limit: snapshot.tiers.basic.limit,
           })}
         </p>
         <p className="text-sm text-muted-foreground">

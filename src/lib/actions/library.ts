@@ -20,12 +20,13 @@ import {
   type LibraryListItem,
 } from "@/domain/ingest/ingest-youtube-video";
 import { previewYoutubeVideo } from "@/domain/ingest/preview-youtube";
-import { resolveModelTier } from "@/domain/analysis/model-tier";
 import { assertDurationAllowed } from "@/domain/usage/duration";
 import { getPlanForUser } from "@/domain/usage/plan";
 import {
-  consumeMonthlyGenerateSlot,
-  refundMonthlyGenerateSlot,
+  getClientIpFromHeaders,
+  hashClientIp,
+  refundGenerateSlot,
+  reserveGenerateSlot,
   UsageError,
 } from "@/domain/usage";
 import { enqueueAnalyzeJob, assertQueueReady } from "@/lib/queue/analysis-queue";
@@ -196,6 +197,7 @@ export async function generateVideo(
     assertDurationAllowed(plan, metadata.durationSeconds);
   } catch (error) {
     if (error instanceof UsageError) {
+      revalidatePath("/");
       return {
         error: error.message,
         errorCode: error.code,
@@ -210,9 +212,35 @@ export async function generateVideo(
 
   let slot;
   try {
-    slot = await consumeMonthlyGenerateSlot(user.id);
+    const requestHeaders = await headers();
+    const clientIp = getClientIpFromHeaders(requestHeaders);
+    let ipHash: string | null = null;
+    if (clientIp) {
+      try {
+        ipHash = hashClientIp(clientIp);
+      } catch (error) {
+        logger.warn({ ...errorFields(error) }, "generateVideo.ip_hash_err");
+        if (process.env.NODE_ENV !== "development") {
+          return {
+            error: "Couldn't check your usage limit. Try again in a moment.",
+            errorCode: "usage_unavailable",
+          };
+        }
+      }
+    } else if (process.env.VERCEL === "1") {
+      return {
+        error: "Couldn't check your usage limit. Try again in a moment.",
+        errorCode: "usage_unavailable",
+      };
+    }
+
+    slot = await reserveGenerateSlot(user.id, {
+      requestedTier: parsed.data.modelTier,
+      ipHash,
+    });
   } catch (error) {
     if (error instanceof UsageError) {
+      revalidatePath("/");
       return {
         error: error.message,
         errorCode: error.code,
@@ -230,7 +258,7 @@ export async function generateVideo(
   const familiarity = metadata.showFamiliarity
     ? (parsed.data.familiarity ?? null)
     : null;
-  const modelTier = resolveModelTier(plan, parsed.data.modelTier);
+  const modelTier = slot.tier;
 
   const acceptLanguage = (await headers()).get("accept-language");
   const profile = await getUserProfile(user.id, { acceptLanguage });
@@ -249,7 +277,7 @@ export async function generateVideo(
       summaryTone,
       summaryLanguage,
       modelTier,
-      usageQuotaKey: slot.redisKey,
+      usageQuotaKey: slot.usageQuotaKey,
       metadata: {
         title: metadata.title,
         channelTitle: metadata.channelTitle,
@@ -260,7 +288,7 @@ export async function generateVideo(
     });
   } catch (error) {
     try {
-      await refundMonthlyGenerateSlot(user.id, { redisKey: slot.redisKey });
+      await refundGenerateSlot(user.id, { usageQuotaKey: slot.usageQuotaKey });
     } catch (refundError) {
       logger.error(
         { ...errorFields(refundError) },
@@ -277,8 +305,8 @@ export async function generateVideo(
 
   if (result.priorUsageQuotaKey) {
     try {
-      await refundMonthlyGenerateSlot(user.id, {
-        redisKey: result.priorUsageQuotaKey,
+      await refundGenerateSlot(user.id, {
+        usageQuotaKey: result.priorUsageQuotaKey,
       });
     } catch (refundError) {
       logger.error(
@@ -297,7 +325,7 @@ export async function generateVideo(
   } catch (error) {
     logger.error({ ...errorFields(error) }, "generateVideo.enqueue_failed");
     try {
-      await refundMonthlyGenerateSlot(user.id, { redisKey: slot.redisKey });
+      await refundGenerateSlot(user.id, { usageQuotaKey: slot.usageQuotaKey });
     } catch (refundError) {
       logger.error(
         { ...errorFields(refundError) },
@@ -313,7 +341,10 @@ export async function generateVideo(
   }
 
   revalidatePath("/");
-  return { redirectTo: `/v/${result.userVideoId}` };
+  const redirectTo = slot.fellBackFrom
+    ? `/v/${result.userVideoId}?notice=model_fallback`
+    : `/v/${result.userVideoId}`;
+  return { redirectTo };
 }
 
 export type GetLibraryStatusResult =

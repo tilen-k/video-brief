@@ -316,7 +316,7 @@ describe("fetchYoutubeVideo", () => {
     });
     expect(mocks.update).toHaveBeenCalled();
     expect(refundSlot).toHaveBeenCalledWith("user-1", {
-      redisKey: "vb:usage:videos:user-1:202608",
+      usageQuotaKey: "vb:usage:videos:user-1:202608",
     });
   });
 
@@ -344,7 +344,7 @@ describe("fetchYoutubeVideo", () => {
     expect(result.status).toBe("failed");
     expect(mocks.update).toHaveBeenCalled();
     expect(refundSlot).toHaveBeenCalledWith("user-1", {
-      redisKey: "vb:usage:videos:user-1:202608",
+      usageQuotaKey: "vb:usage:videos:user-1:202608",
     });
   });
 
@@ -387,7 +387,7 @@ describe("fetchYoutubeVideo", () => {
       }),
     );
     expect(refundSlot).toHaveBeenCalledWith("user-1", {
-      redisKey: "vb:usage:videos:user-1:202608",
+      usageQuotaKey: "vb:usage:videos:user-1:202608",
     });
   });
 

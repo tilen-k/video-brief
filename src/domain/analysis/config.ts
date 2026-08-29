@@ -23,23 +23,39 @@ export const analysisConfig = {
   },
   planLimits: {
     free: {
-      videosPerMonth: 10,
       maxDurationSeconds: 20 * 60,
-      modelTier: "basic" as const,
+      daily: {
+        basic: 10,
+        advanced: 5,
+      },
     },
     pro: {
-      videosPerMonth: 100,
-      maxDurationSeconds: null as number | null,
-      modelTier: "advanced" as const,
+      maxDurationSeconds: 5 * 60 * 60,
+      daily: {
+        basic: 100,
+        advanced: 15,
+      },
     },
   } satisfies Record<
     PlanId,
     {
-      videosPerMonth: number;
       maxDurationSeconds: number | null;
-      modelTier: "basic" | "advanced";
+      daily: {
+        basic: number;
+        advanced: number;
+      };
     }
   >,
+  usageLimits: {
+    global: {
+      basic: { hourly: 20, daily: 50 },
+      advanced: { hourly: 20, daily: 30 },
+    },
+    ip: {
+      basic: { daily: 15 },
+      advanced: { daily: 8 },
+    },
+  },
   transcript: {
     charBudget: 12_000,
     classifyCharBudget: 4_000,

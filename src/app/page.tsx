@@ -13,13 +13,16 @@ import {
   DEFAULT_TONE_SCORE,
 } from "@/domain/analysis/prefs";
 import { isAdvancedModelEnabled } from "@/domain/analysis/model-tier";
+import { analysisConfig } from "@/domain/analysis/config";
 import { DEFAULT_SUMMARY_LANGUAGE } from "@/domain/i18n/summary-languages";
 import { listLibraryForUser } from "@/domain/ingest/ingest-youtube-video";
 import { getPlanForUser } from "@/domain/usage/plan";
+import { getUsageSnapshot, UsageError } from "@/domain/usage";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function HomePage() {
   const guestT = await getTranslations("Guest");
+  const libraryT = await getTranslations("Library");
   const auth = await getTranslations("Auth");
   const supabase = await createClient();
   const {
@@ -42,6 +45,25 @@ export default async function HomePage() {
     getPlanForUser(user.id),
   ]);
 
+  let usageTiers = {
+    basic: {
+      used: 0,
+      limit: analysisConfig.planLimits[plan].daily.basic,
+    },
+    advanced: {
+      used: 0,
+      limit: analysisConfig.planLimits[plan].daily.advanced,
+    },
+  };
+  try {
+    const usage = await getUsageSnapshot(user.id);
+    usageTiers = usage.tiers;
+  } catch (error) {
+    if (!(error instanceof UsageError)) {
+      throw error;
+    }
+  }
+
   return (
     <AppShell
       userEmail={isGuest ? null : user.email}
@@ -59,6 +81,8 @@ export default async function HomePage() {
         }
         plan={plan}
         advancedModelEnabled={isAdvancedModelEnabled()}
+        usageTiers={usageTiers}
+        isGuest={isGuest}
       />
       {isGuest ? (
         <p className="pt-1 text-center text-xs text-muted-foreground">
@@ -69,6 +93,13 @@ export default async function HomePage() {
             {guestT("persistCtaSignUp")}
           </Link>
           {guestT("persistCtaRest")}
+          {" · "}
+          {libraryT("usageToday", {
+            advancedUsed: usageTiers.advanced.used,
+            advancedLimit: usageTiers.advanced.limit,
+            basicUsed: usageTiers.basic.used,
+            basicLimit: usageTiers.basic.limit,
+          })}
         </p>
       ) : null}
     </AppShell>
