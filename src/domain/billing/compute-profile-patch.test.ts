@@ -77,4 +77,21 @@ describe("computeBillingProfilePatch", () => {
       stripeSubscriptionStatus: null,
     });
   });
+
+  it("retains subscription fields for incomplete", () => {
+    process.env.STRIPE_PRICE_PRO_MONTHLY = "price_pro_test";
+    expect(
+      computeBillingProfilePatch({
+        customerId: "cus_1",
+        subscriptionId: "sub_1",
+        status: "incomplete",
+        priceId: "price_pro_test",
+      }),
+    ).toEqual({
+      plan: "free",
+      stripeCustomerId: "cus_1",
+      stripeSubscriptionId: "sub_1",
+      stripeSubscriptionStatus: "incomplete",
+    });
+  });
 });

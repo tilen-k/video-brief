@@ -1,14 +1,12 @@
 import { getTranslations } from "next-intl/server";
 
 import {
+  CompletePaymentButton,
   ManageBillingButton,
   UpgradeToProButton,
 } from "@/components/account/billing-actions";
 import { Panel } from "@/components/shared/list/panel";
-import {
-  getBillingProfileState,
-  isPastDueStatus,
-} from "@/domain/billing";
+import { getBillingStateForUsage } from "@/domain/billing";
 import { getUsageSnapshot, UsageError } from "@/domain/usage";
 import { isDemoMode } from "@/lib/demo-mode";
 import { createClient } from "@/lib/supabase/server";
@@ -55,6 +53,8 @@ export default async function AccountUsagePage({
     return null;
   }
 
+  const billing = await getBillingStateForUsage(user.id);
+
   let snapshot;
   try {
     snapshot = await getUsageSnapshot(user.id);
@@ -71,12 +71,10 @@ export default async function AccountUsagePage({
     );
   }
 
-  const billing = await getBillingProfileState(user.id);
   const planLabel =
-    snapshot.plan === "pro" ? t("planPro") : t("planFree");
+    billing.plan === "pro" ? t("planPro") : t("planFree");
   const durationLabel = formatDurationLimit(snapshot.maxDurationSeconds, t);
 
-  const showPastDue = isPastDueStatus(billing.stripeSubscriptionStatus);
   const showDemoDisclaimer = isDemoMode();
   const checkoutBanner =
     params.checkout === "success"
@@ -95,53 +93,67 @@ export default async function AccountUsagePage({
           </p>
         </div>
         {checkoutBanner ? (
-        <p className="text-sm text-muted-foreground" role="status">
-          {checkoutBanner}
-        </p>
-      ) : null}
-      {showPastDue ? (
-        <p className="text-sm text-muted-foreground" role="status">
-          {t("billingPastDue")}
-        </p>
-      ) : null}
-      <div className="space-y-1">
-        <p className="text-sm text-foreground">
-          {t("usageTierLine", {
-            tier: t("usageTierAdvanced"),
-            used: snapshot.tiers.advanced.used,
-            limit: snapshot.tiers.advanced.limit,
-          })}
-        </p>
-        <p className="text-sm text-foreground">
-          {t("usageTierLine", {
-            tier: t("usageTierBasic"),
-            used: snapshot.tiers.basic.used,
-            limit: snapshot.tiers.basic.limit,
-          })}
-        </p>
-        <p className="text-sm text-muted-foreground">
-          {t("usageResetsOn", {
-            date: formatResetDate(snapshot.periodEndsAt, "en"),
-          })}
-        </p>
-      </div>
-      <p className="text-sm text-muted-foreground">{durationLabel}</p>
-      {snapshot.plan === "free" ? (
-        <div className="space-y-2 border-t border-border pt-4">
-          <p className="text-sm text-muted-foreground">{t("upgradeHint")}</p>
-          <UpgradeToProButton
-            label={t("upgradeToPro")}
-            pendingLabel={t("upgradePending")}
-          />
+          <p className="text-sm text-muted-foreground" role="status">
+            {checkoutBanner}
+          </p>
+        ) : null}
+        {billing.showPastDueBanner ? (
+          <p className="text-sm text-muted-foreground" role="status">
+            {t("billingPastDue")}
+          </p>
+        ) : null}
+        {billing.needsPaymentCompletion ? (
+          <p className="text-sm text-muted-foreground" role="status">
+            {t("billingIncomplete")}
+          </p>
+        ) : null}
+        <div className="space-y-1">
+          <p className="text-sm text-foreground">
+            {t("usageTierLine", {
+              tier: t("usageTierAdvanced"),
+              used: snapshot.tiers.advanced.used,
+              limit: snapshot.tiers.advanced.limit,
+            })}
+          </p>
+          <p className="text-sm text-foreground">
+            {t("usageTierLine", {
+              tier: t("usageTierBasic"),
+              used: snapshot.tiers.basic.used,
+              limit: snapshot.tiers.basic.limit,
+            })}
+          </p>
+          <p className="text-sm text-muted-foreground">
+            {t("usageResetsOn", {
+              date: formatResetDate(snapshot.periodEndsAt, "en"),
+            })}
+          </p>
         </div>
-      ) : (
-        <div className="space-y-2 border-t border-border pt-4">
-          <ManageBillingButton
-            label={t("manageBilling")}
-            pendingLabel={t("manageBillingPending")}
-          />
-        </div>
-      )}
+        <p className="text-sm text-muted-foreground">{durationLabel}</p>
+        {billing.showUpgrade ? (
+          <div className="space-y-2 border-t border-border pt-4">
+            <p className="text-sm text-muted-foreground">{t("upgradeHint")}</p>
+            <UpgradeToProButton
+              label={t("upgradeToPro")}
+              pendingLabel={t("upgradePending")}
+            />
+          </div>
+        ) : null}
+        {billing.showCompletePayment ? (
+          <div className="space-y-2 border-t border-border pt-4">
+            <CompletePaymentButton
+              label={t("completePayment")}
+              pendingLabel={t("completePaymentPending")}
+            />
+          </div>
+        ) : null}
+        {billing.showManageBilling ? (
+          <div className="space-y-2 border-t border-border pt-4">
+            <ManageBillingButton
+              label={t("manageBilling")}
+              pendingLabel={t("manageBillingPending")}
+            />
+          </div>
+        ) : null}
       </Panel>
       {showDemoDisclaimer ? (
         <Panel>

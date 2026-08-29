@@ -12,6 +12,18 @@ export {
   isOpenSubscriptionStatus,
   type BillingProfilePatch,
 } from "./compute-profile-patch";
+export {
+  deriveBillingUiFlags,
+  isBlockingCheckoutStatus,
+  isPaymentRecoveryStatus,
+  needsPaymentCompletion,
+  type BillingUiFlags,
+} from "./billing-flags";
+export {
+  pickPreferredSubscription,
+  reconcileBillingFromStripe,
+  type ReconcileBillingResult,
+} from "./reconcile-billing";
 export { ensureStripeCustomer } from "./ensure-customer";
 export {
   createCheckoutSessionForPro,
@@ -23,7 +35,9 @@ export {
 } from "./portal";
 export {
   getBillingProfileState,
+  getBillingStateForUsage,
   type BillingProfileState,
+  type BillingUsageState,
 } from "./get-billing-state";
 export {
   handleStripeWebhookEvent,
