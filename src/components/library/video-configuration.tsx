@@ -1,12 +1,11 @@
 "use client";
 
 import Image from "next/image";
-import Link from "next/link";
 import { AlertCircleIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useTopLoader } from "nextjs-toploader";
-import { useActionState, useEffect } from "react";
+import { useActionState, useEffect, type ChangeEvent } from "react";
 
 import {
   generateVideo,
@@ -18,6 +17,7 @@ import { SummaryLanguageSelect } from "@/components/shared/summary-language-sele
 import { LoadingDots } from "@/components/shared/status/loading-dots";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 
 const generateInitial: GenerateVideoActionState = {};
@@ -47,12 +47,15 @@ type UsageTiers = {
 };
 
 type VideoConfigurationProps = {
-  preview: VideoConfigurationPreview;
+  preview: VideoConfigurationPreview | null;
+  /** True only while a Continue request is in flight. */
+  previewLoading: boolean;
   defaults: VideoConfigurationDefaults;
   plan: PlanId;
   advancedModelEnabled: boolean;
   usageTiers: UsageTiers;
-  isGuest: boolean;
+  formKey: string;
+  onDefaultsChange?: (patch: Partial<VideoConfigurationDefaults>) => void;
   onClear: () => void;
 };
 
@@ -63,6 +66,8 @@ function PrefSlider({
   minLabel,
   maxLabel,
   defaultValue,
+  value,
+  onValueChange,
   disabled,
 }: {
   id: string;
@@ -70,9 +75,12 @@ function PrefSlider({
   label: string;
   minLabel: string;
   maxLabel: string;
-  defaultValue: number;
+  defaultValue?: number;
+  value?: number;
+  onValueChange?: (value: number) => void;
   disabled: boolean;
 }) {
+  const controlled = value != null && onValueChange != null;
   return (
     <div className="flex flex-col gap-2">
       <label htmlFor={id} className="text-sm text-foreground">
@@ -85,7 +93,14 @@ function PrefSlider({
         min={0}
         max={100}
         step={1}
-        defaultValue={defaultValue}
+        {...(controlled
+          ? {
+              value,
+              onChange: (event: ChangeEvent<HTMLInputElement>) => {
+                onValueChange(Number(event.target.value));
+              },
+            }
+          : { defaultValue })}
         disabled={disabled}
         className="h-2 w-full cursor-pointer appearance-none rounded-full bg-muted accent-foreground disabled:cursor-not-allowed"
       />
@@ -167,27 +182,64 @@ function ModelTierSelector({
           <span>{advancedLabel}</span>
         </label>
       </div>
-      {canSelectAdvanced ? (
+      {canSelectAdvanced && advancedHint ? (
         <p className="text-xs text-muted-foreground">{advancedHint}</p>
       ) : advancedModelEnabled && !advancedAvailable ? (
         <p className="text-xs text-muted-foreground">{advancedExhaustedHint}</p>
       ) : !advancedModelEnabled ? (
         <p className="text-xs text-muted-foreground">{advancedUnavailableHint}</p>
       ) : null}
-      {plan === "free" ? (
+      {plan === "free" && upgradeHint ? (
         <p className="text-xs text-muted-foreground">{upgradeHint}</p>
       ) : null}
     </fieldset>
   );
 }
 
+function PreviewHeaderSkeleton() {
+  return (
+    <div className="flex gap-4" aria-hidden>
+      <Skeleton className="h-20 w-36 shrink-0 rounded-none" />
+      <div className="min-w-0 flex-1 space-y-2">
+        <Skeleton className="h-5 w-3/4" />
+        <Skeleton className="h-4 w-1/2" />
+        <Skeleton className="h-3 w-16" />
+      </div>
+    </div>
+  );
+}
+
+function PrefSliderSkeleton() {
+  return (
+    <div className="flex flex-col gap-2" aria-hidden>
+      <Skeleton className="h-4 w-40" />
+      <Skeleton className="h-2 w-full rounded-full" />
+      <div className="flex justify-between">
+        <Skeleton className="h-3 w-12" />
+        <Skeleton className="h-3 w-12" />
+      </div>
+    </div>
+  );
+}
+
+function CustomConfigSkeleton() {
+  return (
+    <div className="grid gap-6 sm:grid-cols-2" aria-hidden>
+      <PrefSliderSkeleton />
+      <PrefSliderSkeleton />
+    </div>
+  );
+}
+
 export function VideoConfiguration({
   preview,
+  previewLoading,
   defaults,
   plan,
   advancedModelEnabled,
   usageTiers,
-  isGuest,
+  formKey,
+  onDefaultsChange,
   onClear,
 }: VideoConfigurationProps) {
   const t = useTranslations("Library");
@@ -209,17 +261,21 @@ export function VideoConfiguration({
     router.push(generateState.redirectTo);
   }, [generateState.redirectTo, loader, router]);
 
-  const durationLabel = formatDuration(preview.durationSeconds);
+  const durationLabel = preview
+    ? formatDuration(preview.durationSeconds)
+    : null;
   const generateError = generateState.error ?? null;
   const generateErrorCode = generateError ? generateState.errorCode : undefined;
-  const blocked = Boolean(preview.tooLong);
+  const blocked = Boolean(preview?.tooLong);
   const advancedAvailable =
     advancedModelEnabled &&
     usageTiers.advanced.used < usageTiers.advanced.limit;
+  const prefsDisabled = isBusy || blocked;
+  const canGenerate = preview != null && !isBusy && !blocked;
 
   return (
     <form
-      key={`${preview.youtubeId}-${defaults.summaryLength}-${defaults.summaryTone}-${defaults.summaryLanguage}-${defaults.familiarity ?? "none"}-${defaults.modelTier}`}
+      key={formKey}
       action={generateAction}
       className="flex w-full flex-col gap-8"
     >
@@ -232,36 +288,44 @@ export function VideoConfiguration({
           {t("configureTitle")}
         </h2>
 
-        <input type="hidden" name="youtubeId" value={preview.youtubeId} />
+        {preview ? (
+          <input type="hidden" name="youtubeId" value={preview.youtubeId} />
+        ) : null}
 
-        <div className="flex gap-4">
-          {preview.thumbnailUrl ? (
-            <div className="relative h-20 w-36 shrink-0 overflow-hidden bg-muted">
-              <Image
-                src={preview.thumbnailUrl}
-                alt=""
-                fill
-                className="object-cover"
-                sizes="144px"
-              />
-            </div>
-          ) : (
-            <div className="h-20 w-36 shrink-0 bg-muted" />
-          )}
-          <div className="min-w-0 flex-1 space-y-1">
-            <p className="truncate font-heading text-base tracking-tight">
-              {preview.title}
-            </p>
-            {preview.channelTitle ? (
-              <p className="truncate text-sm text-muted-foreground">
-                {preview.channelTitle}
-              </p>
-            ) : null}
-            {durationLabel ? (
-              <p className="text-xs text-muted-foreground">{durationLabel}</p>
-            ) : null}
+        {previewLoading ? (
+          <div aria-busy="true" aria-label={t("previewing")}>
+            <PreviewHeaderSkeleton />
           </div>
-        </div>
+        ) : preview ? (
+          <div className="flex gap-4">
+            {preview.thumbnailUrl ? (
+              <div className="relative h-20 w-36 shrink-0 overflow-hidden bg-muted">
+                <Image
+                  src={preview.thumbnailUrl}
+                  alt=""
+                  fill
+                  className="object-cover"
+                  sizes="144px"
+                />
+              </div>
+            ) : (
+              <div className="h-20 w-36 shrink-0 bg-muted" />
+            )}
+            <div className="min-w-0 flex-1 space-y-1">
+              <p className="truncate font-heading text-base tracking-tight">
+                {preview.title}
+              </p>
+              {preview.channelTitle ? (
+                <p className="truncate text-sm text-muted-foreground">
+                  {preview.channelTitle}
+                </p>
+              ) : null}
+              {durationLabel ? (
+                <p className="text-xs text-muted-foreground">{durationLabel}</p>
+              ) : null}
+            </div>
+          </div>
+        ) : null}
 
         <div className="grid gap-6 sm:grid-cols-2">
           <SummaryLanguageSelect
@@ -269,38 +333,8 @@ export function VideoConfiguration({
             name="summaryLanguage"
             label={t("summaryLanguageLabel")}
             defaultValue={defaults.summaryLanguage}
-            disabled={isBusy || blocked}
-            className="sm:col-span-2"
+            disabled={prefsDisabled}
           />
-          <PrefSlider
-            id="summaryLength"
-            name="summaryLength"
-            label={t("lengthLabel")}
-            minLabel={t("lengthLow")}
-            maxLabel={t("lengthHigh")}
-            defaultValue={defaults.summaryLength}
-            disabled={isBusy || blocked}
-          />
-          <PrefSlider
-            id="summaryTone"
-            name="summaryTone"
-            label={t("toneLabel")}
-            minLabel={t("toneLow")}
-            maxLabel={t("toneHigh")}
-            defaultValue={defaults.summaryTone}
-            disabled={isBusy || blocked}
-          />
-          {preview.showFamiliarity ? (
-            <PrefSlider
-              id="familiarity"
-              name="familiarity"
-              label={t("familiarityLabel")}
-              minLabel={t("familiarityLow")}
-              maxLabel={t("familiarityHigh")}
-              defaultValue={defaults.familiarity ?? 50}
-              disabled={isBusy || blocked}
-            />
-          ) : null}
           <ModelTierSelector
             label={t("modelLabel")}
             basicLabel={t("modelBasic")}
@@ -313,9 +347,48 @@ export function VideoConfiguration({
             plan={plan}
             advancedModelEnabled={advancedModelEnabled}
             advancedAvailable={advancedAvailable}
-            disabled={isBusy || blocked}
+            disabled={prefsDisabled}
+          />
+          <PrefSlider
+            id="summaryLength"
+            name="summaryLength"
+            label={t("lengthLabel")}
+            minLabel={t("lengthLow")}
+            maxLabel={t("lengthHigh")}
+            defaultValue={defaults.summaryLength}
+            disabled={prefsDisabled}
+          />
+          <PrefSlider
+            id="summaryTone"
+            name="summaryTone"
+            label={t("toneLabel")}
+            minLabel={t("toneLow")}
+            maxLabel={t("toneHigh")}
+            defaultValue={defaults.summaryTone}
+            disabled={prefsDisabled}
           />
         </div>
+
+        {previewLoading ? (
+          <div aria-busy="true" aria-label={t("previewing")}>
+            <CustomConfigSkeleton />
+          </div>
+        ) : preview?.showFamiliarity ? (
+          <div className="grid gap-6 sm:grid-cols-2">
+            <PrefSlider
+              id="familiarity"
+              name="familiarity"
+              label={t("familiarityLabel")}
+              minLabel={t("familiarityLow")}
+              maxLabel={t("familiarityHigh")}
+              value={defaults.familiarity ?? 50}
+              onValueChange={(value) =>
+                onDefaultsChange?.({ familiarity: value })
+              }
+              disabled={isBusy || blocked}
+            />
+          </div>
+        ) : null}
 
         <p className="text-xs text-muted-foreground">
           {t("usageToday", {
@@ -324,10 +397,9 @@ export function VideoConfiguration({
             basicUsed: usageTiers.basic.used,
             basicLimit: usageTiers.basic.limit,
           })}
-
         </p>
 
-        {preview.tooLong ? (
+        {preview?.tooLong ? (
           <Alert variant="destructive">
             <AlertCircleIcon />
             <AlertTitle>{t("tooLongTitle")}</AlertTitle>
@@ -345,10 +417,10 @@ export function VideoConfiguration({
                 : generateErrorCode === "rate_limit_exceeded"
                   ? t("rateLimitExceeded")
                   : generateErrorCode === "usage_unavailable"
-                  ? t("usageUnavailable")
-                  : generateErrorCode === "too_long"
-                    ? t("tooLongBody")
-                    : generateError}
+                    ? t("usageUnavailable")
+                    : generateErrorCode === "too_long"
+                      ? t("tooLongBody")
+                      : generateError}
             </AlertDescription>
           </Alert>
         ) : null}
@@ -356,7 +428,7 @@ export function VideoConfiguration({
         <div className="flex items-center gap-2">
           <Button
             type="submit"
-            disabled={isBusy || blocked}
+            disabled={!canGenerate}
             size="lg"
             className="h-11 min-w-[7rem] px-6"
           >

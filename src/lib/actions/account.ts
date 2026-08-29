@@ -107,5 +107,6 @@ export async function updateAccountPassword(
 
   await supabase.auth.signOut({ scope: "others" });
   revalidatePath("/account");
+  revalidatePath("/account/security");
   return { success: true };
 }

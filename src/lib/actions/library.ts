@@ -340,7 +340,9 @@ export async function generateVideo(
     };
   }
 
-  revalidatePath("/");
+  // Revalidate the workspace only — revalidating "/" while client-navigating
+  // refreshes the library list under the still-visible config panel (layout jump).
+  revalidatePath(`/v/${result.userVideoId}`);
   const redirectTo = slot.fellBackFrom
     ? `/v/${result.userVideoId}?notice=model_fallback`
     : `/v/${result.userVideoId}`;

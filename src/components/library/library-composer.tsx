@@ -12,7 +12,6 @@ import {
 import type { LibraryListItem } from "@/domain/ingest/ingest-youtube-video";
 import type { PlanId } from "@/db/schema";
 import type { TierUsage } from "@/domain/usage";
-import { LoadingPanel } from "@/components/shared/status/loading-dots";
 import { Panel } from "@/components/shared/list/panel";
 
 import { AddVideoForm } from "./add-video-form";
@@ -24,8 +23,9 @@ import {
 } from "./video-configuration";
 
 type ConfigureState = {
-  source: "preview" | "refresh";
-  preview: VideoConfigurationPreview;
+  formKey: string;
+  preview: VideoConfigurationPreview | null;
+  previewLoading: boolean;
   defaults: VideoConfigurationDefaults;
 };
 
@@ -42,8 +42,22 @@ type LibraryComposerProps = {
   plan: PlanId;
   advancedModelEnabled: boolean;
   usageTiers: UsageTiers;
-  isGuest: boolean;
 };
+
+function profileDefaults(
+  defaultLength: number,
+  defaultTone: number,
+  defaultSummaryLanguage: string,
+  modelTier: VideoConfigurationDefaults["modelTier"],
+): VideoConfigurationDefaults {
+  return {
+    summaryLength: defaultLength,
+    summaryTone: defaultTone,
+    summaryLanguage: defaultSummaryLanguage,
+    familiarity: null,
+    modelTier,
+  };
+}
 
 export function LibraryComposer({
   initialItems,
@@ -53,40 +67,76 @@ export function LibraryComposer({
   plan,
   advancedModelEnabled,
   usageTiers,
-  isGuest,
 }: LibraryComposerProps) {
   const t = useTranslations("Library");
   const [configure, setConfigure] = useState<ConfigureState | null>(null);
-  const [previewPending, setPreviewPending] = useState(false);
-  const [pasteFormKey, setPasteFormKey] = useState(0);
+  const [previewEpoch, setPreviewEpoch] = useState(0);
   const composerRef = useRef<HTMLDivElement>(null);
+  const sessionRef = useRef(0);
 
   const defaultModelTier = preferredModelTierFromUsage(
     advancedModelEnabled,
     usageTiers.advanced,
   );
 
+  const nextFormKey = useCallback(() => {
+    sessionRef.current += 1;
+    return `configure-${sessionRef.current}`;
+  }, []);
+
+  const handlePreviewStart = useCallback(() => {
+    setConfigure((prev) => {
+      if (prev) {
+        return { ...prev, preview: null, previewLoading: true };
+      }
+      return {
+        formKey: nextFormKey(),
+        preview: null,
+        previewLoading: true,
+        defaults: profileDefaults(
+          defaultLength,
+          defaultTone,
+          defaultSummaryLanguage,
+          defaultModelTier,
+        ),
+      };
+    });
+  }, [
+    defaultLength,
+    defaultTone,
+    defaultSummaryLanguage,
+    defaultModelTier,
+    nextFormKey,
+  ]);
+
   const handlePreview = useCallback(
     (preview: VideoConfigurationPreview) => {
-      setConfigure({
-        source: "preview",
-        preview,
-        defaults: {
-          summaryLength: defaultLength,
-          summaryTone: defaultTone,
-          summaryLanguage: defaultSummaryLanguage,
-          familiarity: preview.showFamiliarity ? 50 : null,
-          modelTier: defaultModelTier,
-        },
+      setConfigure((prev) => {
+        // Cancelled while in flight — ignore late result.
+        if (prev == null) {
+          return null;
+        }
+        return {
+          ...prev,
+          preview,
+          previewLoading: false,
+          defaults: {
+            ...prev.defaults,
+            familiarity: preview.showFamiliarity
+              ? (prev.defaults.familiarity ?? 50)
+              : null,
+          },
+        };
       });
     },
-    [
-      defaultLength,
-      defaultTone,
-      defaultSummaryLanguage,
-      defaultModelTier,
-    ],
+    [],
   );
+
+  const handlePreviewError = useCallback(() => {
+    setConfigure((prev) =>
+      prev ? { ...prev, preview: null, previewLoading: false } : null,
+    );
+  }, []);
 
   const handleRefresh = useCallback(
     (item: LibraryListItem) => {
@@ -97,8 +147,10 @@ export function LibraryComposer({
       )
         ? resolveModelTier(plan, item.modelTier)
         : "basic";
+      setPreviewEpoch((value) => value + 1);
       setConfigure({
-        source: "refresh",
+        formKey: nextFormKey(),
+        previewLoading: false,
         preview: {
           youtubeId: item.youtubeId,
           title: item.title,
@@ -118,24 +170,24 @@ export function LibraryComposer({
       });
       composerRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
     },
-    [advancedModelEnabled, plan, usageTiers.advanced],
+    [advancedModelEnabled, plan, usageTiers.advanced, nextFormKey],
   );
 
-  const clearConfigure = useCallback(() => {
-    setConfigure(null);
-  }, []);
-
   const dismissConfigure = useCallback(() => {
+    setPreviewEpoch((value) => value + 1);
     setConfigure(null);
-    setPasteFormKey((value) => value + 1);
   }, []);
 
-  const handlePreviewPendingChange = useCallback((pending: boolean) => {
-    setPreviewPending(pending);
-    if (pending) {
-      setConfigure(null);
-    }
-  }, []);
+  const patchDefaults = useCallback(
+    (patch: Partial<VideoConfigurationDefaults>) => {
+      setConfigure((prev) =>
+        prev
+          ? { ...prev, defaults: { ...prev.defaults, ...patch } }
+          : prev,
+      );
+    },
+    [],
+  );
 
   return (
     <div ref={composerRef} className="flex flex-col gap-8">
@@ -146,29 +198,25 @@ export function LibraryComposer({
               {t("addTitle")}
             </h2>
             <AddVideoForm
-              key={pasteFormKey}
+              epoch={previewEpoch}
               onPreview={handlePreview}
-              onClearPreview={clearConfigure}
-              onPreviewPendingChange={handlePreviewPendingChange}
+              onPreviewStart={handlePreviewStart}
+              onPreviewError={handlePreviewError}
             />
           </div>
         </Panel>
 
-        {previewPending ? (
-          <Panel>
-            <LoadingPanel label={t("previewing")} />
-          </Panel>
-        ) : null}
-
-        {!previewPending && configure ? (
+        {configure ? (
           <Panel>
             <VideoConfiguration
               preview={configure.preview}
+              previewLoading={configure.previewLoading}
               defaults={configure.defaults}
               plan={plan}
               advancedModelEnabled={advancedModelEnabled}
               usageTiers={usageTiers}
-              isGuest={isGuest}
+              formKey={configure.formKey}
+              onDefaultsChange={patchDefaults}
               onClear={dismissConfigure}
             />
           </Panel>

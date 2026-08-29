@@ -7,17 +7,27 @@ import { cn } from "@/lib/utils";
 
 type AccountNavProps = {
   profileLabel: string;
+  securityLabel: string;
   usageLabel: string;
 };
 
 const items = [
   { href: "/account", key: "profile" as const },
+  { href: "/account/security", key: "security" as const },
   { href: "/account/usage", key: "usage" as const },
 ];
 
-export function AccountNav({ profileLabel, usageLabel }: AccountNavProps) {
+export function AccountNav({
+  profileLabel,
+  securityLabel,
+  usageLabel,
+}: AccountNavProps) {
   const pathname = usePathname();
-  const labels = { profile: profileLabel, usage: usageLabel };
+  const labels = {
+    profile: profileLabel,
+    security: securityLabel,
+    usage: usageLabel,
+  };
 
   return (
     <nav aria-label="Account" className="flex gap-1 border-b border-border">

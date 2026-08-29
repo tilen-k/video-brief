@@ -3,8 +3,8 @@ import { getTranslations } from "next-intl/server";
 import {
   CompletePaymentButton,
   ManageBillingButton,
-  UpgradeToProButton,
 } from "@/components/account/billing-actions";
+import { PlanComparison } from "@/components/account/plan-comparison";
 import { Panel } from "@/components/shared/list/panel";
 import { getBillingStateForUsage } from "@/domain/billing";
 import { getUsageSnapshot, UsageError } from "@/domain/usage";
@@ -88,9 +88,6 @@ export default async function AccountUsagePage({
       <Panel className="space-y-4">
         <div className="space-y-1">
           <h2 className="text-sm font-medium text-foreground">{t("usageTitle")}</h2>
-          <p className="text-sm text-muted-foreground">
-            {t("usagePlan", { plan: planLabel })}
-          </p>
         </div>
         {checkoutBanner ? (
           <p className="text-sm text-muted-foreground" role="status">
@@ -128,16 +125,6 @@ export default async function AccountUsagePage({
             })}
           </p>
         </div>
-        <p className="text-sm text-muted-foreground">{durationLabel}</p>
-        {billing.showUpgrade ? (
-          <div className="space-y-2 border-t border-border pt-4">
-            <p className="text-sm text-muted-foreground">{t("upgradeHint")}</p>
-            <UpgradeToProButton
-              label={t("upgradeToPro")}
-              pendingLabel={t("upgradePending")}
-            />
-          </div>
-        ) : null}
         {billing.showCompletePayment ? (
           <div className="space-y-2 border-t border-border pt-4">
             <CompletePaymentButton
@@ -155,6 +142,24 @@ export default async function AccountUsagePage({
           </div>
         ) : null}
       </Panel>
+      <PlanComparison
+        currentPlan={billing.plan}
+        showUpgrade={billing.showUpgrade}
+        labels={{
+          title: t("planCompareTitle"),
+          freePlan: t("planFree"),
+          proPlan: t("planPro"),
+          currentBadge: t("planCompareCurrent"),
+          basicDaily: (values) => t("planCompareBasicDaily", values),
+          advancedDaily: (values) => t("planCompareAdvancedDaily", values),
+          maxDurationMinutes: (values) =>
+            t("planCompareDurationMinutes", values),
+          maxDurationHours: (values) => t("planCompareDurationHours", values),
+          maxDurationUnlimited: t("planCompareDurationUnlimited"),
+          upgradeLabel: t("upgradeToPro"),
+          upgradePendingLabel: t("upgradePending"),
+        }}
+      />
       {showDemoDisclaimer ? (
         <Panel>
           <p className="text-sm text-muted-foreground" role="status">

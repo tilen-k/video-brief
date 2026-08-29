@@ -42,6 +42,7 @@ export default async function AccountLayout({
         </div>
         <AccountNav
           profileLabel={t("profileTab")}
+          securityLabel={t("securityTab")}
           usageLabel={t("usageTab")}
         />
         {children}

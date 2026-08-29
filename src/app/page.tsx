@@ -22,7 +22,6 @@ import { createClient } from "@/lib/supabase/server";
 
 export default async function HomePage() {
   const guestT = await getTranslations("Guest");
-  const libraryT = await getTranslations("Library");
   const auth = await getTranslations("Auth");
   const supabase = await createClient();
   const {
@@ -82,7 +81,6 @@ export default async function HomePage() {
         plan={plan}
         advancedModelEnabled={isAdvancedModelEnabled()}
         usageTiers={usageTiers}
-        isGuest={isGuest}
       />
       {isGuest ? (
         <p className="pt-1 text-center text-xs text-muted-foreground">

@@ -2,12 +2,10 @@ import { getTranslations } from "next-intl/server";
 import { redirect } from "next/navigation";
 
 import { SummaryPreferencesForm } from "@/components/account/summary-preferences-form";
-import { PasswordForm } from "@/components/account/password-form";
 import { Panel } from "@/components/shared/list/panel";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { getUserProfile } from "@/domain/analysis/get-user-profile";
-import { userHasPassword } from "@/domain/account";
 import { DEFAULT_SUMMARY_LANGUAGE } from "@/domain/i18n/summary-languages";
 import { isGuestUser } from "@/domain/auth/is-anonymous";
 import { createClient } from "@/lib/supabase/server";
@@ -52,13 +50,6 @@ export default async function AccountPage() {
               profile?.defaultSummaryLanguage ?? DEFAULT_SUMMARY_LANGUAGE
             }
           />
-        </div>
-
-        <div className="flex flex-col gap-4">
-          <h2 className="text-sm font-medium text-foreground">
-            {t("passwordTitle")}
-          </h2>
-          <PasswordForm hasPassword={userHasPassword(user)} />
         </div>
       </div>
     </Panel>

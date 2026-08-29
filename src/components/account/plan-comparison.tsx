@@ -1,0 +1,123 @@
+import { UpgradeToProButton } from "@/components/account/billing-actions";
+import { Panel } from "@/components/shared/list/panel";
+import { analysisConfig } from "@/domain/analysis/config";
+import type { PlanId } from "@/db/schema";
+import { cn } from "@/lib/utils";
+
+type PlanComparisonLabels = {
+  title: string;
+  freePlan: string;
+  proPlan: string;
+  currentBadge: string;
+  basicDaily: (values: { count: number }) => string;
+  advancedDaily: (values: { count: number }) => string;
+  maxDurationMinutes: (values: { minutes: number }) => string;
+  maxDurationHours: (values: { hours: number }) => string;
+  maxDurationUnlimited: string;
+  upgradeLabel: string;
+  upgradePendingLabel: string;
+};
+
+type PlanComparisonProps = {
+  currentPlan: PlanId;
+  showUpgrade: boolean;
+  labels: PlanComparisonLabels;
+};
+
+function formatMaxDuration(
+  maxDurationSeconds: number | null,
+  labels: Pick<
+    PlanComparisonLabels,
+    "maxDurationMinutes" | "maxDurationHours" | "maxDurationUnlimited"
+  >,
+): string {
+  if (maxDurationSeconds == null) {
+    return labels.maxDurationUnlimited;
+  }
+  if (maxDurationSeconds >= 3600 && maxDurationSeconds % 3600 === 0) {
+    return labels.maxDurationHours({
+      hours: maxDurationSeconds / 3600,
+    });
+  }
+  return labels.maxDurationMinutes({
+    minutes: Math.round(maxDurationSeconds / 60),
+  });
+}
+
+type PlanColumn = {
+  plan: PlanId;
+  name: string;
+  basic: number;
+  advanced: number;
+  duration: string;
+};
+
+export function PlanComparison({
+  currentPlan,
+  showUpgrade,
+  labels,
+}: PlanComparisonProps) {
+  const free = analysisConfig.planLimits.free;
+  const pro = analysisConfig.planLimits.pro;
+
+  const columns: PlanColumn[] = [
+    {
+      plan: "free",
+      name: labels.freePlan,
+      basic: free.daily.basic,
+      advanced: free.daily.advanced,
+      duration: formatMaxDuration(free.maxDurationSeconds, labels),
+    },
+    {
+      plan: "pro",
+      name: labels.proPlan,
+      basic: pro.daily.basic,
+      advanced: pro.daily.advanced,
+      duration: formatMaxDuration(pro.maxDurationSeconds, labels),
+    },
+  ];
+
+  return (
+    <Panel className="space-y-4">
+      <h2 className="text-sm font-medium text-foreground">{labels.title}</h2>
+      <div className="grid gap-3 sm:grid-cols-2 sm:items-start">
+        {columns.map((column) => {
+          const isCurrent = column.plan === currentPlan;
+          return (
+            <div
+              key={column.plan}
+              className={cn(
+                "flex flex-col gap-2 rounded-md border border-border p-4",
+                isCurrent && "border-foreground/40",
+              )}
+            >
+              <div className="flex items-baseline justify-between gap-2">
+                <p className="font-heading text-base tracking-tight">
+                  {column.name}
+                </p>
+                {isCurrent ? (
+                  <span className="text-xs text-muted-foreground">
+                    {labels.currentBadge}
+                  </span>
+                ) : null}
+              </div>
+              <ul className="space-y-1 text-sm text-muted-foreground">
+                <li>{labels.basicDaily({ count: column.basic })}</li>
+                <li>{labels.advancedDaily({ count: column.advanced })}</li>
+                <li>{column.duration}</li>
+              </ul>
+            </div>
+          );
+        })}
+      </div>
+      {showUpgrade ? (
+        <div className="flex justify-center">
+          <UpgradeToProButton
+            label={labels.upgradeLabel}
+            pendingLabel={labels.upgradePendingLabel}
+          />
+        </div>
+      ) : null}
+    </Panel>
+  );
+}

@@ -8,20 +8,26 @@ import {
   startProCheckout,
   type BillingActionState,
 } from "@/lib/actions/billing";
+import { cn } from "@/lib/utils";
 
 const initial: BillingActionState = {};
 
 type UpgradeButtonProps = {
   label: string;
   pendingLabel: string;
+  className?: string;
 };
 
-export function UpgradeToProButton({ label, pendingLabel }: UpgradeButtonProps) {
+export function UpgradeToProButton({
+  label,
+  pendingLabel,
+  className,
+}: UpgradeButtonProps) {
   const [state, action, pending] = useActionState(startProCheckout, initial);
 
   return (
-    <form action={action} className="space-y-2">
-      <Button type="submit" disabled={pending}>
+    <form action={action} className={cn("space-y-2", className)}>
+      <Button type="submit" disabled={pending} className="w-full">
         {pending ? pendingLabel : label}
       </Button>
       {state.error ? (
