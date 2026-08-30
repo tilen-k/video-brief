@@ -12,7 +12,14 @@ import {
   type GenerateVideoActionState,
 } from "@/lib/actions/library";
 import type { ModelTier, PlanId } from "@/db/schema";
-import type { TierUsage } from "@/domain/usage";
+import {
+  durationExceedsTier,
+} from "@/domain/usage/duration";
+import {
+  evaluateGenerateGate,
+  type GenerateGateReason,
+} from "@/domain/usage/generate-gate";
+import type { TierUsage } from "@/domain/usage/quota";
 import { PrefSlider } from "@/components/shared/pref-slider";
 import { SummaryLanguageSelect } from "@/components/shared/summary-language-select";
 import { LoadingDots } from "@/components/shared/status/loading-dots";
@@ -31,7 +38,6 @@ export type VideoConfigurationPreview = {
   durationSeconds: number | null;
   youtubeCategoryId: string | null;
   showFamiliarity: boolean;
-  tooLong?: boolean;
 };
 
 export type VideoConfigurationDefaults = {
@@ -69,70 +75,116 @@ function formatDuration(seconds: number | null): string | null {
   return `${m}:${String(s).padStart(2, "0")}`;
 }
 
+function initialSelectedTier(input: {
+  defaults: ModelTier;
+  advancedAvailable: boolean;
+  basicAvailable: boolean;
+  durationSeconds: number | null;
+}): ModelTier {
+  if (!input.advancedAvailable) {
+    return "basic";
+  }
+  if (!input.basicAvailable) {
+    return "advanced";
+  }
+  const exceedsBasic =
+    input.durationSeconds != null &&
+    durationExceedsTier("basic", input.durationSeconds);
+  const exceedsAdvanced =
+    input.durationSeconds != null &&
+    durationExceedsTier("advanced", input.durationSeconds);
+  if (exceedsBasic && !exceedsAdvanced) {
+    return "advanced";
+  }
+  if (input.defaults === "advanced") {
+    return "advanced";
+  }
+  return "basic";
+}
+
 function ModelTierSelector({
   label,
   basicLabel,
   advancedLabel,
-  advancedHint,
+  durationHint,
   advancedExhaustedHint,
   advancedUnavailableHint,
   upgradeHint,
-  defaultValue,
+  value,
+  onChange,
   plan,
   advancedModelEnabled,
   advancedAvailable,
+  canSelectBasic,
+  canSelectAdvanced,
   disabled,
 }: {
   label: string;
   basicLabel: string;
   advancedLabel: string;
-  advancedHint: string;
+  durationHint: string;
   advancedExhaustedHint: string;
   advancedUnavailableHint: string;
   upgradeHint: string;
-  defaultValue: ModelTier;
+  value: ModelTier;
+  onChange: (tier: ModelTier) => void;
   plan: PlanId;
   advancedModelEnabled: boolean;
   advancedAvailable: boolean;
+  canSelectBasic: boolean;
+  canSelectAdvanced: boolean;
   disabled: boolean;
 }) {
-  const canSelectAdvanced = advancedModelEnabled && advancedAvailable;
+  const basicDisabled = disabled || !canSelectBasic;
+  const advancedDisabled = disabled || !canSelectAdvanced;
 
   return (
     <fieldset className="flex flex-col gap-2 border-0 p-0">
       <legend className="text-sm text-foreground">{label}</legend>
       <div className="flex flex-wrap gap-2">
-        <label className="inline-flex cursor-pointer items-center gap-2 rounded-md border border-border px-3 py-2 text-sm has-disabled:cursor-not-allowed has-disabled:opacity-50">
+        <label
+          className={cn(
+            "inline-flex items-center gap-2 rounded-md border border-border px-3 py-2 text-sm",
+            basicDisabled
+              ? "cursor-not-allowed opacity-50"
+              : "cursor-pointer",
+          )}
+        >
           <input
             type="radio"
-            name="modelTier"
+            name="modelTierUi"
             value="basic"
-            defaultChecked={defaultValue === "basic" || !canSelectAdvanced}
-            disabled={disabled}
+            checked={value === "basic"}
+            onChange={() => onChange("basic")}
+            disabled={basicDisabled}
             className="accent-foreground"
           />
           <span>{basicLabel}</span>
         </label>
         <label
           className={cn(
-            "inline-flex cursor-pointer items-center gap-2 rounded-md border border-border px-3 py-2 text-sm has-disabled:cursor-not-allowed has-disabled:opacity-50",
-            !advancedModelEnabled && "opacity-50",
+            "inline-flex items-center gap-2 rounded-md border border-border px-3 py-2 text-sm",
+            advancedDisabled
+              ? "cursor-not-allowed opacity-50"
+              : "cursor-pointer",
           )}
         >
           <input
             type="radio"
-            name="modelTier"
+            name="modelTierUi"
             value="advanced"
-            defaultChecked={defaultValue === "advanced" && canSelectAdvanced}
-            disabled={disabled || !canSelectAdvanced}
+            checked={value === "advanced"}
+            onChange={() => onChange("advanced")}
+            disabled={advancedDisabled}
             className="accent-foreground"
           />
           <span>{advancedLabel}</span>
         </label>
       </div>
-      {canSelectAdvanced && advancedHint ? (
-        <p className="text-xs text-muted-foreground">{advancedHint}</p>
-      ) : advancedModelEnabled && !advancedAvailable ? (
+      {durationHint ? (
+        <p className="text-xs text-muted-foreground">{durationHint}</p>
+      ) : null}
+      {advancedModelEnabled && !advancedAvailable ? (
         <p className="text-xs text-muted-foreground">{advancedExhaustedHint}</p>
       ) : !advancedModelEnabled ? (
         <p className="text-xs text-muted-foreground">{advancedUnavailableHint}</p>
@@ -200,8 +252,28 @@ export function VideoConfiguration({
     generateInitial,
   );
 
-  const isBusy =
-    generatePending || Boolean(generateState.redirectTo);
+  const advancedAvailable =
+    advancedModelEnabled &&
+    usageTiers.advanced.used < usageTiers.advanced.limit;
+  const basicAvailable = usageTiers.basic.used < usageTiers.basic.limit;
+
+  const durationSeconds = preview?.durationSeconds ?? null;
+  const exceedsBasic =
+    durationSeconds != null && durationExceedsTier("basic", durationSeconds);
+  const exceedsAdvanced =
+    durationSeconds != null && durationExceedsTier("advanced", durationSeconds);
+  const canSelectBasic = basicAvailable && !exceedsBasic;
+  const canSelectAdvanced =
+    advancedModelEnabled && advancedAvailable && !exceedsAdvanced;
+
+  const selectedTier = initialSelectedTier({
+    defaults: defaults.modelTier,
+    advancedAvailable,
+    basicAvailable,
+    durationSeconds,
+  });
+
+  const isBusy = generatePending || Boolean(generateState.redirectTo);
 
   useEffect(() => {
     if (!generateState.redirectTo) {
@@ -216,12 +288,72 @@ export function VideoConfiguration({
     : null;
   const generateError = generateState.error ?? null;
   const generateErrorCode = generateError ? generateState.errorCode : undefined;
-  const blocked = Boolean(preview?.tooLong);
-  const advancedAvailable =
-    advancedModelEnabled &&
-    usageTiers.advanced.used < usageTiers.advanced.limit;
-  const prefsDisabled = isBusy || blocked;
-  const canGenerate = preview != null && !isBusy && !blocked;
+
+  const gate = preview
+    ? evaluateGenerateGate({
+        durationSeconds: preview.durationSeconds,
+        selectedTier,
+        basicAvailable,
+        advancedAvailable,
+      })
+    : { ok: true as const };
+
+  const prefsDisabled = isBusy;
+  const canGenerate =
+    preview != null && !previewLoading && !isBusy && gate.ok;
+
+  function handleTierChange(tier: ModelTier) {
+    onDefaultsChange?.({ modelTier: tier });
+  }
+
+  function gateDescription(reason: GenerateGateReason): string {
+    switch (reason) {
+      case "both_exhausted":
+        return t("quotaExceeded");
+      case "selected_exhausted":
+        return selectedTier === "advanced"
+          ? t("modelAdvancedExhaustedHint")
+          : t("quotaExceededBasic");
+      case "too_long": {
+        const exceedsAdvanced =
+          preview?.durationSeconds != null &&
+          durationExceedsTier("advanced", preview.durationSeconds);
+        return exceedsAdvanced
+          ? t("tooLongBodyAdvanced")
+          : t("tooLongBodyBasic");
+      }
+      case "needs_advanced":
+        return t("needsAdvanced");
+      case "unknown_duration":
+        return t("unknownDuration");
+    }
+  }
+
+  function generateErrorDescription(): string {
+    if (generateErrorCode === "quota_exceeded") {
+      return generateError ?? t("quotaExceeded");
+    }
+    if (generateErrorCode === "rate_limit_exceeded") {
+      return t("rateLimitExceeded");
+    }
+    if (generateErrorCode === "usage_unavailable") {
+      return t("usageUnavailable");
+    }
+    if (generateErrorCode === "too_long") {
+      const exceedsAdvanced =
+        preview?.durationSeconds != null &&
+        durationExceedsTier("advanced", preview.durationSeconds);
+      return exceedsAdvanced
+        ? t("tooLongBodyAdvanced")
+        : t("tooLongBodyBasic");
+    }
+    if (generateErrorCode === "transcript_too_large") {
+      return t("transcriptTooLarge");
+    }
+    return generateError ?? "";
+  }
+
+  const showGateAlert = preview != null && !previewLoading && !gate.ok;
 
   return (
     <form
@@ -241,6 +373,7 @@ export function VideoConfiguration({
         {preview ? (
           <input type="hidden" name="youtubeId" value={preview.youtubeId} />
         ) : null}
+        <input type="hidden" name="modelTier" value={selectedTier} />
 
         {previewLoading ? (
           <div aria-busy="true" aria-label={t("previewing")}>
@@ -282,14 +415,17 @@ export function VideoConfiguration({
             label={t("modelLabel")}
             basicLabel={t("modelBasic")}
             advancedLabel={t("modelAdvanced")}
-            advancedHint={t("modelAdvancedHint")}
+            durationHint={t("modelDurationHint")}
             advancedExhaustedHint={t("modelAdvancedExhaustedHint")}
             advancedUnavailableHint={t("modelAdvancedUnavailableHint")}
             upgradeHint={t("modelUpgradeHint")}
-            defaultValue={defaults.modelTier}
+            value={selectedTier}
+            onChange={handleTierChange}
             plan={plan}
             advancedModelEnabled={advancedModelEnabled}
             advancedAvailable={advancedAvailable}
+            canSelectBasic={canSelectBasic}
+            canSelectAdvanced={canSelectAdvanced}
             disabled={prefsDisabled}
           />
           <SummaryLanguageSelect
@@ -335,7 +471,7 @@ export function VideoConfiguration({
               onValueChange={(value) =>
                 onDefaultsChange?.({ familiarity: value })
               }
-              disabled={isBusy || blocked}
+              disabled={isBusy}
             />
           </div>
         ) : null}
@@ -349,11 +485,19 @@ export function VideoConfiguration({
           })}
         </p>
 
-        {preview?.tooLong ? (
+        {showGateAlert && !gate.ok ? (
           <Alert variant="destructive">
             <AlertCircleIcon />
-            <AlertTitle>{t("tooLongTitle")}</AlertTitle>
-            <AlertDescription>{t("tooLongBody")}</AlertDescription>
+            <AlertTitle>
+              {gate.reason === "too_long" ||
+              gate.reason === "unknown_duration" ||
+              gate.reason === "needs_advanced"
+                ? t("tooLongTitle")
+                : t("quotaTitle")}
+            </AlertTitle>
+            <AlertDescription>
+              {gateDescription(gate.reason)}
+            </AlertDescription>
           </Alert>
         ) : null}
 
@@ -361,17 +505,7 @@ export function VideoConfiguration({
           <Alert variant="destructive">
             <AlertCircleIcon />
             <AlertTitle>{t("generateErrorTitle")}</AlertTitle>
-            <AlertDescription>
-              {generateErrorCode === "quota_exceeded"
-                ? t("quotaExceeded")
-                : generateErrorCode === "rate_limit_exceeded"
-                  ? t("rateLimitExceeded")
-                  : generateErrorCode === "usage_unavailable"
-                    ? t("usageUnavailable")
-                    : generateErrorCode === "too_long"
-                      ? t("tooLongBody")
-                      : generateError}
-            </AlertDescription>
+            <AlertDescription>{generateErrorDescription()}</AlertDescription>
           </Alert>
         ) : null}
 

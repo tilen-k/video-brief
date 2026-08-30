@@ -65,6 +65,7 @@ vi.mock("@/domain/usage/plan", () => ({
   getPlanForUser: vi.fn(async () => "free"),
 }));
 
+import type { ModelTier } from "@/db/schema";
 import {
   fetchYoutubeVideo,
   softDeleteUserVideo,
@@ -94,8 +95,11 @@ function mockProvider(
   };
 }
 
-function mockAnalysisLanguage(summaryLanguage = "en") {
-  mocks.limit.mockResolvedValueOnce([{ summaryLanguage }]);
+function mockAnalysisLanguage(
+  summaryLanguage = "en",
+  modelTier: ModelTier = "basic",
+) {
+  mocks.limit.mockResolvedValueOnce([{ summaryLanguage, modelTier }]);
 }
 
 describe("startYoutubeIngest", () => {
@@ -348,7 +352,7 @@ describe("fetchYoutubeVideo", () => {
     });
   });
 
-  it("fails too_long and refunds when free duration is exceeded", async () => {
+  it("fails too_long and refunds when basic duration is exceeded", async () => {
     const longTranscript = {
       ...sampleTranscript,
       metadata: {
@@ -375,7 +379,6 @@ describe("fetchYoutubeVideo", () => {
       {
         transcriptProvider: provider,
         refundSlot,
-        getPlan: async () => "free",
       },
     );
 
@@ -384,6 +387,84 @@ describe("fetchYoutubeVideo", () => {
       expect.objectContaining({
         status: "failed",
         errorCode: "too_long",
+      }),
+    );
+    expect(refundSlot).toHaveBeenCalledWith("user-1", {
+      usageQuotaKey: "vb:usage:videos:user-1:202608",
+    });
+  });
+
+  it("allows a 21-minute video on advanced", async () => {
+    mocks.limit.mockReset();
+    mockAnalysisLanguage("de", "advanced");
+    const longTranscript = {
+      ...sampleTranscript,
+      metadata: {
+        ...sampleTranscript.metadata,
+        durationSeconds: 21 * 60,
+      },
+    };
+    const provider = mockProvider(async () => longTranscript);
+
+    mocks.updateReturning
+      .mockResolvedValueOnce([
+        { id: "analysis-1", status: "generating", runId: "run-1" },
+      ])
+      .mockResolvedValueOnce([{ id: "uv-1" }]);
+
+    const result = await fetchYoutubeVideo(
+      {
+        userId: "user-1",
+        youtubeId: "dQw4w9WgXcQ",
+        userVideoId: "uv-1",
+        runId: "run-1",
+      },
+      { transcriptProvider: provider },
+    );
+
+    expect(result.status).toBe("generating");
+  });
+
+  it("fails transcript_too_large and refunds when the dump exceeds the tier budget", async () => {
+    mocks.limit.mockReset();
+    mockAnalysisLanguage("de", "basic");
+    mocks.limit.mockResolvedValueOnce([
+      { usageQuotaKey: "vb:usage:videos:user-1:202608" },
+    ]);
+    const oversized = {
+      ...sampleTranscript,
+      segments: [
+        {
+          startMs: 0,
+          endMs: 1000,
+          text: "x".repeat(12_001),
+        },
+      ],
+    };
+    const provider = mockProvider(async () => oversized);
+    const refundSlot = vi.fn(async () => undefined);
+
+    mocks.updateReturning
+      .mockResolvedValueOnce([
+        { id: "analysis-1", runId: "run-1" },
+      ])
+      .mockResolvedValueOnce([{ id: "uv-1" }]);
+
+    const result = await fetchYoutubeVideo(
+      {
+        userId: "user-1",
+        youtubeId: "dQw4w9WgXcQ",
+        userVideoId: "uv-1",
+        runId: "run-1",
+      },
+      { transcriptProvider: provider, refundSlot },
+    );
+
+    expect(result.status).toBe("failed");
+    expect(mocks.set).toHaveBeenCalledWith(
+      expect.objectContaining({
+        status: "failed",
+        errorCode: "transcript_too_large",
       }),
     );
     expect(refundSlot).toHaveBeenCalledWith("user-1", {

@@ -4,7 +4,8 @@ export type UsageErrorCode =
   | "quota_exceeded"
   | "rate_limit_exceeded"
   | "usage_unavailable"
-  | "too_long";
+  | "too_long"
+  | "transcript_too_large";
 
 export type UsageLimitScope = "user" | "global" | "ip";
 
@@ -32,6 +33,7 @@ export class UsageError extends Error {
 export const REFUNDABLE_ERROR_CODES = [
   "missing_captions",
   "too_long",
+  "transcript_too_large",
 ] as const;
 
 export type RefundableErrorCode = (typeof REFUNDABLE_ERROR_CODES)[number];

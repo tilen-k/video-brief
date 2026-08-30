@@ -11,9 +11,7 @@ type PlanComparisonLabels = {
   currentBadge: string;
   basicDaily: (values: { count: number }) => string;
   advancedDaily: (values: { count: number }) => string;
-  maxDurationMinutes: (values: { minutes: number }) => string;
-  maxDurationHours: (values: { hours: number }) => string;
-  maxDurationUnlimited: string;
+  durationNote: string;
   upgradeLabel: string;
   upgradePendingLabel: string;
 };
@@ -24,32 +22,11 @@ type PlanComparisonProps = {
   labels: PlanComparisonLabels;
 };
 
-function formatMaxDuration(
-  maxDurationSeconds: number | null,
-  labels: Pick<
-    PlanComparisonLabels,
-    "maxDurationMinutes" | "maxDurationHours" | "maxDurationUnlimited"
-  >,
-): string {
-  if (maxDurationSeconds == null) {
-    return labels.maxDurationUnlimited;
-  }
-  if (maxDurationSeconds >= 3600 && maxDurationSeconds % 3600 === 0) {
-    return labels.maxDurationHours({
-      hours: maxDurationSeconds / 3600,
-    });
-  }
-  return labels.maxDurationMinutes({
-    minutes: Math.round(maxDurationSeconds / 60),
-  });
-}
-
 type PlanColumn = {
   plan: PlanId;
   name: string;
   basic: number;
   advanced: number;
-  duration: string;
 };
 
 export function PlanComparison({
@@ -66,20 +43,19 @@ export function PlanComparison({
       name: labels.freePlan,
       basic: free.daily.basic,
       advanced: free.daily.advanced,
-      duration: formatMaxDuration(free.maxDurationSeconds, labels),
     },
     {
       plan: "pro",
       name: labels.proPlan,
       basic: pro.daily.basic,
       advanced: pro.daily.advanced,
-      duration: formatMaxDuration(pro.maxDurationSeconds, labels),
     },
   ];
 
   return (
     <Panel className="space-y-4">
       <h2 className="text-sm font-medium text-foreground">{labels.title}</h2>
+      <p className="text-sm text-muted-foreground">{labels.durationNote}</p>
       <div className="grid gap-3 sm:grid-cols-2 sm:items-start">
         {columns.map((column) => {
           const isCurrent = column.plan === currentPlan;
@@ -104,7 +80,6 @@ export function PlanComparison({
               <ul className="space-y-1 text-sm text-muted-foreground">
                 <li>{labels.basicDaily({ count: column.basic })}</li>
                 <li>{labels.advancedDaily({ count: column.advanced })}</li>
-                <li>{column.duration}</li>
               </ul>
             </div>
           );

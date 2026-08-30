@@ -5,6 +5,7 @@ import {
   createRedisUsageCounterStore,
   type UsageCounterStore,
 } from "@/domain/usage/counter-store";
+import { durationFitsBasicFallback } from "@/domain/usage/duration";
 import { UsageError } from "@/domain/usage/errors";
 import {
   dailyKeyTtlSeconds,
@@ -48,7 +49,6 @@ export type UsageSnapshot = {
   plan: PlanId;
   periodKey: string;
   periodEndsAt: Date;
-  maxDurationSeconds: number | null;
   tiers: Record<ModelTier, TierUsage>;
   /** Combined daily totals for transitional call sites. */
   used: number;
@@ -120,28 +120,52 @@ async function peekUserTierAvailability(
   };
 }
 
+type TierSelection =
+  | { ok: true; tier: ModelTier; fellBackFrom?: "advanced" }
+  | { ok: false; reason: "none" | "needs_advanced" };
+
 function selectEffectiveTier(
   requested: ModelTier,
   availability: { basic: boolean; advanced: boolean },
   advancedEnabled: boolean,
-): { tier: ModelTier; fellBackFrom?: "advanced" } | null {
+  durationSeconds: number | null,
+): TierSelection {
   if (!advancedEnabled) {
-    return availability.basic ? { tier: "basic" } : null;
+    if (!availability.basic) {
+      return { ok: false, reason: "none" };
+    }
+    if (!durationFitsBasicFallback(durationSeconds)) {
+      return { ok: false, reason: "needs_advanced" };
+    }
+    return { ok: true, tier: "basic" };
   }
 
   if (requested === "basic") {
-    return availability.basic ? { tier: "basic" } : null;
+    return availability.basic
+      ? { ok: true, tier: "basic" }
+      : { ok: false, reason: "none" };
   }
 
   if (availability.advanced) {
-    return { tier: "advanced" };
+    return { ok: true, tier: "advanced" };
+  }
+
+  if (availability.basic && durationFitsBasicFallback(durationSeconds)) {
+    return { ok: true, tier: "basic", fellBackFrom: "advanced" };
   }
 
   if (availability.basic) {
-    return { tier: "basic", fellBackFrom: "advanced" };
+    return { ok: false, reason: "needs_advanced" };
   }
 
-  return null;
+  return { ok: false, reason: "none" };
+}
+
+function quotaExhaustedMessage(reason: "none" | "needs_advanced"): string {
+  if (reason === "needs_advanced") {
+    return "You've used today's Advanced generates. This video is longer than Basic allows (20 minutes).";
+  }
+  return "You've used today's generates. Resets at midnight UTC.";
 }
 
 function buildReservationKeys(
@@ -213,10 +237,12 @@ export async function reserveGenerateSlot(
   options: UsageQuotaDeps & {
     requestedTier?: ModelTier | null;
     ipHash?: string | null;
+    durationSeconds?: number | null;
   } = {},
 ): Promise<ReserveGenerateSlotResult> {
   const getPlan = options.getPlan ?? getPlanForUser;
   const now = options.now?.() ?? new Date();
+  const durationSeconds = options.durationSeconds ?? null;
   const advancedEnabled = isAdvancedModelEnabled();
   const requested = advancedEnabled
     ? (options.requestedTier ?? "advanced")
@@ -245,12 +271,17 @@ export async function reserveGenerateSlot(
   }
 
   const availability = await peekUserTierAvailability(store, userId, plan, now);
-  let selection = selectEffectiveTier(requested, availability, advancedEnabled);
+  let selection = selectEffectiveTier(
+    requested,
+    availability,
+    advancedEnabled,
+    durationSeconds,
+  );
 
-  if (!selection) {
+  if (!selection.ok) {
     throw new UsageError(
       "quota_exceeded",
-      "You've used today's generates. Resets at midnight UTC.",
+      quotaExhaustedMessage(selection.reason),
       { scope: "user", tier: requested },
     );
   }
@@ -268,11 +299,12 @@ export async function reserveGenerateSlot(
     !reserveResult.ok &&
     reserveResult.failedScope === "user" &&
     selection.tier === "advanced" &&
-    requested === "advanced"
+    requested === "advanced" &&
+    durationFitsBasicFallback(durationSeconds)
   ) {
     const basicAvailability = await peekUserTierAvailability(store, userId, plan, now);
     if (basicAvailability.basic) {
-      selection = { tier: "basic", fellBackFrom: "advanced" };
+      selection = { ok: true, tier: "basic", fellBackFrom: "advanced" };
       reserveResult = await attemptReserve(
         store,
         userId,
@@ -317,7 +349,7 @@ export async function reserveGenerateSlot(
     redisKeys,
     usageQuotaKey: encodeUsageQuotaKeys(redisKeys),
     usage,
-    maxDurationSeconds: analysisConfig.planLimits[plan].maxDurationSeconds,
+    maxDurationSeconds: analysisConfig.modelTiers[selection.tier].maxDurationSeconds,
   };
 }
 
@@ -444,7 +476,6 @@ export async function getUsageSnapshot(
     plan,
     periodKey: utcDayPeriodKey(now),
     periodEndsAt: utcDayPeriodEndsAt(now),
-    maxDurationSeconds: analysisConfig.planLimits[plan].maxDurationSeconds,
     tiers,
     used: tiers.basic.used + tiers.advanced.used,
     limit: tiers.basic.limit + tiers.advanced.limit,

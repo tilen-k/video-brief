@@ -1,7 +1,7 @@
-import type { PlanId } from "@/db/schema";
+import type { ModelTier, PlanId } from "@/db/schema";
 
 /**
- * Product/algorithm knobs for classify + generate + plan limits.
+ * Product/algorithm knobs for generate + plan limits.
  * Model ids live here, not in env. Secret: OPENROUTER_API_KEY only.
  * Set ADVANCED_MODEL_ENABLED=0 to disable the advanced tier at runtime.
  */
@@ -21,25 +21,41 @@ export const analysisConfig = {
     basicId: BASIC_MODEL_ID,
     advancedId: ADVANCED_MODEL_ID,
   },
+  modelTiers: {
+    basic: {
+      maxDurationSeconds: 20 * 60,
+      transcriptCharBudget: 12_000,
+      maxOutputTokens: 8192,
+    },
+    advanced: {
+      maxDurationSeconds: 2 * 60 * 60,
+      transcriptCharBudget: 200_000,
+      maxOutputTokens: 15_000,
+    },
+  } satisfies Record<
+    ModelTier,
+    {
+      maxDurationSeconds: number;
+      transcriptCharBudget: number;
+      maxOutputTokens: number;
+    }
+  >,
   planLimits: {
     free: {
-      maxDurationSeconds: 20 * 60,
       daily: {
         basic: 10,
         advanced: 5,
       },
     },
     pro: {
-      maxDurationSeconds: 5 * 60 * 60,
       daily: {
-        basic: 1,
-        advanced: 1,
+        basic: 20,
+        advanced: 15,
       },
     },
   } satisfies Record<
     PlanId,
     {
-      maxDurationSeconds: number | null;
       daily: {
         basic: number;
         advanced: number;
@@ -49,23 +65,14 @@ export const analysisConfig = {
   usageLimits: {
     global: {
       basic: { hourly: 20, daily: 50 },
-      advanced: { hourly: 20, daily: 30 },
+      advanced: { hourly: 10, daily: 20 },
     },
     ip: {
-      basic: { daily: 100 },
-      advanced: { daily: 15 },
+      basic: { daily: 15 },
+      advanced: { daily: 35 },
     },
   },
-  transcript: {
-    charBudget: 12_000,
-    classifyCharBudget: 4_000,
-    firstWindowMs: 3 * 60 * 1000,
-    lastWindowMs: 60 * 1000,
-    midWindowMs: 45 * 1000,
-    midWindowCount: 4,
-  },
   generate: {
-    maxOutputTokens: 8192,
     maxSections: 20,
     maxSectionTitleChars: 120,
     maxBodyChars: 2000,

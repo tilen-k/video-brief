@@ -90,21 +90,21 @@ describe("daily usage keys", () => {
 });
 
 describe("assertDurationAllowed", () => {
-  it("rejects null duration on free (fail closed)", () => {
-    expect(() => assertDurationAllowed("free", null)).toThrow(UsageError);
+  it("rejects null duration (fail closed)", () => {
+    expect(() => assertDurationAllowed("basic", null)).toThrow(UsageError);
+    expect(() => assertDurationAllowed("advanced", null)).toThrow(UsageError);
   });
 
-  it("allows free boundary and rejects over", () => {
-    expect(() => assertDurationAllowed("free", 20 * 60)).not.toThrow();
-    expect(() => assertDurationAllowed("free", 20 * 60 + 1)).toThrow(UsageError);
+  it("allows basic boundary and rejects over", () => {
+    expect(() => assertDurationAllowed("basic", 20 * 60)).not.toThrow();
+    expect(() => assertDurationAllowed("basic", 20 * 60 + 1)).toThrow(UsageError);
   });
 
-  it("allows pro up to 5 hours and rejects over", () => {
-    expect(() => assertDurationAllowed("pro", 5 * 60 * 60)).not.toThrow();
-    expect(() => assertDurationAllowed("pro", 5 * 60 * 60 + 1)).toThrow(
+  it("allows advanced up to 2 hours and rejects over", () => {
+    expect(() => assertDurationAllowed("advanced", 2 * 60 * 60)).not.toThrow();
+    expect(() => assertDurationAllowed("advanced", 2 * 60 * 60 + 1)).toThrow(
       UsageError,
     );
-    expect(() => assertDurationAllowed("pro", null)).toThrow(UsageError);
   });
 });
 
@@ -152,6 +152,7 @@ describe("reserveGenerateSlot", () => {
         getPlan: getFreePlan,
         now,
         requestedTier: "advanced",
+        durationSeconds: 60,
       });
 
       expect(slot.tier).toBe("basic");
@@ -175,6 +176,7 @@ describe("reserveGenerateSlot", () => {
         getPlan: getFreePlan,
         now,
         requestedTier: "advanced",
+        durationSeconds: 60,
       });
     }
 
@@ -183,11 +185,63 @@ describe("reserveGenerateSlot", () => {
       getPlan: getFreePlan,
       now,
       requestedTier: "advanced",
+      durationSeconds: 60,
     });
 
     expect(slot.tier).toBe("basic");
     expect(slot.fellBackFrom).toBe("advanced");
     expect(await counters.get(userDailyUsageKey("user-1", "basic", at))).toBe(1);
+  });
+
+  it("does not fall back to basic when the video exceeds the basic duration", async () => {
+    const counters = memoryCounters();
+    const limit = analysisConfig.planLimits.free.daily.advanced;
+
+    for (let i = 0; i < limit; i++) {
+      await reserveGenerateSlot("user-1", {
+        counters,
+        getPlan: getFreePlan,
+        now,
+        requestedTier: "advanced",
+        durationSeconds: 60,
+      });
+    }
+
+    await expect(
+      reserveGenerateSlot("user-1", {
+        counters,
+        getPlan: getFreePlan,
+        now,
+        requestedTier: "advanced",
+        durationSeconds: 90 * 60,
+      }),
+    ).rejects.toMatchObject({ code: "quota_exceeded", tier: "advanced" });
+    expect(await counters.get(userDailyUsageKey("user-1", "basic", at))).toBe(0);
+  });
+
+  it("does not fall back to basic when duration is unknown", async () => {
+    const counters = memoryCounters();
+    const limit = analysisConfig.planLimits.free.daily.advanced;
+
+    for (let i = 0; i < limit; i++) {
+      await reserveGenerateSlot("user-1", {
+        counters,
+        getPlan: getFreePlan,
+        now,
+        requestedTier: "advanced",
+        durationSeconds: 60,
+      });
+    }
+
+    await expect(
+      reserveGenerateSlot("user-1", {
+        counters,
+        getPlan: getFreePlan,
+        now,
+        requestedTier: "advanced",
+        durationSeconds: null,
+      }),
+    ).rejects.toMatchObject({ code: "quota_exceeded" });
   });
 
   it("does not consume global advanced when falling back to basic", async () => {
@@ -200,6 +254,7 @@ describe("reserveGenerateSlot", () => {
         getPlan: getFreePlan,
         now,
         requestedTier: "advanced",
+        durationSeconds: 60,
       });
     }
 
@@ -208,6 +263,7 @@ describe("reserveGenerateSlot", () => {
       getPlan: getFreePlan,
       now,
       requestedTier: "advanced",
+      durationSeconds: 60,
     });
 
     expect(await counters.get(globalHourlyUsageKey("advanced", at))).toBe(limit);
@@ -348,7 +404,6 @@ describe("getUsageSnapshot", () => {
     expect(snapshot).toMatchObject({
       plan: "free",
       periodKey: "20260824",
-      maxDurationSeconds: 20 * 60,
       tiers: {
         basic: { used: 1, limit: 10 },
         advanced: { used: 2, limit: 5 },

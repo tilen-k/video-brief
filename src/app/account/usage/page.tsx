@@ -7,6 +7,7 @@ import {
 import { PlanComparison } from "@/components/account/plan-comparison";
 import { Panel } from "@/components/shared/list/panel";
 import { getBillingStateForUsage } from "@/domain/billing";
+import { analysisConfig } from "@/domain/analysis/config";
 import { getUsageSnapshot, UsageError } from "@/domain/usage";
 import { isDemoMode } from "@/lib/demo-mode";
 import { createClient } from "@/lib/supabase/server";
@@ -16,23 +17,6 @@ function formatResetDate(date: Date, locale: string): string {
     dateStyle: "medium",
     timeZone: "UTC",
   }).format(date);
-}
-
-function formatDurationLimit(
-  maxDurationSeconds: number | null,
-  t: Awaited<ReturnType<typeof getTranslations>>,
-): string {
-  if (maxDurationSeconds == null) {
-    return t("usageDurationUnlimited");
-  }
-  if (maxDurationSeconds >= 3600 && maxDurationSeconds % 3600 === 0) {
-    return t("usageDurationHours", {
-      hours: maxDurationSeconds / 3600,
-    });
-  }
-  return t("usageDurationMinutes", {
-    minutes: Math.round(maxDurationSeconds / 60),
-  });
 }
 
 type AccountUsagePageProps = {
@@ -73,7 +57,11 @@ export default async function AccountUsagePage({
 
   const planLabel =
     billing.plan === "pro" ? t("planPro") : t("planFree");
-  const durationLabel = formatDurationLimit(snapshot.maxDurationSeconds, t);
+  const basicMinutes = Math.round(
+    analysisConfig.modelTiers.basic.maxDurationSeconds / 60,
+  );
+  const advancedHours =
+    analysisConfig.modelTiers.advanced.maxDurationSeconds / 3600;
 
   const showDemoDisclaimer = isDemoMode();
   const checkoutBanner =
@@ -127,8 +115,13 @@ export default async function AccountUsagePage({
               date: formatResetDate(snapshot.periodEndsAt, "en"),
             })}
           </p>
+          <p className="text-sm text-muted-foreground">
+            {t("usageDurationBasic", { minutes: basicMinutes })}
+          </p>
+          <p className="text-sm text-muted-foreground">
+            {t("usageDurationAdvanced", { hours: advancedHours })}
+          </p>
         </div>
-        <p className="text-sm text-muted-foreground">{durationLabel}</p>
         {billing.showCompletePayment ? (
           <div className="space-y-2 border-t border-border pt-4">
             <CompletePaymentButton
@@ -156,10 +149,7 @@ export default async function AccountUsagePage({
           currentBadge: t("planCompareCurrent"),
           basicDaily: (values) => t("planCompareBasicDaily", values),
           advancedDaily: (values) => t("planCompareAdvancedDaily", values),
-          maxDurationMinutes: (values) =>
-            t("planCompareDurationMinutes", values),
-          maxDurationHours: (values) => t("planCompareDurationHours", values),
-          maxDurationUnlimited: t("planCompareDurationUnlimited"),
+          durationNote: t("planCompareDurationNote"),
           upgradeLabel: t("upgradeToPro"),
           upgradePendingLabel: t("upgradePending"),
         }}

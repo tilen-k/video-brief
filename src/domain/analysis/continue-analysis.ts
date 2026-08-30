@@ -13,7 +13,7 @@ import { clampSectionTimes } from "@/domain/analysis/clamp-section-times";
 import { DEFAULT_LENGTH_SCORE, DEFAULT_TONE_SCORE } from "@/domain/analysis/prefs";
 import { resolveSummaryLanguage } from "@/domain/i18n/summary-language";
 import { generateSectionsSchema } from "@/domain/analysis/schemas";
-import { selectTranscriptSubset } from "@/domain/analysis/select-transcript-subset";
+import { formatTranscript } from "@/domain/analysis/format-transcript";
 import { assertRunnableModelTier } from "@/domain/analysis/model-tier";
 import { fetchYoutubeVideo } from "@/domain/ingest/ingest-youtube-video";
 import {
@@ -389,7 +389,7 @@ async function runGenerate(
     return failStage(db, userId, userVideoId, row, "generating", "empty_transcript");
   }
 
-  const transcriptSubset = selectTranscriptSubset(segments, row.durationSeconds);
+  const transcriptSubset = formatTranscript(segments);
   const summaryLength = row.summaryLength ?? DEFAULT_LENGTH_SCORE;
   const summaryTone = row.summaryTone ?? DEFAULT_TONE_SCORE;
   const outputLanguage = resolveSummaryLanguage(row.summaryLanguage);

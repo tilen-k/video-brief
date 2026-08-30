@@ -12,7 +12,11 @@ import {
   TranscriptProviderError,
   type TranscriptProvider,
 } from "@/lib/youtube/transcript-provider";
-import { getPlanForUser } from "@/domain/usage/plan";
+import { assertRunnableModelTier } from "@/domain/analysis/model-tier";
+import {
+  assertTranscriptWithinBudget,
+  formatTranscript,
+} from "@/domain/analysis/format-transcript";
 import {
   assertDurationAllowed,
   isRefundableErrorCode,
@@ -80,7 +84,6 @@ export type FetchYoutubeVideoInput = {
 export type IngestYoutubeVideoDeps = {
   db?: Db;
   transcriptProvider?: TranscriptProvider;
-  getPlan?: typeof getPlanForUser;
   refundSlot?: typeof refundGenerateSlot;
 };
 
@@ -417,12 +420,14 @@ export async function fetchYoutubeVideo(
 ): Promise<IngestYoutubeVideoResult> {
   const db = deps.db ?? createDb();
   const provider = deps.transcriptProvider ?? getDefaultTranscriptProvider();
-  const getPlan = deps.getPlan ?? getPlanForUser;
   const refundSlot = deps.refundSlot ?? refundGenerateSlot;
   const { userId, youtubeId, userVideoId, runId } = input;
 
   const [analysisRow] = await db
-    .select({ summaryLanguage: personalizedAnalyses.summaryLanguage })
+    .select({
+      summaryLanguage: personalizedAnalyses.summaryLanguage,
+      modelTier: personalizedAnalyses.modelTier,
+    })
     .from(personalizedAnalyses)
     .where(
       and(
@@ -434,6 +439,7 @@ export async function fetchYoutubeVideo(
     .limit(1);
 
   const preferredLanguage = analysisRow?.summaryLanguage ?? "en";
+  const modelTier = assertRunnableModelTier(analysisRow?.modelTier);
 
   let fetchResult: Awaited<ReturnType<TranscriptProvider["getTranscript"]>>;
 
@@ -561,15 +567,18 @@ export async function fetchYoutubeVideo(
   }
 
   try {
-    const plan = await getPlan(userId);
-    assertDurationAllowed(plan, fetchResult.metadata.durationSeconds);
+    assertDurationAllowed(modelTier, fetchResult.metadata.durationSeconds);
+    assertTranscriptWithinBudget(
+      formatTranscript(fetchResult.segments),
+      modelTier,
+    );
   } catch (error) {
     const usageError =
       error instanceof UsageError
         ? error
         : new UsageError(
             "usage_unavailable",
-            "Couldn't check plan limits for this video.",
+            "Couldn't check model limits for this video.",
             { cause: error },
           );
 
@@ -599,7 +608,7 @@ export async function fetchYoutubeVideo(
           durationSeconds: fetchResult.metadata.durationSeconds,
           youtubeCategoryId: fetchResult.metadata.youtubeCategoryId,
         },
-        fetchResult.segments,
+        [],
         fetchResult.language,
       );
 
@@ -613,9 +622,13 @@ export async function fetchYoutubeVideo(
       };
     });
 
-    if (result._refunded && result.redisKey) {
-      await refundSlot(userId, { usageQuotaKey: result.redisKey });
-    }
+    await maybeRefundGenerateSlot(
+      userId,
+      usageError.code,
+      result._refunded,
+      refundSlot,
+      result.redisKey,
+    );
     return {
       userVideoId: result.userVideoId,
       analysisId: result.analysisId,

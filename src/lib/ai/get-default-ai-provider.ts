@@ -1,4 +1,5 @@
 import type { ModelTier, PlanId } from "@/db/schema";
+import { analysisConfig } from "@/domain/analysis/config";
 import {
   modelIdForTier,
   resolveModelTier,
@@ -19,7 +20,10 @@ export function getAIProviderForTier(tier: ModelTier): AIProvider {
   if (existing) {
     return existing;
   }
-  const provider = new OpenRouterAIProvider(modelId);
+  const provider = new OpenRouterAIProvider(
+    modelId,
+    analysisConfig.modelTiers[tier].maxOutputTokens,
+  );
   providersByModel.set(modelId, provider);
   return provider;
 }

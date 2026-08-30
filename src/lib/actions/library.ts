@@ -21,7 +21,6 @@ import {
 } from "@/domain/ingest/ingest-youtube-video";
 import { previewYoutubeVideo } from "@/domain/ingest/preview-youtube";
 import { assertDurationAllowed } from "@/domain/usage/duration";
-import { getPlanForUser } from "@/domain/usage/plan";
 import {
   getClientIpFromHeaders,
   hashClientIp,
@@ -50,7 +49,6 @@ export type PreviewYoutubeActionState = {
     durationSeconds: number | null;
     youtubeCategoryId: string | null;
     showFamiliarity: boolean;
-    tooLong?: boolean;
   };
 };
 
@@ -86,17 +84,6 @@ export async function previewYoutube(
 
   try {
     const preview = await previewYoutubeVideo(parsed.data.youtubeId);
-    let tooLong = false;
-    try {
-      const plan = await getPlanForUser(user.id);
-      assertDurationAllowed(plan, preview.durationSeconds);
-    } catch (error) {
-      if (error instanceof UsageError && error.code === "too_long") {
-        tooLong = true;
-      } else {
-        throw error;
-      }
-    }
 
     return {
       preview: {
@@ -107,7 +94,6 @@ export async function previewYoutube(
         durationSeconds: preview.durationSeconds,
         youtubeCategoryId: preview.youtubeCategoryId,
         showFamiliarity: preview.showFamiliarity,
-        tooLong,
       },
     };
   } catch (error) {
@@ -191,10 +177,10 @@ export async function generateVideo(
     };
   }
 
-  let plan;
+  const requestedTier = parsed.data.modelTier ?? "advanced";
+
   try {
-    plan = await getPlanForUser(user.id);
-    assertDurationAllowed(plan, metadata.durationSeconds);
+    assertDurationAllowed(requestedTier, metadata.durationSeconds);
   } catch (error) {
     if (error instanceof UsageError) {
       revalidatePath("/");
@@ -205,7 +191,7 @@ export async function generateVideo(
     }
     logger.error({ ...errorFields(error) }, "generateVideo.duration_err");
     return {
-      error: "Couldn't check plan limits for this video.",
+      error: "Couldn't check model limits for this video.",
       errorCode: "usage_unavailable",
     };
   }
@@ -235,8 +221,9 @@ export async function generateVideo(
     }
 
     slot = await reserveGenerateSlot(user.id, {
-      requestedTier: parsed.data.modelTier,
+      requestedTier,
       ipHash,
+      durationSeconds: metadata.durationSeconds,
     });
   } catch (error) {
     if (error instanceof UsageError) {
@@ -249,6 +236,31 @@ export async function generateVideo(
     logger.error({ ...errorFields(error) }, "generateVideo.usage_err");
     return {
       error: "Couldn't check your usage limit. Try again in a moment.",
+      errorCode: "usage_unavailable",
+    };
+  }
+
+  try {
+    assertDurationAllowed(slot.tier, metadata.durationSeconds);
+  } catch (error) {
+    try {
+      await refundGenerateSlot(user.id, { usageQuotaKey: slot.usageQuotaKey });
+    } catch (refundError) {
+      logger.error(
+        { ...errorFields(refundError) },
+        "generateVideo.refund_after_duration_err",
+      );
+    }
+    if (error instanceof UsageError) {
+      revalidatePath("/");
+      return {
+        error: error.message,
+        errorCode: error.code,
+      };
+    }
+    logger.error({ ...errorFields(error) }, "generateVideo.effective_duration_err");
+    return {
+      error: "Couldn't check model limits for this video.",
       errorCode: "usage_unavailable",
     };
   }

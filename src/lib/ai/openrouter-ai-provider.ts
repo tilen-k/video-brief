@@ -13,7 +13,7 @@ import {
   type GenerateSectionsInput,
 } from "./provider";
 
-const { maxSections, maxOutputTokens } = analysisConfig.generate;
+const { maxSections } = analysisConfig.generate;
 
 export const GENERATE_SYSTEM = `You write a personalized overview and timed section notes of a YouTube video from its transcript.
 Respond with a JSON object only: {"summary":"...","sections":[{"title":"...","startTime":0,"endTime":45,"body":"..."},{"title":"...","startTime":45,"endTime":120,"body":"..."}]}
@@ -112,9 +112,14 @@ function createModel(apiKey: string, modelId: string) {
 
 export class OpenRouterAIProvider implements AIProvider {
   private readonly modelId: string;
+  private readonly maxOutputTokens: number;
 
-  constructor(modelId: string = analysisConfig.models.basicId) {
+  constructor(
+    modelId: string = analysisConfig.models.basicId,
+    maxOutputTokens: number = analysisConfig.modelTiers.basic.maxOutputTokens,
+  ) {
     this.modelId = modelId;
+    this.maxOutputTokens = maxOutputTokens;
   }
 
   async generateSections(input: GenerateSectionsInput) {
@@ -139,7 +144,7 @@ export class OpenRouterAIProvider implements AIProvider {
         prompt: buildGeneratePrompt(input),
         timeout: analysisConfig.model.timeoutMs,
         maxRetries: analysisConfig.model.maxRetries,
-        maxOutputTokens,
+        maxOutputTokens: this.maxOutputTokens,
       });
 
       if (output == null) {
