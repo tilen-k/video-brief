@@ -2,7 +2,7 @@
 
 Contextual YouTube summarizer: personalized section summaries synchronized with the video.
 
-**Live:** [video-brief-app.vercel.app](https://video-brief-app.vercel.app)
+**Live:** [videobrief-demo.vercel.app](https://videobrief-demo.vercel.app/)
 
 ## Engineering highlights
 
@@ -104,12 +104,12 @@ Set `STRIPE_WEBHOOK_SECRET` from the CLI output.
 
 ### Vercel
 
-1. Existing project for this repo (e.g. `video-brief-app.vercel.app`).
+1. Existing project for this repo (e.g. `https://videobrief-demo.vercel.app/`).
 2. Variables:
 
    | Variable | Notes |
    |----------|--------|
-   | `NEXT_PUBLIC_SITE_URL` | `https://video-brief-app.vercel.app` |
+   | `NEXT_PUBLIC_SITE_URL` | `https://videobrief-demo.vercel.app/` |
    | `NEXT_PUBLIC_SUPABASE_URL` | Same as local |
    | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Same as local |
    | `DATABASE_URL` | Supabase Transaction pooler |
