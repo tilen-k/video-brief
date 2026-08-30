@@ -3,10 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { WorkspaceVideo } from "@/domain/workspace/get-workspace-video";
 
 import type { AnalysisLockStore } from "./analysis-lock";
-import {
-  AnalysisJobDelayError,
-  processAnalyzeJob,
-} from "./process-analyze-job";
+import { processAnalyzeJob } from "./process-analyze-job";
 
 const job = {
   userId: "11111111-1111-4111-8111-111111111111",
