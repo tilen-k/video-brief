@@ -60,19 +60,23 @@ export async function AppShell({
         userEmailHref ? (
           <Link
             href={userEmailHref}
-            className="max-w-[7rem] cursor-pointer truncate text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline sm:max-w-[11rem]"
+            title={userEmail}
+            className="min-w-0 cursor-pointer truncate text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
           >
             {userEmail}
           </Link>
         ) : (
-          <span className="hidden max-w-[11rem] truncate text-sm text-muted-foreground md:inline">
+          <span
+            title={userEmail}
+            className="hidden min-w-0 truncate text-sm text-muted-foreground md:inline"
+          >
             {userEmail}
           </span>
         )
       ) : null}
-      <ThemeToggle />
+      <ThemeToggle className="shrink-0" />
       {showLogout ? (
-        <form action="/auth/signout" method="post">
+        <form action="/auth/signout" method="post" className="shrink-0">
           <Button type="submit" variant="outline" size="sm">
             {library("logout")}
           </Button>

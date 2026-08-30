@@ -83,6 +83,9 @@ importers:
       react-hook-form:
         specifier: ^7.85.0
         version: 7.85.0(react@19.2.8)
+      react-time-ago:
+        specifier: ^7.4.4
+        version: 7.4.4(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       react-youtube:
         specifier: ^10.1.0
         version: 10.1.0(react@19.2.8)(supports-color@7.2.0)
@@ -4090,6 +4093,9 @@ packages:
     resolution: {integrity: sha512-H0dkQoCa3b2VEeKQBOxFph+JAbcrQdE7KC0UkqwpLmv2EC4P41QXP+rqo9wYodACiG5/WM5s9oDApTU8utwj9g==}
     engines: {node: '>= 0.4'}
 
+  javascript-time-ago@2.6.4:
+    resolution: {integrity: sha512-7K/Z37LuwVaxxjutUDd1pXpznufPcox0b1UYu00ksAMMlV6IsxIvduwL3kgfPxuBVF8jVj7nhrKMPDslMq94aQ==}
+
   jiti@2.7.0:
     resolution: {integrity: sha512-AC/7JofJvZGrrneWNaEnJeOLUx+JlGt7tNa0wZiRPT4MY1wmfKjt2+6O2p2uz2+skll8OZZmJMNqeke7kKbNgQ==}
     hasBin: true
@@ -4390,6 +4396,9 @@ packages:
   media-typer@1.1.1:
     resolution: {integrity: sha512-yz3xRaG20c6/BOzvYoDaGtPmGscs7YivItZEEqe6GbwNfHuxu9YNmvnEkMzKldAGY4/80pRcQRZSEnhquk9XuQ==}
     engines: {node: '>= 0.8'}
+
+  memoize-one@6.0.0:
+    resolution: {integrity: sha512-rkpe71W0N0c0Xz6QD0eJETuWAJGnJ9afsl1srmwPrI+yBCkge5EycXXbYRyvL29zZVUWQCY7InPRCv3GDXuZNw==}
 
   merge-descriptors@2.0.0:
     resolution: {integrity: sha512-Snk314V5ayFLhp3fkUREub6WtjBfPdCPY1Ln8/8munuLuiYhsABgBVWsozAG+MWMbVEvcdcpbi9R7ww22l9Q3g==}
@@ -4876,6 +4885,12 @@ packages:
       '@types/react':
         optional: true
 
+  react-time-ago@7.4.4:
+    resolution: {integrity: sha512-g1qqiEgIYgKvK6ySxyVq9nZ/s5mKbugY5fsgc0lB9suwVpbj58f47T578IqSkyzbe+kO6pk1ITmfTOTM8VizRw==}
+    peerDependencies:
+      react: '>=0.16.8'
+      react-dom: '>=0.16.8'
+
   react-youtube@10.1.0:
     resolution: {integrity: sha512-ZfGtcVpk0SSZtWCSTYOQKhfx5/1cfyEW1JN/mugGNfAxT3rmVJeMbGpA9+e78yG21ls5nc/5uZJETE3cm3knBg==}
     engines: {node: '>= 14.x'}
@@ -4916,6 +4931,9 @@ packages:
   regexp.prototype.flags@1.5.4:
     resolution: {integrity: sha512-dYqgNSZbDwkaJ2ceRd9ojCGjBq+mOm9LmtXnAnEGyHhN/5R7iDW2TRw3h+o/jCFxus3P2LfWIIiwowAjANm7IA==}
     engines: {node: '>= 0.4'}
+
+  relative-time-format@1.1.12:
+    resolution: {integrity: sha512-qaZBjmRIuXLfuLnzgqpFdBPa5W0euSX1tMnoMUHGPphLwJmrt8xbNiOIHrlvYOD6oNJ0M5owPCZyPibI8de5pQ==}
 
   require-from-string@2.0.2:
     resolution: {integrity: sha512-Xf0nWe6RseziFMu+Ap9biiUbmplq6S9/p+7w7YXP/JBHhrUDDUhwa+vANyubuqfZWTveU//DYVGsDG7RKL/vEw==}
@@ -9255,6 +9273,10 @@ snapshots:
       has-symbols: 1.1.0
       set-function-name: 2.0.2
 
+  javascript-time-ago@2.6.4:
+    dependencies:
+      relative-time-format: 1.1.12
+
   jiti@2.7.0: {}
 
   jose@6.2.9: {}
@@ -9494,6 +9516,8 @@ snapshots:
   mdn-data@2.27.1: {}
 
   media-typer@1.1.1: {}
+
+  memoize-one@6.0.0: {}
 
   merge-descriptors@2.0.0: {}
 
@@ -10041,6 +10065,14 @@ snapshots:
     optionalDependencies:
       '@types/react': 19.2.18
 
+  react-time-ago@7.4.4(react-dom@19.2.8(react@19.2.8))(react@19.2.8):
+    dependencies:
+      javascript-time-ago: 2.6.4
+      memoize-one: 6.0.0
+      prop-types: 15.8.1
+      react: 19.2.8
+      react-dom: 19.2.8(react@19.2.8)
+
   react-youtube@10.1.0(react@19.2.8)(supports-color@7.2.0):
     dependencies:
       fast-deep-equal: 3.1.3
@@ -10094,6 +10126,8 @@ snapshots:
       get-proto: 1.0.1
       gopd: 1.2.0
       set-function-name: 2.0.2
+
+  relative-time-format@1.1.12: {}
 
   require-from-string@2.0.2: {}
 

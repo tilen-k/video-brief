@@ -106,38 +106,45 @@ export function LibraryList({ initialItems, onRefresh }: LibraryListProps) {
           return (
             <div
               key={item.userVideoId}
-              className="flex items-center gap-2 px-4 py-3.5 transition-colors hover:bg-muted/50 sm:gap-3"
+              className="flex items-start gap-2 px-3 py-3 transition-colors hover:bg-muted/50 md:items-center md:gap-3 md:px-4 md:py-3.5"
             >
               <Link
                 href={href}
-                className="flex min-w-0 flex-1 cursor-pointer gap-4 rounded-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring/50"
+                className="flex min-w-0 flex-1 cursor-pointer gap-3 rounded-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring/50 md:gap-4"
                 aria-label={t("openVideo", { title: item.title })}
               >
-                {item.thumbnailUrl ? (
-                  <Image
-                    src={item.thumbnailUrl}
-                    alt=""
-                    width={120}
-                    height={68}
-                    className="h-[4.25rem] w-[7.5rem] shrink-0 rounded-md bg-muted object-cover"
-                  />
-                ) : (
-                  <div className="h-[4.25rem] w-[7.5rem] shrink-0 rounded-md bg-muted" />
-                )}
+                <div className="w-[6.25rem] shrink-0 space-y-1 md:w-[7.5rem] md:space-y-0">
+                  {item.thumbnailUrl ? (
+                    <Image
+                      src={item.thumbnailUrl}
+                      alt=""
+                      width={120}
+                      height={68}
+                      className="h-14 w-full rounded-md bg-muted object-cover md:h-[4.25rem]"
+                    />
+                  ) : (
+                    <div className="h-14 w-full rounded-md bg-muted md:h-[4.25rem]" />
+                  )}
+                  {item.channelTitle ? (
+                    <p className="truncate text-sm font-medium leading-snug md:hidden">
+                      {item.channelTitle}
+                    </p>
+                  ) : null}
+                </div>
 
-                <div className="min-w-0 flex-1 space-y-2 py-0.5">
+                <div className="min-w-0 flex-1 space-y-1.5 py-0.5 md:space-y-2">
                   <div className="space-y-0.5">
-                    <p className="truncate font-medium leading-snug">
+                    <p className="line-clamp-2 font-medium leading-snug md:line-clamp-none md:truncate">
                       {item.title}
                     </p>
                     {item.channelTitle ? (
-                      <p className="truncate text-sm text-muted-foreground">
+                      <p className="hidden truncate text-sm text-muted-foreground md:block">
                         {item.channelTitle}
                       </p>
                     ) : null}
                   </div>
 
-                  <div className="flex flex-wrap items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1 md:gap-2">
                     <AnalysisStatusBadge
                       status={item.status}
                       label={statusT(phase)}
@@ -148,7 +155,7 @@ export function LibraryList({ initialItems, onRefresh }: LibraryListProps) {
                         : t("modelTierBasic")}
                     </span>
                     {failed && item.errorMessage ? (
-                      <span className="truncate text-xs text-destructive/90">
+                      <span className="line-clamp-2 text-xs text-destructive/90 md:line-clamp-none md:truncate">
                         {item.errorMessage}
                       </span>
                     ) : null}
@@ -156,10 +163,10 @@ export function LibraryList({ initialItems, onRefresh }: LibraryListProps) {
                 </div>
               </Link>
 
-              <div className="flex shrink-0 items-center gap-3 self-center">
+              <div className="flex shrink-0 flex-col items-end gap-1 self-stretch pt-0.5 md:flex-row md:items-center md:gap-3 md:self-center md:pt-0">
                 <TimeAgo
                   date={item.refreshedAt}
-                  className="text-xs tabular-nums text-muted-foreground"
+                  className="order-2 pr-1.5 text-xs tabular-nums text-muted-foreground md:order-1 md:pr-0"
                 />
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
@@ -167,7 +174,7 @@ export function LibraryList({ initialItems, onRefresh }: LibraryListProps) {
                       type="button"
                       variant="ghost"
                       size="icon-sm"
-                      className="text-muted-foreground"
+                      className="order-1 text-muted-foreground md:order-2"
                       aria-label={t("moreActions", { title: item.title })}
                     >
                       <MoreHorizontal className="size-4" />

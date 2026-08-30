@@ -198,8 +198,8 @@ function ModelTierSelector({
 
 function PreviewHeaderSkeleton() {
   return (
-    <div className="flex gap-4" aria-hidden>
-      <Skeleton className="h-20 w-36 shrink-0 rounded-none" />
+    <div className="flex gap-3 sm:gap-4" aria-hidden>
+      <Skeleton className="h-16 w-28 shrink-0 rounded-none sm:h-20 sm:w-36" />
       <div className="min-w-0 flex-1 space-y-2">
         <Skeleton className="h-5 w-3/4" />
         <Skeleton className="h-4 w-1/2" />
@@ -380,22 +380,22 @@ export function VideoConfiguration({
             <PreviewHeaderSkeleton />
           </div>
         ) : preview ? (
-          <div className="flex gap-4">
+          <div className="flex gap-3 sm:gap-4">
             {preview.thumbnailUrl ? (
-              <div className="relative h-20 w-36 shrink-0 overflow-hidden bg-muted">
+              <div className="relative h-16 w-28 shrink-0 overflow-hidden bg-muted sm:h-20 sm:w-36">
                 <Image
                   src={preview.thumbnailUrl}
                   alt=""
                   fill
                   className="object-cover"
-                  sizes="144px"
+                  sizes="(max-width: 640px) 112px, 144px"
                 />
               </div>
             ) : (
-              <div className="h-20 w-36 shrink-0 bg-muted" />
+              <div className="h-16 w-28 shrink-0 bg-muted sm:h-20 sm:w-36" />
             )}
             <div className="min-w-0 flex-1 space-y-1">
-              <p className="truncate font-heading text-base tracking-tight">
+              <p className="line-clamp-3 font-heading text-base leading-snug tracking-tight sm:line-clamp-2">
                 {preview.title}
               </p>
               {preview.channelTitle ? (

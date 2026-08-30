@@ -28,9 +28,11 @@ export function AppHeader({
           contentClassName ?? "max-w-6xl",
         )}
       >
-        <div className="flex min-w-0 items-center gap-3">{left}</div>
+        <div className="flex min-w-0 shrink-0 items-center gap-3">{left}</div>
         {right ? (
-          <div className="flex shrink-0 items-center gap-1 sm:gap-2">{right}</div>
+          <div className="flex min-w-0 items-center justify-end gap-1 sm:gap-2">
+            {right}
+          </div>
         ) : null}
       </div>
     </header>

@@ -69,7 +69,7 @@ export function PasswordForm({ hasPassword }: { hasPassword: boolean }) {
         <p className="text-sm text-foreground">{t("passwordUpdated")}</p>
       ) : null}
 
-      <Button type="submit" disabled={pending} className="self-start">
+      <Button type="submit" disabled={pending} className="w-full sm:w-fit">
         {pending
           ? t("saving")
           : hasPassword

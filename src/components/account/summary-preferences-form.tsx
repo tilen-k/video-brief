@@ -76,7 +76,7 @@ export function SummaryPreferencesForm({
         </Alert>
       ) : null}
 
-      <Button type="submit" disabled={pending} className="w-fit">
+      <Button type="submit" disabled={pending} className="w-full sm:w-fit">
         {pending ? <Spinner /> : null}
         {pending ? t("saving") : t("savePreferences")}
       </Button>

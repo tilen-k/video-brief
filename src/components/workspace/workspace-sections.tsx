@@ -16,9 +16,11 @@ type WorkspaceSectionsProps = {
 
 export function formatSectionTime(totalSeconds: number): string {
   const seconds = Math.max(0, Math.floor(totalSeconds));
-  const minutes = Math.floor(seconds / 60);
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
   const remainder = seconds % 60;
-  return `${minutes}:${remainder.toString().padStart(2, "0")}`;
+  const mmss = `${minutes.toString().padStart(hours > 0 ? 2 : 1, "0")}:${remainder.toString().padStart(2, "0")}`;
+  return hours > 0 ? `${hours}:${mmss}` : mmss;
 }
 
 export function isActiveSection(
@@ -46,6 +48,14 @@ export function WorkspaceSections({
     }
     const node = itemRefs.current[activeIndex];
     if (!node) {
+      return;
+    }
+    // Only autoscroll when the sections pane itself scrolls (desktop).
+    const pane = node.closest("[data-workspace-sections-scroll]");
+    if (!(pane instanceof HTMLElement)) {
+      return;
+    }
+    if (pane.scrollHeight <= pane.clientHeight + 1) {
       return;
     }
     const reducedMotion = window.matchMedia(

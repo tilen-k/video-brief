@@ -86,8 +86,9 @@ export function PlanComparison({
         })}
       </div>
       {showUpgrade ? (
-        <div className="flex justify-center">
+        <div className="w-full sm:flex sm:justify-center">
           <UpgradeToProButton
+            className="w-full sm:w-auto sm:min-w-56"
             label={labels.upgradeLabel}
             pendingLabel={labels.upgradePendingLabel}
           />
