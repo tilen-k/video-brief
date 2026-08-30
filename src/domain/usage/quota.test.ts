@@ -8,6 +8,7 @@ import {
   getUsageSnapshot,
   globalDailyUsageKey,
   globalHourlyUsageKey,
+  ipDailyUsageKey,
   refundGenerateSlot,
   reserveGenerateSlot,
   userDailyUsageKey,
@@ -345,15 +346,9 @@ describe("reserveGenerateSlot", () => {
   it("enforces IP advanced daily limits", async () => {
     const counters = memoryCounters();
     const ipLimit = analysisConfig.usageLimits.ip.advanced.daily;
-
+    const key = ipDailyUsageKey("iphash1", "advanced", at);
     for (let i = 0; i < ipLimit; i++) {
-      await reserveGenerateSlot(`user-${i}`, {
-        counters,
-        getPlan: getFreePlan,
-        now,
-        requestedTier: "advanced",
-        ipHash: "iphash1",
-      });
+      await counters.consume(key, ipLimit, 1000);
     }
 
     await expect(
