@@ -10,11 +10,3 @@ export const optionalSummaryLanguageSchema = z.preprocess((value) => {
   }
   return value;
 }, summaryLanguageSchema.optional());
-
-export const updateDefaultSummaryLanguageSchema = z.object({
-  defaultSummaryLanguage: summaryLanguageSchema,
-});
-
-export type UpdateDefaultSummaryLanguageInput = z.infer<
-  typeof updateDefaultSummaryLanguageSchema
->;

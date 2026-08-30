@@ -47,9 +47,8 @@ export function TimeAgo({ date, className }: TimeAgoProps) {
     () => (typeof date === "string" ? new Date(date) : date),
     [date],
   );
-  const [label, setLabel] = useState(() =>
-    formatRelativeTime(target, new Date()),
-  );
+  // Relative labels depend on "now" — format only after mount so SSR/client match.
+  const [label, setLabel] = useState<string | null>(null);
 
   useEffect(() => {
     const tick = () => setLabel(formatRelativeTime(target, new Date()));
@@ -62,9 +61,9 @@ export function TimeAgo({ date, className }: TimeAgoProps) {
     <time
       dateTime={target.toISOString()}
       className={className}
-      title={target.toLocaleString()}
+      title={target.toISOString()}
     >
-      {label}
+      {label ?? ""}
     </time>
   );
 }

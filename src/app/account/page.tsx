@@ -6,6 +6,10 @@ import { Panel } from "@/components/shared/list/panel";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { getUserProfile } from "@/domain/analysis/get-user-profile";
+import {
+  DEFAULT_LENGTH_SCORE,
+  DEFAULT_TONE_SCORE,
+} from "@/domain/analysis/prefs";
 import { DEFAULT_SUMMARY_LANGUAGE } from "@/domain/i18n/summary-languages";
 import { isGuestUser } from "@/domain/auth/is-anonymous";
 import { createClient } from "@/lib/supabase/server";
@@ -49,6 +53,8 @@ export default async function AccountPage() {
             defaultSummaryLanguage={
               profile?.defaultSummaryLanguage ?? DEFAULT_SUMMARY_LANGUAGE
             }
+            summaryTone={profile?.summaryTone ?? DEFAULT_TONE_SCORE}
+            summaryLength={profile?.summaryLength ?? DEFAULT_LENGTH_SCORE}
           />
         </div>
       </div>

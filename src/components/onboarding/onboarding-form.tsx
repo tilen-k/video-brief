@@ -8,57 +8,22 @@ import {
   completeOnboarding,
   type OnboardingActionState,
 } from "@/lib/actions/onboarding";
+import { PrefSlider } from "@/components/shared/pref-slider";
 import { SummaryLanguageSelect } from "@/components/shared/summary-language-select";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
   Field,
   FieldGroup,
-  FieldLabel,
 } from "@/components/ui/field";
 import { Spinner } from "@/components/ui/spinner";
 import { useTopLoaderOnPending } from "@/components/shared/layout/use-top-loader-on-pending";
+import {
+  DEFAULT_LENGTH_SCORE,
+  DEFAULT_TONE_SCORE,
+} from "@/domain/analysis/prefs";
 
 const initial: OnboardingActionState = {};
-
-function PrefSlider({
-  id,
-  name,
-  label,
-  minLabel,
-  maxLabel,
-  defaultValue,
-  disabled,
-}: {
-  id: string;
-  name: string;
-  label: string;
-  minLabel: string;
-  maxLabel: string;
-  defaultValue: number;
-  disabled: boolean;
-}) {
-  return (
-    <Field>
-      <FieldLabel htmlFor={id}>{label}</FieldLabel>
-      <input
-        id={id}
-        name={name}
-        type="range"
-        min={0}
-        max={100}
-        step={1}
-        defaultValue={defaultValue}
-        disabled={disabled}
-        className="h-2 w-full cursor-pointer appearance-none rounded-full bg-muted accent-foreground disabled:cursor-not-allowed"
-      />
-      <div className="flex justify-between text-xs text-muted-foreground">
-        <span>{minLabel}</span>
-        <span>{maxLabel}</span>
-      </div>
-    </Field>
-  );
-}
 
 export function OnboardingForm({
   defaultSummaryLanguage,
@@ -91,7 +56,7 @@ export function OnboardingForm({
             label={t("toneLabel")}
             minLabel={t("toneLow")}
             maxLabel={t("toneHigh")}
-            defaultValue={50}
+            defaultValue={DEFAULT_TONE_SCORE}
             disabled={pending}
           />
           <PrefSlider
@@ -100,7 +65,7 @@ export function OnboardingForm({
             label={t("lengthLabel")}
             minLabel={t("lengthLow")}
             maxLabel={t("lengthHigh")}
-            defaultValue={50}
+            defaultValue={DEFAULT_LENGTH_SCORE}
             disabled={pending}
           />
         </FieldGroup>

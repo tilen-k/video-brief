@@ -32,8 +32,8 @@ export const analysisConfig = {
     pro: {
       maxDurationSeconds: 5 * 60 * 60,
       daily: {
-        basic: 100,
-        advanced: 15,
+        basic: 1,
+        advanced: 1,
       },
     },
   } satisfies Record<

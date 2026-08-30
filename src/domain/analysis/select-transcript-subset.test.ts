@@ -19,8 +19,8 @@ describe("selectTranscriptSubset", () => {
     expect(result).toBe(
       `${formatTranscriptLine(segments[0]!)}\n${formatTranscriptLine(segments[1]!)}`,
     );
-    expect(result).toContain("[00:00]");
-    expect(result).toContain("[00:01]");
+    expect(result).toContain("[0]");
+    expect(result).toContain("[1]");
   });
 
   it("keeps first 3 minutes and last minute on a long transcript", () => {
@@ -35,8 +35,8 @@ describe("selectTranscriptSubset", () => {
     expect(result.length).toBeLessThanOrEqual(
       analysisConfig.transcript.charBudget,
     );
-    expect(result).toContain("[00:00]");
-    expect(result).toContain("[00:30]");
-    expect(result).toMatch(/\[9[89]:/);
+    expect(result).toContain("[0]");
+    expect(result).toContain("[30]");
+    expect(result).toMatch(/\[59[0-9]{2}\]/);
   });
 });

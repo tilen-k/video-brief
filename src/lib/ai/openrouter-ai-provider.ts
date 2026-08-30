@@ -16,10 +16,13 @@ import {
 const { maxSections, maxOutputTokens } = analysisConfig.generate;
 
 export const GENERATE_SYSTEM = `You write a personalized overview and timed section notes of a YouTube video from its transcript.
-Respond with a JSON object only: {"summary":"...","sections":[{"title":"...","startTime":0,"endTime":12,"body":"..."}]}
+Respond with a JSON object only: {"summary":"...","sections":[{"title":"...","startTime":0,"endTime":45,"body":"..."},{"title":"...","startTime":45,"endTime":120,"body":"..."}]}
 summary is a standalone overview the viewer can read instead of watching (about 1500–2000 characters total).
 Write the summary as multiple short paragraphs separated by blank lines (\\n\\n) — paragraph count follows the per-video length preference in the user prompt.
-Each section needs a title, startTime and endTime in seconds, and a body for seek/highlight.
+Each section needs a title, startTime and endTime in seconds from the start of the video, and a body for seek/highlight.
+startTime and endTime are absolute timestamps (not durations). endTime must be greater than startTime.
+Every startTime and endTime must be within 0 and the video duration (inclusive) — never invent times past the end of the video.
+Use the transcript [seconds] markers as the time source (integer seconds from the start of the video).
 Write synthesized prose in complete sentences — summarize ideas, arguments, and takeaways.
 Do not quote the transcript verbatim, reproduce dialogue line-by-line, or list who said what.
 For interviews, debates, or Q&A, explain the main positions and conclusions rather than repeating answers.
@@ -29,8 +32,17 @@ When the transcript language differs from the output language, translate faithfu
 Use the viewer's per-video prefs only to change depth, framing, formality, and length — not to add unrelated content.
 Return 1–${maxSections} sections that cover the video in chronological order by startTime. Short videos may have a single section.`;
 
+function formatDurationClock(seconds: number): string {
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return `${m}:${String(s).padStart(2, "0")}`;
+}
+
 function durationLabel(seconds: number | null): string {
-  return seconds != null ? `${seconds} seconds` : "unknown";
+  if (seconds == null) {
+    return "unknown";
+  }
+  return `${seconds} seconds (${formatDurationClock(seconds)}). All startTime/endTime values must be between 0 and ${seconds}`;
 }
 
 export function summaryParagraphCount(summaryLength: number): number {

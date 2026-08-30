@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useLayoutEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 
 import { showFamiliaritySlider } from "@/domain/analysis/familiarity-categories";
@@ -71,8 +71,24 @@ export function LibraryComposer({
   const t = useTranslations("Library");
   const [configure, setConfigure] = useState<ConfigureState | null>(null);
   const [previewEpoch, setPreviewEpoch] = useState(0);
-  const composerRef = useRef<HTMLDivElement>(null);
   const sessionRef = useRef(0);
+  const configurePanelRef = useRef<HTMLDivElement>(null);
+  const scrollConfigureIntoViewRef = useRef(false);
+
+  useLayoutEffect(() => {
+    if (!scrollConfigureIntoViewRef.current) {
+      return;
+    }
+    scrollConfigureIntoViewRef.current = false;
+    const panel = configurePanelRef.current;
+    if (!panel) {
+      return;
+    }
+    const header = document.querySelector("header");
+    const offset = header?.getBoundingClientRect().height ?? 0;
+    const top = window.scrollY + panel.getBoundingClientRect().top - offset;
+    window.scrollTo(0, Math.max(0, top));
+  }, [configure]);
 
   const defaultModelTier = preferredModelTierFromUsage(
     advancedModelEnabled,
@@ -148,6 +164,7 @@ export function LibraryComposer({
         ? resolveModelTier(plan, item.modelTier)
         : "basic";
       setPreviewEpoch((value) => value + 1);
+      scrollConfigureIntoViewRef.current = true;
       setConfigure({
         formKey: nextFormKey(),
         previewLoading: false,
@@ -168,7 +185,6 @@ export function LibraryComposer({
           modelTier: preferredTier,
         },
       });
-      composerRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
     },
     [advancedModelEnabled, plan, usageTiers.advanced, nextFormKey],
   );
@@ -190,7 +206,7 @@ export function LibraryComposer({
   );
 
   return (
-    <div ref={composerRef} className="flex flex-col gap-8">
+    <div className="flex flex-col gap-8 overflow-anchor-none">
       <div className="flex flex-col gap-4">
         <Panel>
           <div className="flex flex-col gap-5">
@@ -207,19 +223,21 @@ export function LibraryComposer({
         </Panel>
 
         {configure ? (
-          <Panel>
-            <VideoConfiguration
-              preview={configure.preview}
-              previewLoading={configure.previewLoading}
-              defaults={configure.defaults}
-              plan={plan}
-              advancedModelEnabled={advancedModelEnabled}
-              usageTiers={usageTiers}
-              formKey={configure.formKey}
-              onDefaultsChange={patchDefaults}
-              onClear={dismissConfigure}
-            />
-          </Panel>
+          <div ref={configurePanelRef}>
+            <Panel>
+              <VideoConfiguration
+                preview={configure.preview}
+                previewLoading={configure.previewLoading}
+                defaults={configure.defaults}
+                plan={plan}
+                advancedModelEnabled={advancedModelEnabled}
+                usageTiers={usageTiers}
+                formKey={configure.formKey}
+                onDefaultsChange={patchDefaults}
+                onClear={dismissConfigure}
+              />
+            </Panel>
+          </div>
         ) : null}
       </div>
 

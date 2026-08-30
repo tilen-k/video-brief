@@ -12,9 +12,7 @@ const {
 
 export function formatTranscriptTimestamp(startMs: number): string {
   const totalSeconds = Math.max(0, Math.floor(startMs / 1000));
-  const minutes = Math.floor(totalSeconds / 60);
-  const seconds = totalSeconds % 60;
-  return `[${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}]`;
+  return `[${totalSeconds}]`;
 }
 
 export function formatTranscriptLine(segment: TranscriptSegment): string {
@@ -70,7 +68,7 @@ function packLines(
 
 /**
  * ~12k caption chars. If over budget: first 3 min + last 1 min + up to 4
- * mid ~45s windows. Format `[mm:ss] text`.
+ * mid ~45s windows. Format `[seconds] text`.
  */
 export function selectTranscriptSubset(
   segments: TranscriptSegment[],

@@ -4,16 +4,16 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { isGuestUser } from "@/domain/auth/is-anonymous";
-import { saveDefaultSummaryLanguage } from "@/domain/onboarding";
+import { saveSummaryPreferences } from "@/domain/onboarding";
 import { createClient } from "@/lib/supabase/server";
-import { updateDefaultSummaryLanguageSchema } from "@/lib/validations/summary-language";
+import { updateSummaryPreferencesSchema } from "@/lib/validations/summary-preferences";
 
 export type SummaryPreferencesActionState = {
   error?: string;
   success?: boolean;
 };
 
-export async function updateDefaultSummaryLanguage(
+export async function updateSummaryPreferences(
   _prev: SummaryPreferencesActionState,
   formData: FormData,
 ): Promise<SummaryPreferencesActionState> {
@@ -30,23 +30,22 @@ export async function updateDefaultSummaryLanguage(
     redirect("/");
   }
 
-  const parsed = updateDefaultSummaryLanguageSchema.safeParse({
+  const parsed = updateSummaryPreferencesSchema.safeParse({
     defaultSummaryLanguage: formData.get("defaultSummaryLanguage"),
+    summaryTone: formData.get("summaryTone"),
+    summaryLength: formData.get("summaryLength"),
   });
 
   if (!parsed.success) {
     return {
-      error: parsed.error.issues[0]?.message ?? "Invalid language",
+      error: parsed.error.issues[0]?.message ?? "Invalid preferences",
     };
   }
 
   try {
-    await saveDefaultSummaryLanguage(
-      user.id,
-      parsed.data.defaultSummaryLanguage,
-    );
+    await saveSummaryPreferences(user.id, parsed.data);
   } catch (error) {
-    console.error("saveDefaultSummaryLanguage failed", error);
+    console.error("saveSummaryPreferences failed", error);
     return { error: "Could not save your preferences. Try again." };
   }
 

@@ -5,7 +5,7 @@ import { AlertCircleIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useTopLoader } from "nextjs-toploader";
-import { useActionState, useEffect, type ChangeEvent } from "react";
+import { useActionState, useEffect } from "react";
 
 import {
   generateVideo,
@@ -13,6 +13,7 @@ import {
 } from "@/lib/actions/library";
 import type { ModelTier, PlanId } from "@/db/schema";
 import type { TierUsage } from "@/domain/usage";
+import { PrefSlider } from "@/components/shared/pref-slider";
 import { SummaryLanguageSelect } from "@/components/shared/summary-language-select";
 import { LoadingDots } from "@/components/shared/status/loading-dots";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -58,59 +59,6 @@ type VideoConfigurationProps = {
   onDefaultsChange?: (patch: Partial<VideoConfigurationDefaults>) => void;
   onClear: () => void;
 };
-
-function PrefSlider({
-  id,
-  name,
-  label,
-  minLabel,
-  maxLabel,
-  defaultValue,
-  value,
-  onValueChange,
-  disabled,
-}: {
-  id: string;
-  name: string;
-  label: string;
-  minLabel: string;
-  maxLabel: string;
-  defaultValue?: number;
-  value?: number;
-  onValueChange?: (value: number) => void;
-  disabled: boolean;
-}) {
-  const controlled = value != null && onValueChange != null;
-  return (
-    <div className="flex flex-col gap-2">
-      <label htmlFor={id} className="text-sm text-foreground">
-        {label}
-      </label>
-      <input
-        id={id}
-        name={name}
-        type="range"
-        min={0}
-        max={100}
-        step={1}
-        {...(controlled
-          ? {
-              value,
-              onChange: (event: ChangeEvent<HTMLInputElement>) => {
-                onValueChange(Number(event.target.value));
-              },
-            }
-          : { defaultValue })}
-        disabled={disabled}
-        className="h-2 w-full cursor-pointer appearance-none rounded-full bg-muted accent-foreground disabled:cursor-not-allowed"
-      />
-      <div className="flex justify-between text-xs text-muted-foreground">
-        <span>{minLabel}</span>
-        <span>{maxLabel}</span>
-      </div>
-    </div>
-  );
-}
 
 function formatDuration(seconds: number | null): string | null {
   if (seconds == null || seconds < 0) {
@@ -213,7 +161,9 @@ function PrefSliderSkeleton() {
   return (
     <div className="flex flex-col gap-2" aria-hidden>
       <Skeleton className="h-4 w-40" />
-      <Skeleton className="h-2 w-full rounded-full" />
+      <div className="flex h-8 items-center">
+        <Skeleton className="h-3 w-full rounded-full" />
+      </div>
       <div className="flex justify-between">
         <Skeleton className="h-3 w-12" />
         <Skeleton className="h-3 w-12" />
@@ -328,13 +278,6 @@ export function VideoConfiguration({
         ) : null}
 
         <div className="grid gap-6 sm:grid-cols-2">
-          <SummaryLanguageSelect
-            id="summaryLanguage"
-            name="summaryLanguage"
-            label={t("summaryLanguageLabel")}
-            defaultValue={defaults.summaryLanguage}
-            disabled={prefsDisabled}
-          />
           <ModelTierSelector
             label={t("modelLabel")}
             basicLabel={t("modelBasic")}
@@ -347,6 +290,13 @@ export function VideoConfiguration({
             plan={plan}
             advancedModelEnabled={advancedModelEnabled}
             advancedAvailable={advancedAvailable}
+            disabled={prefsDisabled}
+          />
+          <SummaryLanguageSelect
+            id="summaryLanguage"
+            name="summaryLanguage"
+            label={t("summaryLanguageLabel")}
+            defaultValue={defaults.summaryLanguage}
             disabled={prefsDisabled}
           />
           <PrefSlider

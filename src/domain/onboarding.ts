@@ -35,15 +35,23 @@ export async function saveOnboarding(
     .where(eq(profiles.id, userId));
 }
 
-export async function saveDefaultSummaryLanguage(
+export async function saveSummaryPreferences(
   userId: string,
-  defaultSummaryLanguage: string,
+  input: {
+    defaultSummaryLanguage: string;
+    summaryTone: number;
+    summaryLength: number;
+  },
 ): Promise<void> {
   const db = createDb();
   await db
     .update(profiles)
     .set({
-      defaultSummaryLanguage: resolveSummaryLanguage(defaultSummaryLanguage),
+      defaultSummaryLanguage: resolveSummaryLanguage(
+        input.defaultSummaryLanguage,
+      ),
+      summaryTone: input.summaryTone,
+      summaryLength: input.summaryLength,
       updatedAt: new Date(),
     })
     .where(eq(profiles.id, userId));

@@ -42,6 +42,22 @@ describe("buildGeneratePrompt", () => {
     expect(GENERATE_SYSTEM).toContain("interviews, debates, or Q&A");
   });
 
+  it("requires absolute section timestamps, not durations", () => {
+    expect(GENERATE_SYSTEM).toContain(
+      "absolute timestamps (not durations)",
+    );
+    expect(GENERATE_SYSTEM).toContain(
+      "endTime must be greater than startTime",
+    );
+    expect(GENERATE_SYSTEM).toContain("never invent times past the end");
+  });
+
+  it("states the duration bound in the user prompt", () => {
+    expect(buildGeneratePrompt(baseInput)).toContain(
+      "Duration: 120 seconds (2:00). All startTime/endTime values must be between 0 and 120",
+    );
+  });
+
   it("requests more paragraphs when summary length is higher", () => {
     expect(summaryParagraphCount(20)).toBe(2);
     expect(summaryParagraphCount(55)).toBe(3);

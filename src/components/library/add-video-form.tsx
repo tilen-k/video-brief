@@ -87,7 +87,8 @@ export function AddVideoForm({
         </div>
         <Button
           type="submit"
-          disabled={parseYoutubeId(url) == null}
+          disabled={parseYoutubeId(url) == null ? true : undefined}
+          suppressHydrationWarning
           size="lg"
           className="h-11 shrink-0 px-6 sm:min-w-[7rem]"
         >

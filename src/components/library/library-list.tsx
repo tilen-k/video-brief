@@ -173,7 +173,10 @@ export function LibraryList({ initialItems, onRefresh }: LibraryListProps) {
                       <MoreHorizontal className="size-4" />
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
+                  <DropdownMenuContent
+                    align="end"
+                    onCloseAutoFocus={(event) => event.preventDefault()}
+                  >
                     <DropdownMenuItem onClick={() => onRefresh(item)}>
                       <RefreshCw className="size-4" />
                       {t("generateAgain")}
