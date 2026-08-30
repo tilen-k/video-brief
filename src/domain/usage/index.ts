@@ -12,25 +12,15 @@ export { getClientIpFromHeaders } from "./client-ip";
 export { hashClientIp } from "./ip-hash";
 export { getPlanForUser, planLimitsFor } from "./plan";
 export {
-  consumeMonthlyGenerateSlot,
-  createRedisUsageCounterStore,
-  dailyKeyTtlSeconds,
-  decodeUsageQuotaKeys,
-  encodeUsageQuotaKeys,
+  createPostgresUsageEventStore,
   getUsageSnapshot,
-  globalDailyUsageKey,
-  globalHourlyUsageKey,
-  ipDailyUsageKey,
   refundGenerateSlot,
-  refundMonthlyGenerateSlot,
   reserveGenerateSlot,
-  userDailyUsageKey,
   utcDayPeriodEndsAt,
   utcDayPeriodKey,
-  type ConsumeResult,
   type ReserveGenerateSlotResult,
   type TierUsage,
-  type UsageCounterStore,
+  type UsageEventStore,
   type UsageQuotaDeps,
   type UsageSnapshot,
 } from "./quota";

@@ -64,7 +64,7 @@ Open questions (ask user if blocking)
 - `AIProvider`: `classifyVideo` + `generateSections`. Classify does not emit skeleton or LLM questions.
 - Paste stubs stay on the library; worker loops `continueAnalysis` (fetch → classify → generate).
 - Analysis state machine stays simple (`pending` → `fetching` → `classifying` → `generating` → `complete` | `failed`); UI does not leak internals.
-- Redis is queue + lock only. No shared transcript cache. No Prisma, Whisper, chat, Playwright, or non-EN captions in MVP.
+- Redis is BullMQ queue + per-video analysis lock. Usage is Postgres. No shared transcript cache. No Prisma, Whisper, chat, Playwright, or non-EN captions in MVP.
 - Prefer extending an existing skill/path over a parallel abstraction.
 
 ## Tone

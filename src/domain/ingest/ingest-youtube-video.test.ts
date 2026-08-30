@@ -123,7 +123,7 @@ describe("startYoutubeIngest", () => {
         summaryTone: 50,
         modelTier: "basic",
         summaryLanguage: "de",
-        usageQuotaKey: "vb:usage:videos:user-1:202608",
+        runId: "run-1",
         metadata: {
           title: "Sample video",
           channelTitle: "Channel",
@@ -141,14 +141,14 @@ describe("startYoutubeIngest", () => {
       analysisId: "analysis-1",
       status: "pending",
       runId: "run-1",
-      priorUsageQuotaKey: null,
+      priorRunId: null,
     });
   });
 
   it("refreshes an active row instead of inserting", async () => {
     mocks.limit
       .mockResolvedValueOnce([{ id: "uv-active" }])
-      .mockResolvedValueOnce([{ usageQuotaKey: "vb:usage:videos:user-1:old" }]);
+      .mockResolvedValueOnce([{ runId: "run-old" }]);
     mocks.returning
       .mockResolvedValueOnce([{ id: "uv-active" }])
       .mockResolvedValueOnce([
@@ -163,7 +163,7 @@ describe("startYoutubeIngest", () => {
       summaryTone: 50,
       modelTier: "basic",
       summaryLanguage: "en",
-      usageQuotaKey: "vb:usage:videos:user-1:202608",
+      runId: "run-2",
       metadata: {
         title: "Sample video",
         channelTitle: "Channel",
@@ -174,7 +174,7 @@ describe("startYoutubeIngest", () => {
     });
 
     expect(result.userVideoId).toBe("uv-active");
-    expect(result.priorUsageQuotaKey).toBe("vb:usage:videos:user-1:old");
+    expect(result.priorRunId).toBe("run-old");
     expect(mocks.onConflictDoUpdate).toHaveBeenCalled();
   });
 
@@ -192,11 +192,11 @@ describe("startYoutubeIngest", () => {
       summaryTone: 50,
       modelTier: "basic",
       summaryLanguage: "en",
-      usageQuotaKey: "vb:usage:videos:user-1:202608",
+      runId: "run-3",
     });
 
     expect(result.userVideoId).toBe("uv-new");
-    expect(result.priorUsageQuotaKey).toBeNull();
+    expect(result.priorRunId).toBeNull();
   });
 });
 
@@ -204,9 +204,6 @@ describe("fetchYoutubeVideo", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockAnalysisLanguage("de");
-    mocks.limit.mockResolvedValueOnce([
-      { usageQuotaKey: "vb:usage:videos:user-1:202608" },
-    ]);
   });
 
   it("always fetches from provider and lands on generating", async () => {
@@ -241,11 +238,6 @@ describe("fetchYoutubeVideo", () => {
       .mockResolvedValueOnce([{ id: "analysis-1", status: "generating", runId: "run-1" }])
       .mockResolvedValueOnce([{ id: "uv-1" }]);
 
-    mockAnalysisLanguage("de");
-    mocks.limit.mockResolvedValueOnce([
-      { usageQuotaKey: "vb:usage:videos:user-1:202608" },
-    ]);
-
     const input = {
       userId: "user-1",
       youtubeId: "dQw4w9WgXcQ",
@@ -254,9 +246,6 @@ describe("fetchYoutubeVideo", () => {
     };
     await fetchYoutubeVideo(input, { transcriptProvider: provider });
     mockAnalysisLanguage("de");
-    mocks.limit.mockResolvedValueOnce([
-      { usageQuotaKey: "vb:usage:videos:user-1:202608" },
-    ]);
     await fetchYoutubeVideo(input, { transcriptProvider: provider });
 
     expect(getTranscript).toHaveBeenCalledTimes(2);
@@ -320,7 +309,7 @@ describe("fetchYoutubeVideo", () => {
     });
     expect(mocks.update).toHaveBeenCalled();
     expect(refundSlot).toHaveBeenCalledWith("user-1", {
-      usageQuotaKey: "vb:usage:videos:user-1:202608",
+      runId: "run-1",
     });
   });
 
@@ -348,7 +337,7 @@ describe("fetchYoutubeVideo", () => {
     expect(result.status).toBe("failed");
     expect(mocks.update).toHaveBeenCalled();
     expect(refundSlot).toHaveBeenCalledWith("user-1", {
-      usageQuotaKey: "vb:usage:videos:user-1:202608",
+      runId: "run-1",
     });
   });
 
@@ -390,7 +379,7 @@ describe("fetchYoutubeVideo", () => {
       }),
     );
     expect(refundSlot).toHaveBeenCalledWith("user-1", {
-      usageQuotaKey: "vb:usage:videos:user-1:202608",
+      runId: "run-1",
     });
   });
 
@@ -428,9 +417,6 @@ describe("fetchYoutubeVideo", () => {
   it("fails transcript_too_large and refunds when the dump exceeds the tier budget", async () => {
     mocks.limit.mockReset();
     mockAnalysisLanguage("de", "basic");
-    mocks.limit.mockResolvedValueOnce([
-      { usageQuotaKey: "vb:usage:videos:user-1:202608" },
-    ]);
     const oversized = {
       ...sampleTranscript,
       segments: [
@@ -468,7 +454,7 @@ describe("fetchYoutubeVideo", () => {
       }),
     );
     expect(refundSlot).toHaveBeenCalledWith("user-1", {
-      usageQuotaKey: "vb:usage:videos:user-1:202608",
+      runId: "run-1",
     });
   });
 

@@ -34,7 +34,7 @@ pnpm db:migrate
 
 Schema changes go through Drizzle Kit only: edit `src/db/schema.ts` → `pnpm db:generate` → `pnpm db:migrate`. Do not re-apply the same DDL via the Supabase SQL editor or MCP `apply_migration`.
 
-5. Redis (analysis queue). From the repo root:
+5. Redis (analysis queue + per-video lock). From the repo root:
 
 ```bash
 docker compose up -d redis
@@ -64,8 +64,8 @@ Not needed for Preview/Generate. Uncomment the three `STRIPE_*` vars in `.env.lo
 
 | Piece | Host | Role |
 |-------|------|------|
-| Next.js app | Vercel | UI, auth cookies, enqueue jobs, usage counters |
-| Redis | Railway plugin | BullMQ queue + locks + monthly Generate counters |
+| Next.js app | Vercel | UI, auth cookies, enqueue jobs, usage (Postgres) |
+| Redis | Railway plugin | BullMQ queue + per-video lock |
 | Analysis worker | Railway service | `pnpm worker:prod` — fetch / generate |
 | Auth + Postgres | Supabase | Same project as local |
 

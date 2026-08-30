@@ -244,7 +244,7 @@ export async function generateVideo(
     assertDurationAllowed(slot.tier, metadata.durationSeconds);
   } catch (error) {
     try {
-      await refundGenerateSlot(user.id, { usageQuotaKey: slot.usageQuotaKey });
+      await refundGenerateSlot(user.id, { runId: slot.runId });
     } catch (refundError) {
       logger.error(
         { ...errorFields(refundError) },
@@ -289,7 +289,7 @@ export async function generateVideo(
       summaryTone,
       summaryLanguage,
       modelTier,
-      usageQuotaKey: slot.usageQuotaKey,
+      runId: slot.runId,
       metadata: {
         title: metadata.title,
         channelTitle: metadata.channelTitle,
@@ -300,7 +300,7 @@ export async function generateVideo(
     });
   } catch (error) {
     try {
-      await refundGenerateSlot(user.id, { usageQuotaKey: slot.usageQuotaKey });
+      await refundGenerateSlot(user.id, { runId: slot.runId });
     } catch (refundError) {
       logger.error(
         { ...errorFields(refundError) },
@@ -315,10 +315,10 @@ export async function generateVideo(
     };
   }
 
-  if (result.priorUsageQuotaKey) {
+  if (result.priorRunId) {
     try {
       await refundGenerateSlot(user.id, {
-        usageQuotaKey: result.priorUsageQuotaKey,
+        runId: result.priorRunId,
       });
     } catch (refundError) {
       logger.error(
@@ -337,7 +337,7 @@ export async function generateVideo(
   } catch (error) {
     logger.error({ ...errorFields(error) }, "generateVideo.enqueue_failed");
     try {
-      await refundGenerateSlot(user.id, { usageQuotaKey: slot.usageQuotaKey });
+      await refundGenerateSlot(user.id, { runId: slot.runId });
     } catch (refundError) {
       logger.error(
         { ...errorFields(refundError) },

@@ -2,31 +2,21 @@ import type { ModelTier, PlanId } from "@/db/schema";
 import { isAdvancedModelEnabled } from "@/domain/analysis/model-tier";
 import { analysisConfig } from "@/domain/analysis/config";
 import {
-  createRedisUsageCounterStore,
-  type UsageCounterStore,
-} from "@/domain/usage/counter-store";
+  createPostgresUsageEventStore,
+  type UsageEventStore,
+} from "@/domain/usage/event-store";
 import { durationFitsBasicFallback } from "@/domain/usage/duration";
 import { UsageError } from "@/domain/usage/errors";
 import {
-  dailyKeyTtlSeconds,
-  decodeUsageQuotaKeys,
-  encodeUsageQuotaKeys,
-  globalDailyKeyTtlSeconds,
-  globalDailyUsageKey,
-  globalHourlyUsageKey,
-  hourlyKeyTtlSeconds,
-  ipDailyUsageKey,
-  userDailyUsageKey,
   utcDayPeriodEndsAt,
   utcDayPeriodKey,
 } from "@/domain/usage/keys";
 import { getPlanForUser } from "@/domain/usage/plan";
-import { assertRedisReady, getRedis } from "@/lib/redis";
 import { errorFields, logger } from "@/lib/logger";
 
 export type UsageQuotaDeps = {
   getPlan?: typeof getPlanForUser;
-  counters?: UsageCounterStore;
+  store?: UsageEventStore;
   now?: () => Date;
 };
 
@@ -39,8 +29,7 @@ export type ReserveGenerateSlotResult = {
   tier: ModelTier;
   fellBackFrom?: "advanced";
   plan: PlanId;
-  redisKeys: string[];
-  usageQuotaKey: string;
+  runId: string;
   usage: Record<ModelTier, TierUsage>;
   maxDurationSeconds: number | null;
 };
@@ -55,29 +44,8 @@ export type UsageSnapshot = {
   limit: number;
 };
 
-type ReservationKey = {
-  key: string;
-  limit: number;
-  ttlSeconds: number;
-  scope: "user" | "global" | "ip";
-};
-
-/** @deprecated Use reserveGenerateSlot */
-export type ConsumeResult = {
-  used: number;
-  limit: number;
-  plan: PlanId;
-  redisKey: string;
-};
-
-async function resolveCounters(
-  counters?: UsageCounterStore,
-): Promise<UsageCounterStore> {
-  if (counters) {
-    return counters;
-  }
-  await assertRedisReady();
-  return createRedisUsageCounterStore(getRedis());
+function resolveStore(store?: UsageEventStore): UsageEventStore {
+  return store ?? createPostgresUsageEventStore();
 }
 
 function userDailyLimit(plan: PlanId, tier: ModelTier): number {
@@ -85,14 +53,14 @@ function userDailyLimit(plan: PlanId, tier: ModelTier): number {
 }
 
 async function readTierUsage(
-  store: UsageCounterStore,
+  store: UsageEventStore,
   userId: string,
   plan: PlanId,
   now: Date,
 ): Promise<Record<ModelTier, TierUsage>> {
   const [basicUsed, advancedUsed] = await Promise.all([
-    store.get(userDailyUsageKey(userId, "basic", now)),
-    store.get(userDailyUsageKey(userId, "advanced", now)),
+    store.countUserDaily(userId, "basic", now),
+    store.countUserDaily(userId, "advanced", now),
   ]);
 
   return {
@@ -108,7 +76,7 @@ async function readTierUsage(
 }
 
 async function peekUserTierAvailability(
-  store: UsageCounterStore,
+  store: UsageEventStore,
   userId: string,
   plan: PlanId,
   now: Date,
@@ -168,59 +136,6 @@ function quotaExhaustedMessage(reason: "none" | "needs_advanced"): string {
   return "You've used today's generates. Resets at midnight UTC.";
 }
 
-function buildReservationKeys(
-  userId: string,
-  plan: PlanId,
-  tier: ModelTier,
-  ipHash: string | null,
-  now: Date,
-): ReservationKey[] {
-  const keys: ReservationKey[] = [
-    {
-      key: userDailyUsageKey(userId, tier, now),
-      limit: userDailyLimit(plan, tier),
-      ttlSeconds: dailyKeyTtlSeconds(now),
-      scope: "user",
-    },
-    {
-      key: globalHourlyUsageKey(tier, now),
-      limit: analysisConfig.usageLimits.global[tier].hourly,
-      ttlSeconds: hourlyKeyTtlSeconds(),
-      scope: "global",
-    },
-    {
-      key: globalDailyUsageKey(tier, now),
-      limit: analysisConfig.usageLimits.global[tier].daily,
-      ttlSeconds: globalDailyKeyTtlSeconds(),
-      scope: "global",
-    },
-  ];
-
-  if (ipHash) {
-    keys.push({
-      key: ipDailyUsageKey(ipHash, tier, now),
-      limit: analysisConfig.usageLimits.ip[tier].daily,
-      ttlSeconds: globalDailyKeyTtlSeconds(),
-      scope: "ip",
-    });
-  }
-
-  return keys;
-}
-
-function scopeForFailedIndex(index: number, ipHash: string | null): "user" | "global" | "ip" {
-  if (index === 1) {
-    return "user";
-  }
-  if (index <= 3) {
-    return "global";
-  }
-  if (ipHash && index === 4) {
-    return "ip";
-  }
-  return "global";
-}
-
 function quotaExceededMessage(tier: ModelTier, limit: number): string {
   return `You've used all ${limit} ${tier} generates for today.`;
 }
@@ -238,6 +153,7 @@ export async function reserveGenerateSlot(
     requestedTier?: ModelTier | null;
     ipHash?: string | null;
     durationSeconds?: number | null;
+    runId?: string;
   } = {},
 ): Promise<ReserveGenerateSlotResult> {
   const getPlan = options.getPlan ?? getPlanForUser;
@@ -247,6 +163,7 @@ export async function reserveGenerateSlot(
   const requested = advancedEnabled
     ? (options.requestedTier ?? "advanced")
     : "basic";
+  const runId = options.runId ?? crypto.randomUUID();
 
   let plan: PlanId;
   try {
@@ -258,9 +175,9 @@ export async function reserveGenerateSlot(
     });
   }
 
-  let store: UsageCounterStore;
+  let store: UsageEventStore;
   try {
-    store = await resolveCounters(options.counters);
+    store = resolveStore(options.store);
   } catch (error) {
     logger.warn({ userId, ...errorFields(error) }, "usage.store_err");
     throw new UsageError(
@@ -293,6 +210,7 @@ export async function reserveGenerateSlot(
     selection,
     options.ipHash ?? null,
     now,
+    runId,
   );
 
   if (
@@ -312,6 +230,7 @@ export async function reserveGenerateSlot(
         selection,
         options.ipHash ?? null,
         now,
+        runId,
       );
     }
   }
@@ -340,49 +259,50 @@ export async function reserveGenerateSlot(
     limit: userDailyLimit(plan, selection.tier),
   };
 
-  const redisKeys = reserveResult.redisKeys;
-
   return {
     tier: selection.tier,
     ...(selection.fellBackFrom ? { fellBackFrom: selection.fellBackFrom } : {}),
     plan,
-    redisKeys,
-    usageQuotaKey: encodeUsageQuotaKeys(redisKeys),
+    runId,
     usage,
     maxDurationSeconds: analysisConfig.modelTiers[selection.tier].maxDurationSeconds,
   };
 }
 
 async function attemptReserve(
-  store: UsageCounterStore,
+  store: UsageEventStore,
   userId: string,
   plan: PlanId,
   selection: { tier: ModelTier; fellBackFrom?: "advanced" },
   ipHash: string | null,
   now: Date,
+  runId: string,
 ): Promise<
-  | { ok: true; userUsed: number; redisKeys: string[] }
+  | { ok: true; userUsed: number }
   | {
       ok: false;
       failedScope: "user" | "global" | "ip";
       tier: ModelTier;
     }
 > {
-  const reservation = buildReservationKeys(
-    userId,
-    plan,
-    selection.tier,
-    ipHash,
-    now,
-  );
-
-  let reserveResult: { ok: true; userUsed: number } | { ok: false; failedIndex: number };
   try {
-    reserveResult = await store.reserve(
-      reservation.map((entry) => entry.key),
-      reservation.map((entry) => entry.limit),
-      reservation.map((entry) => entry.ttlSeconds),
-    );
+    const reserveResult = await store.reserve({
+      userId,
+      runId,
+      tier: selection.tier,
+      ipHash,
+      now,
+      limits: {
+        user: userDailyLimit(plan, selection.tier),
+        globalHourly: analysisConfig.usageLimits.global[selection.tier].hourly,
+        globalDaily: analysisConfig.usageLimits.global[selection.tier].daily,
+        ip: ipHash ? analysisConfig.usageLimits.ip[selection.tier].daily : null,
+      },
+    });
+    if (!reserveResult.ok) {
+      return { ok: false, failedScope: reserveResult.failedScope, tier: selection.tier };
+    }
+    return { ok: true, userUsed: reserveResult.userUsed };
   } catch (error) {
     logger.warn({ userId, ...errorFields(error) }, "usage.reserve_err");
     throw new UsageError(
@@ -391,51 +311,25 @@ async function attemptReserve(
       { cause: error },
     );
   }
-
-  if (!reserveResult.ok) {
-    const failed = reservation[reserveResult.failedIndex - 1];
-    const failedScope =
-      failed?.scope ??
-      scopeForFailedIndex(reserveResult.failedIndex, ipHash);
-    return { ok: false, failedScope, tier: selection.tier };
-  }
-
-  return {
-    ok: true,
-    userUsed: reserveResult.userUsed,
-    redisKeys: reservation.map((entry) => entry.key),
-  };
 }
 
 export async function refundGenerateSlot(
   userId: string,
   options: UsageQuotaDeps & {
-    redisKeys?: string[];
-    usageQuotaKey?: string;
-    /** @deprecated use usageQuotaKey */
-    redisKey?: string;
+    runId?: string;
   } = {},
 ): Promise<void> {
-  const encoded = options.usageQuotaKey ?? options.redisKey;
-  const keys =
-    options.redisKeys ??
-    (encoded ? decodeUsageQuotaKeys(encoded) : []);
-
-  if (keys.length === 0) {
-    logger.warn({ userId }, "usage.refund_missing_keys");
+  const runId = options.runId;
+  if (!runId) {
+    logger.warn({ userId }, "usage.refund_missing_run");
     return;
   }
 
   try {
-    const store = await resolveCounters(options.counters);
-    for (const key of keys) {
-      await store.refund(key);
-    }
+    const store = resolveStore(options.store);
+    await store.refund(userId, runId);
   } catch (error) {
-    logger.error(
-      { userId, redisKeys: keys, ...errorFields(error) },
-      "usage.refund_err",
-    );
+    logger.error({ userId, runId, ...errorFields(error) }, "usage.refund_err");
     throw new UsageError(
       "usage_unavailable",
       "Couldn't update your usage after a failed analysis.",
@@ -463,7 +357,7 @@ export async function getUsageSnapshot(
 
   let tiers: Record<ModelTier, TierUsage>;
   try {
-    const store = await resolveCounters(deps.counters);
+    const store = resolveStore(deps.store);
     tiers = await readTierUsage(store, userId, plan, now);
   } catch (error) {
     logger.warn({ userId, ...errorFields(error) }, "usage.snapshot_err");
@@ -482,44 +376,8 @@ export async function getUsageSnapshot(
   };
 }
 
-/** @deprecated Use reserveGenerateSlot */
-export async function consumeMonthlyGenerateSlot(
-  userId: string,
-  deps: UsageQuotaDeps = {},
-): Promise<ConsumeResult> {
-  const slot = await reserveGenerateSlot(userId, {
-    ...deps,
-    requestedTier: "advanced",
-  });
-
-  return {
-    used: slot.usage[slot.tier].used,
-    limit: slot.usage[slot.tier].limit,
-    plan: slot.plan,
-    redisKey: slot.usageQuotaKey,
-  };
-}
-
-/** @deprecated Use refundGenerateSlot */
-export async function refundMonthlyGenerateSlot(
-  userId: string,
-  options: UsageQuotaDeps & { redisKey?: string; usageQuotaKey?: string } = {},
-): Promise<void> {
-  await refundGenerateSlot(userId, {
-    ...options,
-    usageQuotaKey: options.usageQuotaKey ?? options.redisKey,
-  });
-}
-
-export { createRedisUsageCounterStore, type UsageCounterStore } from "./counter-store";
 export {
-  dailyKeyTtlSeconds,
-  decodeUsageQuotaKeys,
-  encodeUsageQuotaKeys,
-  globalDailyUsageKey,
-  globalHourlyUsageKey,
-  ipDailyUsageKey,
-  userDailyUsageKey,
-  utcDayPeriodEndsAt,
-  utcDayPeriodKey,
-} from "./keys";
+  createPostgresUsageEventStore,
+  type UsageEventStore,
+} from "./event-store";
+export { utcDayPeriodEndsAt, utcDayPeriodKey } from "./keys";

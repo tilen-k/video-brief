@@ -19,15 +19,15 @@ Does this help turn a YouTube video into a better personalized understanding for
 
 ## MVP includes
 
-App home (former library) with guest (anonymous) sessions on first visit, auth (email/password + Google convert/link), soft email confirm, lightweight onboarding after convert (optional default **tone** + **length** only; hidden for guests), ephemeral preview → Generate, YouTube ingest (per-user `user_videos`; fetch transcript **from the analysis worker** on Generate), English timestamped captions, AI **generate only** (via `AIProvider`; **no classify stage**), per-video length/tone/familiarity (0–100) on the analysis row, video workspace at `/v/[id]` with overview **summary** + section **bodies** + highlight/seek, dark-default UI, EN-only i18n scaffolding, unit tests, BullMQ analysis worker (Redis queue + usage counters).
+App home (former library) with guest (anonymous) sessions on first visit, auth (email/password + Google convert/link), soft email confirm, lightweight onboarding after convert (optional default **tone** + **length** only; hidden for guests), ephemeral preview → Generate, YouTube ingest (per-user `user_videos`; fetch transcript **from the analysis worker** on Generate), English timestamped captions, AI **generate only** (via `AIProvider`; **no classify stage**), per-video length/tone/familiarity (0–100) on the analysis row, video workspace at `/v/[id]` with overview **summary** + section **bodies** + highlight/seek, dark-default UI, EN-only i18n scaffolding, unit tests, BullMQ analysis worker (Redis queue + per-video lock).
 
 ## MVP excludes
 
 Chat, uploads, Whisper/audio transcription, non-YouTube, recommendations, knowledge graph, cross-video search, quizzes, social/sharing, tRPC, PostHog/analytics, E2E tests, non-English UI or captions (app DE + summary-language + non-EN transcripts = **post-MVP**), **LLM-invented knowledge questions**, topic/video EAV context, shared cross-user transcript cache, AI classify / `isEducational` / non-edu disclaimer, educational profile fields (YOB, education level, subjects).
 
-**Billing (shipped):** Stripe Checkout + Customer Portal; Pro is $10/mo; webhooks sync `profiles.plan`. Redis quotas stay the usage meter.
+**Billing (shipped):** Stripe Checkout + Customer Portal; Pro is $10/mo; webhooks sync `profiles.plan`. Usage is Postgres `usage_events`.
 
-Redis is **queue + per-video lock + usage counters** (not a transcript cache).
+Redis is **BullMQ queue + per-video analysis lock** (not a transcript cache or usage meter). Usage lives in Postgres (`usage_events`).
 
 ## UX
 

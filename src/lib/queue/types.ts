@@ -16,5 +16,5 @@ export function analyzeJobId(userVideoId: string, runId: string): string {
   return `${userVideoId}_${runId}`;
 }
 
-export const ANALYSIS_LOCK_TTL_MS = 45 * 60 * 1000;
 export const ANALYSIS_JOB_LOCK_DURATION_MS = 45 * 60 * 1000;
+export const ANALYSIS_LOCK_TTL_MS = 45 * 60 * 1000;

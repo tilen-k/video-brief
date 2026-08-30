@@ -53,8 +53,8 @@ export type IngestYoutubeVideoInput = {
   summaryTone: number;
   modelTier: ModelTier;
   summaryLanguage: string;
-  /** Redis keys from reserveGenerateSlot — persisted for refunds. */
-  usageQuotaKey?: string | null;
+  /** Same run id as the usage_events reservation. */
+  runId: string;
   /** Optional preview metadata so the library/workspace is not a raw youtubeId stub. */
   metadata?: {
     title: string;
@@ -70,8 +70,8 @@ export type IngestYoutubeVideoResult = {
   analysisId: string;
   status: AnalysisStatus;
   runId: string;
-  /** Previous Redis usage key overwritten by this Generate (refund in the action). */
-  priorUsageQuotaKey?: string | null;
+  /** Previous run overwritten by this Generate (refund in the action). */
+  priorRunId?: string | null;
 };
 
 export type FetchYoutubeVideoInput = {
@@ -146,7 +146,6 @@ async function markFetchOutcome(
       errorMessage: outcome.status === "failed" ? outcome.message : null,
       sections: [],
       summary: null,
-      ...(outcome.status === "failed" ? { usageQuotaKey: null } : {}),
       updatedAt: new Date(),
     })
     .where(
@@ -166,13 +165,13 @@ async function markFetchOutcome(
   return row ?? null;
 }
 
-async function loadUsageQuotaKey(
+async function loadPriorRunId(
   tx: TransactionClient,
   userId: string,
   userVideoId: string,
 ): Promise<string | null> {
   const [row] = await tx
-    .select({ usageQuotaKey: personalizedAnalyses.usageQuotaKey })
+    .select({ runId: personalizedAnalyses.runId })
     .from(personalizedAnalyses)
     .where(
       and(
@@ -181,7 +180,7 @@ async function loadUsageQuotaKey(
       ),
     )
     .limit(1);
-  return row?.usageQuotaKey ?? null;
+  return row?.runId ?? null;
 }
 
 async function maybeRefundGenerateSlot(
@@ -189,12 +188,12 @@ async function maybeRefundGenerateSlot(
   errorCode: string,
   refundedViaCas: boolean,
   refundSlot: typeof refundGenerateSlot,
-  usageQuotaKey: string | null,
+  runId: string,
 ): Promise<void> {
-  if (!refundedViaCas || !isRefundableErrorCode(errorCode) || !usageQuotaKey) {
+  if (!refundedViaCas || !isRefundableErrorCode(errorCode)) {
     return;
   }
-  await refundSlot(userId, { usageQuotaKey });
+  await refundSlot(userId, { runId });
 }
 
 async function currentIngestResult(
@@ -246,11 +245,10 @@ export async function startYoutubeIngest(
     summaryTone,
     modelTier,
     summaryLanguage,
-    usageQuotaKey = null,
+    runId,
     metadata,
   } = input;
   const resolvedSummaryLanguage = resolveSummaryLanguage(summaryLanguage);
-  const runId = crypto.randomUUID();
   const title = metadata?.title?.trim() || youtubeId;
   const channelTitle = metadata?.channelTitle ?? null;
   const thumbnailUrl = sanitizeThumbnailUrl(metadata?.thumbnailUrl ?? null);
@@ -270,8 +268,8 @@ export async function startYoutubeIngest(
       )
       .limit(1);
 
-    const priorUsageQuotaKey = existing
-      ? await loadUsageQuotaKey(tx, userId, existing.id)
+    const priorRunId = existing
+      ? await loadPriorRunId(tx, userId, existing.id)
       : null;
 
     const [userVideo] = await tx
@@ -317,7 +315,6 @@ export async function startYoutubeIngest(
         modelTier,
         summaryLanguage: resolvedSummaryLanguage,
         runId,
-        usageQuotaKey,
       })
       .onConflictDoUpdate({
         target: personalizedAnalyses.userVideoId,
@@ -333,7 +330,6 @@ export async function startYoutubeIngest(
           modelTier,
           summaryLanguage: resolvedSummaryLanguage,
           runId,
-          usageQuotaKey,
           updatedAt: new Date(),
         },
       })
@@ -344,11 +340,9 @@ export async function startYoutubeIngest(
       analysisId: analysis.id,
       status: "pending" as const,
       runId: analysis.runId,
-      priorUsageQuotaKey:
-        refreshedActive &&
-        priorUsageQuotaKey &&
-        priorUsageQuotaKey !== usageQuotaKey
-          ? priorUsageQuotaKey
+      priorRunId:
+        refreshedActive && priorRunId && priorRunId !== runId
+          ? priorRunId
           : null,
     };
   });
@@ -366,7 +360,6 @@ export async function markAnalysisStartFailed(
       status: "failed",
       errorCode: "analysis_failed",
       errorMessage: "Couldn't start analysis. Try generating again.",
-      usageQuotaKey: null,
       updatedAt: new Date(),
     })
     .where(
@@ -468,7 +461,6 @@ export async function fetchYoutubeVideo(
 
     if (providerError.metadata) {
       const result = await db.transaction(async (tx) => {
-        const redisKey = await loadUsageQuotaKey(tx, userId, userVideoId);
         const analysis = await markFetchOutcome(tx, userId, userVideoId, runId, {
           status: "failed",
           code: providerError.code,
@@ -477,7 +469,7 @@ export async function fetchYoutubeVideo(
         if (!analysis) {
           const current = await currentIngestResult(tx, userId, userVideoId);
           if (current) {
-            return { ...current, _refunded: false as const, redisKey: null };
+            return { ...current, _refunded: false as const };
           }
           throw providerError;
         }
@@ -503,7 +495,6 @@ export async function fetchYoutubeVideo(
           status: "failed" as const,
           runId: analysis.runId,
           _refunded: true as const,
-          redisKey,
         };
       });
 
@@ -512,7 +503,7 @@ export async function fetchYoutubeVideo(
         providerError.code,
         result._refunded,
         refundSlot,
-        result.redisKey,
+        runId,
       );
       return {
         userVideoId: result.userVideoId,
@@ -522,10 +513,6 @@ export async function fetchYoutubeVideo(
       };
     }
 
-    const redisKey = await db.transaction(async (tx) =>
-      loadUsageQuotaKey(tx, userId, userVideoId),
-    );
-
     const [failed] = await db
       .update(personalizedAnalyses)
       .set({
@@ -534,7 +521,6 @@ export async function fetchYoutubeVideo(
         errorMessage: providerError.message,
         sections: [],
         summary: null,
-        usageQuotaKey: null,
         updatedAt: new Date(),
       })
       .where(
@@ -553,7 +539,7 @@ export async function fetchYoutubeVideo(
         providerError.code,
         true,
         refundSlot,
-        redisKey,
+        runId,
       );
       return {
         userVideoId,
@@ -583,7 +569,6 @@ export async function fetchYoutubeVideo(
           );
 
     const result = await db.transaction(async (tx) => {
-      const redisKey = await loadUsageQuotaKey(tx, userId, userVideoId);
       const analysis = await markFetchOutcome(tx, userId, userVideoId, runId, {
         status: "failed",
         code: usageError.code,
@@ -592,7 +577,7 @@ export async function fetchYoutubeVideo(
       if (!analysis) {
         const current = await currentIngestResult(tx, userId, userVideoId);
         if (current) {
-          return { ...current, _refunded: false as const, redisKey: null };
+          return { ...current, _refunded: false as const };
         }
         throw usageError;
       }
@@ -618,7 +603,6 @@ export async function fetchYoutubeVideo(
         status: "failed" as const,
         runId: analysis.runId,
         _refunded: true as const,
-        redisKey,
       };
     });
 
@@ -627,7 +611,7 @@ export async function fetchYoutubeVideo(
       usageError.code,
       result._refunded,
       refundSlot,
-      result.redisKey,
+      runId,
     );
     return {
       userVideoId: result.userVideoId,

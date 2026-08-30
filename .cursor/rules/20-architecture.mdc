@@ -21,16 +21,16 @@ Worker
 
 Server Actions authenticate, authorize, validate input, then call domain functions. **Do not** embed the analysis pipeline in actions or React components.
 
-Redis is queue + lock + usage counters only. Do **not** store transcripts or sections in Redis.
+Redis is BullMQ queue + per-video analysis lock. Usage lives in Postgres (`usage_events`). Do **not** store transcripts, sections, or usage counters in Redis.
 
 ## Library preview vs Generate
 
 | Step | DB | Usage | Queue |
 |------|----|-------|-------|
 | Preview URL (metadata) | none | no | no |
-| Generate | upsert `user_videos` + analysis | yes | enqueue analyze |
+| Generate | upsert `user_videos` + analysis | Postgres `usage_events` | enqueue analyze |
 
-Preview is a thin authenticated action (or domain call) returning metadata only. Generate creates the library entry, writes prefs + `run_id`, consumes the monthly slot, enqueues, and **redirects to the workspace**.
+Preview is a thin authenticated action (or domain call) returning metadata only. Generate creates the library entry, writes prefs + `run_id`, reserves a usage event, enqueues, and **redirects to the workspace**.
 
 ## Per-user video data
 
@@ -38,6 +38,7 @@ Each library entry is one row per `(user_id, youtube_id)`:
 
 - `user_videos` — metadata + English transcript snapshot (refreshed on every Generate/re-run)
 - `personalized_analyses` — state machine, 0–100 prefs (length, tone, optional familiarity), `run_id`, overview `summary`, generated sections (1:1 with `user_videos`)
+- `usage_events` — one row per Generate reservation (`run_id`); refunds set `refunded_at`
 
 Re-running the same URL **always resets** analysis (new `run_id`, clear summary/sections) and refetches from YouTube. There is **no shared global cache** across users.
 

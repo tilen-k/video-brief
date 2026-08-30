@@ -68,7 +68,7 @@ See `.cursor/rules/05-worktrees.mdc`.
 - No lint/type suppressions without justification — see `.cursor/rules/15-code-quality.mdc`
 - No chat, uploads, Whisper, tRPC, analytics, or LLM-invented knowledge questions in MVP
 - Billing: Stripe Checkout + Customer Portal; webhooks update `profiles.plan` (not Checkout success URL)
-- Redis + BullMQ: analysis queue, per-video lock, and monthly usage counters (not a transcript cache)
+- Redis + BullMQ: analysis queue + per-video lock (not a transcript cache; usage is Postgres `usage_events`)
 
 ## UI verification
 

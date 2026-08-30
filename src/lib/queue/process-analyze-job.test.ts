@@ -81,7 +81,8 @@ describe("processAnalyzeJob", () => {
     await processAnalyzeJob(job, {
       locks: locks(false),
       continueAnalysis: continueFn,
-      getWorkspaceVideo: async () => video("pending", "44444444-4444-4444-8444-444444444444"),
+      getWorkspaceVideo: async () =>
+        video("pending", "44444444-4444-4444-8444-444444444444"),
     });
     expect(continueFn).not.toHaveBeenCalled();
   });
@@ -92,7 +93,10 @@ describe("processAnalyzeJob", () => {
         locks: locks(false),
         getWorkspaceVideo: async () => video("fetching"),
       }),
-    ).rejects.toBeInstanceOf(AnalysisJobDelayError);
+    ).rejects.toMatchObject({
+      name: "AnalysisJobDelayError",
+      message: "analysis_lock_busy",
+    });
   });
 
   it("throws if a stage does not advance", async () => {

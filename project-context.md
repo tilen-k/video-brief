@@ -34,9 +34,9 @@ Home (/) → first visit creates anonymous guest session
 
 **Not in this ship:** chat, uploads, Whisper, tRPC, Prisma, PostHog, app DE / summary-language picker / non-EN transcripts, LLM classify, educational profile fields, shared cross-user transcript cache.
 
-**Billing:** Stripe Checkout + Customer Portal; webhooks sync `profiles.plan` (`free` | `pro`). Redis quotas unchanged.
+**Billing:** Stripe Checkout + Customer Portal; webhooks sync `profiles.plan` (`free` | `pro`). Usage is Postgres.
 
-**Redis:** BullMQ analysis queue + monthly per-user Generate counters (`REDIS_URL`). Not a transcript cache.
+**Redis:** BullMQ analysis queue + per-video lock (`REDIS_URL`). Not a transcript cache or usage meter (usage is Postgres `usage_events`).
 
 ## Onboarding (all optional)
 
@@ -72,9 +72,11 @@ Inputs: transcript subset + per-video prefs (+ category for familiarity gating).
 All **per-user**. No shared video/transcript cache.
 
 - `user_videos` — metadata + English transcript (created/refreshed on Generate)
-- `personalized_analyses` — state machine, prefs, `run_id`, summary, sections, optional `usage_quota_key`
+- `personalized_analyses` — state machine, prefs, `run_id`, summary, sections
+- `usage_events` — one row per Generate (`run_id`); refunds set `refunded_at`
 - Profile — `summary_tone`, `summary_length`, **plan** (`free` | `pro`), Stripe customer/subscription ids
-- Usage — Redis monthly **Generate** counter (free: 10/month, max 20 min); Pro via Stripe ($10/mo)
+- Usage — Postgres daily **Generate** events (plan limits in `analysisConfig`)
+- Redis — BullMQ queue + per-video analysis lock (not usage)
 
 ## Architecture
 

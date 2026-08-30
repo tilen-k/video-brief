@@ -109,8 +109,9 @@ Do not substitute these without an explicit product decision.
 
 | Layer | Choice |
 |-------|--------|
-| Redis | BullMQ analysis queue + per-video lock + monthly Generate counters |
+| Redis | BullMQ analysis queue + per-video lock |
 | Worker | BullMQ analysis runner (separate process) |
+| Usage | Postgres `usage_events` (daily user / global / IP) |
 
 ### Testing
 
@@ -577,8 +578,9 @@ Important principles:
 Redis is used for:
 
 * BullMQ analysis queue
-* per-video analysis lock
-* monthly per-user **Generate** usage counters
+* Per-video analysis lock (SET NX + heartbeat; prevents duplicate LLM work)
+
+Usage metering is Postgres (`usage_events`). `run_id` CAS still guards analysis writes.
 
 Do **not** cache transcripts or summaries in Redis.
 
@@ -912,7 +914,7 @@ Do not add infrastructure because it is available.
 In particular:
 
 * no tRPC without a concrete API requirement
-* Redis/BullMQ for the analysis queue and per-video lock only (not a transcript cache)
+* Redis/BullMQ for the analysis queue + per-video lock (not a transcript cache; usage is Postgres)
 * Worker owns fetch/generate; Next does not run the pipeline
 * no Prisma (Drizzle is locked)
 * no abstraction without a reason

@@ -2,72 +2,101 @@ import { describe, expect, it } from "vitest";
 
 import { assertDurationAllowed } from "@/domain/usage/duration";
 import { UsageError } from "@/domain/usage/errors";
-import { createRedisUsageCounterStore } from "@/domain/usage/counter-store";
+import type { ModelTier } from "@/db/schema";
 import {
-  dailyKeyTtlSeconds,
   getUsageSnapshot,
-  globalDailyUsageKey,
-  globalHourlyUsageKey,
-  ipDailyUsageKey,
   refundGenerateSlot,
   reserveGenerateSlot,
-  userDailyUsageKey,
   utcDayPeriodEndsAt,
   utcDayPeriodKey,
-  type UsageCounterStore,
+  type UsageEventStore,
 } from "@/domain/usage/quota";
+import { utcHourPeriodKey } from "@/domain/usage/keys";
 import { analysisConfig } from "@/domain/analysis/config";
 
-function memoryCounters(): UsageCounterStore & {
-  data: Map<string, { value: number; ttl?: number }>;
-} {
-  const data = new Map<string, { value: number; ttl?: number }>();
+type StoredEvent = {
+  userId: string;
+  runId: string;
+  tier: ModelTier;
+  periodDay: string;
+  periodHour: string;
+  ipHash: string | null;
+  refunded: boolean;
+};
+
+function memoryStore(): UsageEventStore {
+  const events: StoredEvent[] = [];
 
   return {
-    data,
-    async consume(key, limit, ttlSeconds) {
-      const cur = data.get(key)?.value ?? 0;
-      const next = cur + 1;
-      if (next === 1) {
-        data.set(key, { value: next, ttl: ttlSeconds });
-      } else {
-        data.set(key, { value: next, ttl: data.get(key)?.ttl });
+    async reserve(input) {
+      const periodDay = utcDayPeriodKey(input.now);
+      const periodHour = utcHourPeriodKey(input.now);
+      const active = events.filter((event) => !event.refunded);
+
+      const userUsed = active.filter(
+        (event) =>
+          event.userId === input.userId &&
+          event.periodDay === periodDay &&
+          event.tier === input.tier,
+      ).length;
+      if (userUsed >= input.limits.user) {
+        return { ok: false, failedScope: "user" };
       }
-      if (next > limit) {
-        data.set(key, { value: cur, ttl: data.get(key)?.ttl });
-        return -1;
+
+      const globalHourlyUsed = active.filter(
+        (event) => event.periodHour === periodHour && event.tier === input.tier,
+      ).length;
+      if (globalHourlyUsed >= input.limits.globalHourly) {
+        return { ok: false, failedScope: "global" };
       }
-      return next;
-    },
-    async reserve(keys, limits, ttlSeconds) {
-      const increments: string[] = [];
-      for (let index = 0; index < keys.length; index++) {
-        const key = keys[index]!;
-        const limit = limits[index]!;
-        const ttl = ttlSeconds[index]!;
-        const used = await this.consume(key, limit, ttl);
-        if (used < 0) {
-          for (const prior of increments) {
-            await this.refund(prior);
-          }
-          return { ok: false, failedIndex: index + 1 };
+
+      const globalDailyUsed = active.filter(
+        (event) => event.periodDay === periodDay && event.tier === input.tier,
+      ).length;
+      if (globalDailyUsed >= input.limits.globalDaily) {
+        return { ok: false, failedScope: "global" };
+      }
+
+      if (input.ipHash && input.limits.ip != null) {
+        const ipUsed = active.filter(
+          (event) =>
+            event.ipHash === input.ipHash &&
+            event.periodDay === periodDay &&
+            event.tier === input.tier,
+        ).length;
+        if (ipUsed >= input.limits.ip) {
+          return { ok: false, failedScope: "ip" };
         }
-        increments.push(key);
       }
-      const userUsed = await this.get(keys[0]!);
-      return { ok: true, userUsed };
+
+      events.push({
+        userId: input.userId,
+        runId: input.runId,
+        tier: input.tier,
+        periodDay,
+        periodHour,
+        ipHash: input.ipHash,
+        refunded: false,
+      });
+      return { ok: true, userUsed: userUsed + 1 };
     },
-    async refund(key) {
-      const cur = data.get(key)?.value ?? 0;
-      if (cur <= 0) {
-        return 0;
+    async refund(userId, runId) {
+      const event = events.find(
+        (row) => row.userId === userId && row.runId === runId && !row.refunded,
+      );
+      if (event) {
+        event.refunded = true;
       }
-      const next = cur - 1;
-      data.set(key, { value: next, ttl: data.get(key)?.ttl });
-      return next;
     },
-    async get(key) {
-      return data.get(key)?.value ?? 0;
+    async countUserDaily(userId, tier, now) {
+      const periodDay = utcDayPeriodKey(now);
+      return events.filter(
+        (event) =>
+          !event.refunded &&
+          event.userId === userId &&
+          event.tier === tier &&
+          event.periodDay === periodDay,
+      ).length;
     },
   };
 }
@@ -77,16 +106,13 @@ const now = () => at;
 const getFreePlan = async () => "free" as const;
 const getProPlan = async () => "pro" as const;
 
-describe("daily usage keys", () => {
+describe("daily usage periods", () => {
   it("builds UTC day keys and period end", () => {
-    expect(userDailyUsageKey("user-1", "basic", at)).toBe(
-      "vb:usage:u:user-1:basic:d:20260824",
-    );
     expect(utcDayPeriodKey(at)).toBe("20260824");
+    expect(utcHourPeriodKey(at)).toBe("2026082415");
     expect(utcDayPeriodEndsAt(at).toISOString()).toBe(
       "2026-08-25T00:00:00.000Z",
     );
-    expect(dailyKeyTtlSeconds(at)).toBeGreaterThan(24 * 60 * 60);
   });
 });
 
@@ -111,45 +137,46 @@ describe("assertDurationAllowed", () => {
 
 describe("reserveGenerateSlot", () => {
   it("consumes advanced user quota by default for free users", async () => {
-    const counters = memoryCounters();
+    const store = memoryStore();
 
     const slot = await reserveGenerateSlot("user-1", {
-      counters,
+      store,
       getPlan: getFreePlan,
       now,
     });
 
     expect(slot.tier).toBe("advanced");
-    expect(slot.usage.advanced.used).toBe(1);
-    expect(await counters.get(userDailyUsageKey("user-1", "advanced", at))).toBe(
-      1,
+    expect(slot.runId).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
     );
-    expect(await counters.get(userDailyUsageKey("user-1", "basic", at))).toBe(0);
+    expect(slot.usage.advanced.used).toBe(1);
+    expect(await store.countUserDaily("user-1", "advanced", at)).toBe(1);
+    expect(await store.countUserDaily("user-1", "basic", at)).toBe(0);
   });
 
   it("honors explicit basic requests", async () => {
-    const counters = memoryCounters();
+    const store = memoryStore();
 
     const slot = await reserveGenerateSlot("user-1", {
-      counters,
+      store,
       getPlan: getFreePlan,
       now,
       requestedTier: "basic",
     });
 
     expect(slot.tier).toBe("basic");
-    expect(await counters.get(userDailyUsageKey("user-1", "basic", at))).toBe(1);
+    expect(await store.countUserDaily("user-1", "basic", at)).toBe(1);
   });
 
   it("uses basic only when advanced model is disabled", async () => {
-    const counters = memoryCounters();
+    const store = memoryStore();
 
     const previous = process.env.ADVANCED_MODEL_ENABLED;
     process.env.ADVANCED_MODEL_ENABLED = "0";
 
     try {
       const slot = await reserveGenerateSlot("user-1", {
-        counters,
+        store,
         getPlan: getFreePlan,
         now,
         requestedTier: "advanced",
@@ -157,7 +184,7 @@ describe("reserveGenerateSlot", () => {
       });
 
       expect(slot.tier).toBe("basic");
-      expect(await counters.get(userDailyUsageKey("user-1", "basic", at))).toBe(1);
+      expect(await store.countUserDaily("user-1", "basic", at)).toBe(1);
     } finally {
       if (previous === undefined) {
         delete process.env.ADVANCED_MODEL_ENABLED;
@@ -168,12 +195,12 @@ describe("reserveGenerateSlot", () => {
   });
 
   it("falls back to basic when advanced user quota is exhausted", async () => {
-    const counters = memoryCounters();
+    const store = memoryStore();
     const limit = analysisConfig.planLimits.free.daily.advanced;
 
     for (let i = 0; i < limit; i++) {
       await reserveGenerateSlot("user-1", {
-        counters,
+        store,
         getPlan: getFreePlan,
         now,
         requestedTier: "advanced",
@@ -182,7 +209,7 @@ describe("reserveGenerateSlot", () => {
     }
 
     const slot = await reserveGenerateSlot("user-1", {
-      counters,
+      store,
       getPlan: getFreePlan,
       now,
       requestedTier: "advanced",
@@ -191,16 +218,16 @@ describe("reserveGenerateSlot", () => {
 
     expect(slot.tier).toBe("basic");
     expect(slot.fellBackFrom).toBe("advanced");
-    expect(await counters.get(userDailyUsageKey("user-1", "basic", at))).toBe(1);
+    expect(await store.countUserDaily("user-1", "basic", at)).toBe(1);
   });
 
   it("does not fall back to basic when the video exceeds the basic duration", async () => {
-    const counters = memoryCounters();
+    const store = memoryStore();
     const limit = analysisConfig.planLimits.free.daily.advanced;
 
     for (let i = 0; i < limit; i++) {
       await reserveGenerateSlot("user-1", {
-        counters,
+        store,
         getPlan: getFreePlan,
         now,
         requestedTier: "advanced",
@@ -210,23 +237,23 @@ describe("reserveGenerateSlot", () => {
 
     await expect(
       reserveGenerateSlot("user-1", {
-        counters,
+        store,
         getPlan: getFreePlan,
         now,
         requestedTier: "advanced",
         durationSeconds: 90 * 60,
       }),
     ).rejects.toMatchObject({ code: "quota_exceeded", tier: "advanced" });
-    expect(await counters.get(userDailyUsageKey("user-1", "basic", at))).toBe(0);
+    expect(await store.countUserDaily("user-1", "basic", at)).toBe(0);
   });
 
   it("does not fall back to basic when duration is unknown", async () => {
-    const counters = memoryCounters();
+    const store = memoryStore();
     const limit = analysisConfig.planLimits.free.daily.advanced;
 
     for (let i = 0; i < limit; i++) {
       await reserveGenerateSlot("user-1", {
-        counters,
+        store,
         getPlan: getFreePlan,
         now,
         requestedTier: "advanced",
@@ -236,7 +263,7 @@ describe("reserveGenerateSlot", () => {
 
     await expect(
       reserveGenerateSlot("user-1", {
-        counters,
+        store,
         getPlan: getFreePlan,
         now,
         requestedTier: "advanced",
@@ -246,12 +273,12 @@ describe("reserveGenerateSlot", () => {
   });
 
   it("does not consume global advanced when falling back to basic", async () => {
-    const counters = memoryCounters();
+    const store = memoryStore();
     const limit = analysisConfig.planLimits.free.daily.advanced;
 
     for (let i = 0; i < limit; i++) {
       await reserveGenerateSlot("user-1", {
-        counters,
+        store,
         getPlan: getFreePlan,
         now,
         requestedTier: "advanced",
@@ -260,25 +287,25 @@ describe("reserveGenerateSlot", () => {
     }
 
     await reserveGenerateSlot("user-1", {
-      counters,
+      store,
       getPlan: getFreePlan,
       now,
       requestedTier: "advanced",
       durationSeconds: 60,
     });
 
-    expect(await counters.get(globalHourlyUsageKey("advanced", at))).toBe(limit);
-    expect(await counters.get(globalHourlyUsageKey("basic", at))).toBe(1);
+    expect(await store.countUserDaily("user-1", "advanced", at)).toBe(limit);
+    expect(await store.countUserDaily("user-1", "basic", at)).toBe(1);
   });
 
   it("rejects when both user tiers are exhausted", async () => {
-    const counters = memoryCounters();
+    const store = memoryStore();
     const basicLimit = analysisConfig.planLimits.free.daily.basic;
     const advancedLimit = analysisConfig.planLimits.free.daily.advanced;
 
     for (let i = 0; i < advancedLimit; i++) {
       await reserveGenerateSlot("user-1", {
-        counters,
+        store,
         getPlan: getFreePlan,
         now,
         requestedTier: "advanced",
@@ -286,7 +313,7 @@ describe("reserveGenerateSlot", () => {
     }
     for (let i = 0; i < basicLimit; i++) {
       await reserveGenerateSlot("user-1", {
-        counters,
+        store,
         getPlan: getFreePlan,
         now,
         requestedTier: "basic",
@@ -295,7 +322,7 @@ describe("reserveGenerateSlot", () => {
 
     await expect(
       reserveGenerateSlot("user-1", {
-        counters,
+        store,
         getPlan: getFreePlan,
         now,
       }),
@@ -303,12 +330,12 @@ describe("reserveGenerateSlot", () => {
   });
 
   it("enforces global advanced hourly limits without tier fallback", async () => {
-    const counters = memoryCounters();
+    const store = memoryStore();
     const hourlyLimit = analysisConfig.usageLimits.global.advanced.hourly;
 
     for (let i = 0; i < hourlyLimit; i++) {
       await reserveGenerateSlot(`user-${i}`, {
-        counters,
+        store,
         getPlan: getProPlan,
         now,
         requestedTier: "advanced",
@@ -317,7 +344,7 @@ describe("reserveGenerateSlot", () => {
 
     await expect(
       reserveGenerateSlot("user-overflow", {
-        counters,
+        store,
         getPlan: getProPlan,
         now,
         requestedTier: "advanced",
@@ -326,16 +353,22 @@ describe("reserveGenerateSlot", () => {
   });
 
   it("enforces global advanced daily limits without tier fallback", async () => {
-    const counters = memoryCounters();
+    const store = memoryStore();
     const globalLimit = analysisConfig.usageLimits.global.advanced.daily;
-    const key = globalDailyUsageKey("advanced", at);
+
     for (let i = 0; i < globalLimit; i++) {
-      await counters.consume(key, globalLimit, 1000);
+      const hour = new Date(Date.UTC(2026, 7, 24, i % 24, 0, 0));
+      await reserveGenerateSlot(`user-${i}`, {
+        store,
+        getPlan: getProPlan,
+        now: () => hour,
+        requestedTier: "advanced",
+      });
     }
 
     await expect(
       reserveGenerateSlot("user-overflow", {
-        counters,
+        store,
         getPlan: getProPlan,
         now,
         requestedTier: "advanced",
@@ -343,55 +376,75 @@ describe("reserveGenerateSlot", () => {
     ).rejects.toMatchObject({ code: "rate_limit_exceeded", scope: "global" });
   });
 
-  it("enforces IP advanced daily limits", async () => {
-    const counters = memoryCounters();
-    const ipLimit = analysisConfig.usageLimits.ip.advanced.daily;
-    const key = ipDailyUsageKey("iphash1", "advanced", at);
+  it("enforces IP daily limits", async () => {
+    const store = memoryStore();
+    const ipLimit = analysisConfig.usageLimits.ip.basic.daily;
+
     for (let i = 0; i < ipLimit; i++) {
-      await counters.consume(key, ipLimit, 1000);
+      const hour = new Date(Date.UTC(2026, 7, 24, i % 24, 0, 0));
+      await reserveGenerateSlot(`user-${i}`, {
+        store,
+        getPlan: getFreePlan,
+        now: () => hour,
+        requestedTier: "basic",
+        ipHash: "iphash1",
+      });
     }
 
     await expect(
       reserveGenerateSlot("user-overflow", {
-        counters,
+        store,
         getPlan: getFreePlan,
         now,
-        requestedTier: "advanced",
+        requestedTier: "basic",
         ipHash: "iphash1",
       }),
     ).rejects.toMatchObject({ code: "rate_limit_exceeded", scope: "ip" });
   });
 
-  it("refunds all reserved keys from usageQuotaKey", async () => {
-    const counters = memoryCounters();
+  it("refunds a reserved run", async () => {
+    const store = memoryStore();
 
     const slot = await reserveGenerateSlot("user-1", {
-      counters,
+      store,
       getPlan: getFreePlan,
       now,
       ipHash: "iphash1",
     });
 
     await refundGenerateSlot("user-1", {
-      counters,
-      usageQuotaKey: slot.usageQuotaKey,
+      store,
+      runId: slot.runId,
     });
 
-    for (const key of slot.redisKeys) {
-      expect(await counters.get(key)).toBe(0);
-    }
+    expect(await store.countUserDaily("user-1", slot.tier, at)).toBe(0);
   });
 });
 
 describe("getUsageSnapshot", () => {
   it("returns per-tier daily usage and combined totals", async () => {
-    const counters = memoryCounters();
-    await counters.consume(userDailyUsageKey("user-1", "basic", at), 10, 1000);
-    await counters.consume(userDailyUsageKey("user-1", "advanced", at), 5, 1000);
-    await counters.consume(userDailyUsageKey("user-1", "advanced", at), 5, 1000);
+    const store = memoryStore();
+    await reserveGenerateSlot("user-1", {
+      store,
+      getPlan: getFreePlan,
+      now,
+      requestedTier: "basic",
+    });
+    await reserveGenerateSlot("user-1", {
+      store,
+      getPlan: getFreePlan,
+      now,
+      requestedTier: "advanced",
+    });
+    await reserveGenerateSlot("user-1", {
+      store,
+      getPlan: getFreePlan,
+      now,
+      requestedTier: "advanced",
+    });
 
     const snapshot = await getUsageSnapshot("user-1", {
-      counters,
+      store,
       getPlan: getFreePlan,
       now,
     });
@@ -406,93 +459,5 @@ describe("getUsageSnapshot", () => {
       used: 3,
       limit: 15,
     });
-  });
-});
-
-describe("createRedisUsageCounterStore", () => {
-  it("runs reserve lua against a fake redis eval", async () => {
-    const storeData = new Map<string, string>();
-    const redis = {
-      async eval(
-        script: string,
-        numKeys: number,
-        ...args: string[]
-      ) {
-        const keys = args.slice(0, numKeys);
-        const pairs = args.slice(numKeys);
-
-        if (script.includes("for i = 1, num_keys")) {
-          for (let index = 0; index < keys.length; index++) {
-            const key = keys[index]!;
-            const limit = Number(pairs[index * 2]);
-            const ttl = Number(pairs[index * 2 + 1]);
-            const current = Number(storeData.get(key) ?? "0") + 1;
-            storeData.set(key, String(current));
-            if (current === 1) {
-              storeData.set(`${key}:ttl`, String(ttl));
-            }
-            if (current > limit) {
-              storeData.set(key, String(current - 1));
-              for (let j = 0; j < index; j++) {
-                const prior = keys[j]!;
-                const priorValue = Number(storeData.get(prior) ?? "1") - 1;
-                storeData.set(prior, String(Math.max(0, priorValue)));
-              }
-              return -(index + 1);
-            }
-          }
-          return Number(storeData.get(keys[0]!));
-        }
-
-        if (script.includes("INCR")) {
-          const key = keys[0]!;
-          const limit = Number(pairs[0]);
-          const ttl = Number(pairs[1]);
-          const current = Number(storeData.get(key) ?? "0") + 1;
-          storeData.set(key, String(current));
-          if (current === 1) {
-            storeData.set(`${key}:ttl`, String(ttl));
-          }
-          if (current > limit) {
-            storeData.set(key, String(current - 1));
-            return -1;
-          }
-          return current;
-        }
-
-        const key = keys[0]!;
-        const raw = storeData.get(key);
-        if (raw == null) {
-          return 0;
-        }
-        const n = Number(raw);
-        if (n <= 0) {
-          return 0;
-        }
-        storeData.set(key, String(n - 1));
-        return n - 1;
-      },
-      async get(key: string) {
-        return storeData.get(key) ?? null;
-      },
-    };
-
-    const store = createRedisUsageCounterStore(redis as never);
-    const result = await store.reserve(
-      ["user", "global"],
-      [2, 5],
-      [60, 120],
-    );
-    expect(result).toEqual({ ok: true, userUsed: 1 });
-    expect(await store.reserve(["user", "global"], [2, 5], [60, 120])).toEqual({
-      ok: true,
-      userUsed: 2,
-    });
-    expect(await store.reserve(["user", "global"], [2, 5], [60, 120])).toEqual({
-      ok: false,
-      failedIndex: 1,
-    });
-    expect(storeData.get("user")).toBe("2");
-    expect(await store.refund("user")).toBe(1);
   });
 });

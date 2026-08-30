@@ -42,7 +42,7 @@ alwaysApply: true
 
 Prisma, tRPC, PostHog, Jest (use Vitest), Playwright (post-MVP)
 
-Redis + BullMQ are used for the **analysis queue, per-video lock, and monthly usage counters**. Do not cache transcripts or classification in Redis.
+Redis + BullMQ are used for the **analysis queue and per-video lock**. Do not cache transcripts or classification in Redis. Usage lives in Postgres (`usage_events`); `run_id` CAS still guards analysis writes.
 
 ## Commands
 

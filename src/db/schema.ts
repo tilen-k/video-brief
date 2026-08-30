@@ -137,8 +137,6 @@ export const personalizedAnalyses = pgTable(
     summaryLanguage: text("summary_language").notNull().default("en"),
     summary: text("summary"),
     runId: uuid("run_id").notNull().defaultRandom(),
-    /** Redis monthly counter key consumed at Generate; used for pre-LLM refunds. */
-    usageQuotaKey: text("usage_quota_key"),
     sections: jsonb("sections")
       .$type<GeneratedSection[]>()
       .notNull()
@@ -158,9 +156,46 @@ export const personalizedAnalyses = pgTable(
   ],
 );
 
+/** One row per Generate reservation. Refunds set refunded_at; counts ignore those. */
+export const usageEvents = pgTable(
+  "usage_events",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => profiles.id, { onDelete: "cascade" }),
+    runId: uuid("run_id").notNull(),
+    tier: text("tier").$type<ModelTier>().notNull(),
+    periodDay: text("period_day").notNull(),
+    periodHour: text("period_hour").notNull(),
+    ipHash: text("ip_hash"),
+    refundedAt: timestamp("refunded_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("usage_events_run_id_uidx").on(table.runId),
+    index("usage_events_user_day_tier_active_idx")
+      .on(table.userId, table.periodDay, table.tier)
+      .where(isNull(table.refundedAt)),
+    index("usage_events_day_tier_active_idx")
+      .on(table.periodDay, table.tier)
+      .where(isNull(table.refundedAt)),
+    index("usage_events_hour_tier_active_idx")
+      .on(table.periodHour, table.tier)
+      .where(isNull(table.refundedAt)),
+    index("usage_events_ip_day_tier_active_idx")
+      .on(table.ipHash, table.periodDay, table.tier)
+      .where(isNull(table.refundedAt)),
+  ],
+);
+
 export type Profile = typeof profiles.$inferSelect;
 export type NewProfile = typeof profiles.$inferInsert;
 export type UserVideo = typeof userVideos.$inferSelect;
 export type NewUserVideo = typeof userVideos.$inferInsert;
 export type PersonalizedAnalysis = typeof personalizedAnalyses.$inferSelect;
 export type NewPersonalizedAnalysis = typeof personalizedAnalyses.$inferInsert;
+export type UsageEvent = typeof usageEvents.$inferSelect;
+export type NewUsageEvent = typeof usageEvents.$inferInsert;
