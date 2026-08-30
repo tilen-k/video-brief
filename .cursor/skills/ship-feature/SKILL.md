@@ -102,7 +102,7 @@ Prefer existing skills when relevant:
 - `drizzle-table-rls`
 - `youtube-ingest`
 - `llm-structured-stage`
-- `.agents/skills/ai-sdk` for AI SDK usage
+- `ai-sdk` for AI SDK usage
 
 ### 3. Mechanical checks (in CHECKOUT)
 
@@ -141,7 +141,7 @@ Do not expand scope into unrelated refactors.
 
 ### 8. Pause for human (default — do **not** auto-apply)
 
-After step 7, **stop**. Do **not** run `worktree-apply.sh` / `worktree-delete.sh` unless the user explicitly asks (e.g. `/worktree-apply`, “apply the worktree”, “land it”).
+After step 7, **stop**. Do **not** run `worktree-apply.sh` or `worktree-delete.sh` unless the user explicitly asks for that command (`/worktree-apply` vs `/worktree-delete`).
 
 The human improves and tests in the browser on the worktree (or primary if that was `CHECKOUT`). Agents do not drive the browser (see `.cursor/rules/90-ui-verification.mdc`).
 
@@ -175,11 +175,7 @@ pnpm test
 
 Fix merge/check failures on primary. Re-run verifier on primary only if the merge changed behavior or conflict resolutions were non-trivial.
 
-Then delete unless the user asked to keep the worktree:
-
-```bash
-.cursor/worktree-delete.sh <WORKTREE_NAME>
-```
+**Stop.** Do **not** run `worktree-delete.sh` here. The user runs `/worktree-delete` when they want the worktree removed.
 
 Land **one** worktree at a time. Run `db:migrate` on **primary** only when the landed change includes a migration and the user wants shared DB updated (not from the worktree).
 
@@ -217,7 +213,7 @@ After step 9 (user asked to apply):
 SHIPPED — <feature>
 
 Checkout
-- worktree <name> → applied | kept open
+- worktree <name> applied on primary (still on disk until `/worktree-delete`)
 
 Done
 - …
