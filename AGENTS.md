@@ -30,7 +30,7 @@ For non-trivial work, prefer `/ship-feature` (or say “ship this feature”):
 4. `security` when auth/RLS/AI trust boundaries change
 5. Main agent fixes Critical/High; specialists do not rewrite production code
 6. **Pause** — human improves / click-tests. Do **not** auto-apply.
-7. Only when the user asks (`/worktree-apply` or “land it”): `worktree-apply.sh` → type-check/lint/test on primary → `worktree-delete.sh` (unless keeping it)
+7. Only when the user asks (`/worktree-apply` or “land it”): `worktree-apply.sh` → type-check/lint/test on primary. Do **not** delete the worktree until they run `/worktree-delete`.
 
 Skip the full loop for copy/CSS/one-field tweaks. Explicit `/architect`, `/reviewer`, `/verifier`, or `/security` is fine mid-feature.
 
