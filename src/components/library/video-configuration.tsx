@@ -22,10 +22,10 @@ import {
 import type { TierUsage } from "@/domain/usage/quota";
 import { PrefSlider } from "@/components/shared/pref-slider";
 import { SummaryLanguageSelect } from "@/components/shared/summary-language-select";
-import { LoadingDots } from "@/components/shared/status/loading-dots";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Spinner } from "@/components/ui/spinner";
 import { cn } from "@/lib/utils";
 
 const generateInitial: GenerateVideoActionState = {};
@@ -354,6 +354,7 @@ export function VideoConfiguration({
   }
 
   const showGateAlert = preview != null && !previewLoading && !gate.ok;
+  const buttonLoading = previewLoading || isBusy;
 
   return (
     <form
@@ -516,7 +517,12 @@ export function VideoConfiguration({
             size="lg"
             className="h-11 min-w-[7rem] px-6"
           >
-            {isBusy ? t("generating") : t("generate")}
+            {buttonLoading ? <Spinner /> : null}
+            {previewLoading
+              ? t("previewing")
+              : isBusy
+                ? t("generating")
+                : t("generate")}
           </Button>
           <Button
             type="button"
@@ -528,12 +534,6 @@ export function VideoConfiguration({
           >
             {t("clearPreview")}
           </Button>
-          {isBusy ? (
-            <LoadingDots
-              label={t("generating")}
-              className="text-muted-foreground"
-            />
-          ) : null}
         </div>
       </div>
     </form>

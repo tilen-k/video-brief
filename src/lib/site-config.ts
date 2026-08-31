@@ -1,3 +1,3 @@
 export const siteConfig = {
-  githubUrl: "https://github.com/Quidos/video-brief",
+  githubUrl: "https://github.com/tilen_k/video-brief",
 } as const;

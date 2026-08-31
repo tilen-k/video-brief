@@ -14,7 +14,7 @@ Editorial, premium, restrained, content-first on **marketing** surfaces. **App**
 
 - Tailwind + **shadcn/ui** + lucide-react
 - Forms: RHF + Zod + shadcn form controls
-- Theme: **next-themes**, default **system** (dark-friendly tokens)
+- Theme: **next-themes**, default **dark** (respect system after first choice; dark-friendly tokens)
 - i18n: **next-intl**, locale **`en` only** for MVP (keep message files structured)
 
 ## Component layout
